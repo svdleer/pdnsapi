@@ -1,5 +1,7 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
+// Determine the correct base path
+$base_path = realpath(__DIR__ . '/..');
+require_once $base_path . '/config/database.php';
 
 /**
  * Domain Model

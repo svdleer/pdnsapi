@@ -2,6 +2,7 @@
 /**
  * Database Configuration
  */
+if (!class_exists('Database')) {
 class Database {
     private $host = 'localhost';
     private $db_name = 'pdns_api_db';
@@ -29,5 +30,6 @@ class Database {
         
         return $this->conn;
     }
+}
 }
 ?>

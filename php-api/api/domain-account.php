@@ -1,8 +1,11 @@
 <?php
-require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../models/Account.php';
-require_once __DIR__ . '/../models/Domain.php';
+// Determine the correct base path
+$base_path = realpath(__DIR__ . '/..');
+
+require_once $base_path . '/config/config.php';
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/models/Account.php';
+require_once $base_path . '/models/Domain.php';
 
 // Get database connection
 $database = new Database();

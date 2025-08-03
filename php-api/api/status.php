@@ -1,7 +1,10 @@
 <?php
-require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../classes/PDNSAdminClient.php';
+// Determine the correct base path
+$base_path = realpath(__DIR__ . '/..');
+
+require_once $base_path . '/config/config.php';
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/classes/PDNSAdminClient.php';
 
 // API key is already validated in index.php, log the request
 logApiRequest('status', $_SERVER['REQUEST_METHOD'], 200);
