@@ -114,7 +114,7 @@ All API endpoints (except documentation) require authentication using API keys.
    ```
 
 ### Exempt Endpoints (No Authentication Required)
-- `/` - API documentation
+- `/` - Redirects to Swagger UI documentation
 - `/docs` - Swagger UI
 - `/openapi*` - OpenAPI specifications
 

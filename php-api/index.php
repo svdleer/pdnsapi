@@ -61,46 +61,25 @@ switch($path) {
         
     case '':
     case 'index':
-        // API documentation/welcome page
-        $docs = [
-            'name' => 'PDNSAdmin PHP API',
-            'version' => '1.0.0',
-            'description' => 'PHP API wrapper for PDNSAdmin with local database storage',
-            'endpoints' => [
-                'GET /accounts' => 'Get all accounts',
-                'GET /accounts?id={id}' => 'Get specific account by ID',
-                'GET /accounts?name={name}' => 'Get specific account by name',
-                'POST /accounts' => 'Create new account (with IP addresses)',
-                'PUT /accounts?id={id}' => 'Update account (including IP addresses)',
-                'DELETE /accounts?id={id}' => 'Delete account',
-                
-                'GET /domains' => 'Get all domains',
-                'GET /domains?id={id}' => 'Get specific domain',
-                'GET /domains?account_id={id}' => 'Get domains by account',
-                'GET /domains?sync=true' => 'Sync domains from PDNSAdmin',
-                'POST /domains' => 'Create new domain (auto-assigns to account)',
-                'PUT /domains?id={id}' => 'Update domain (updates account in PDNSAdmin)',
-                'POST /domains?action=add_to_account' => 'Add domain to account',
-                
-                'GET /status' => 'API status and health check',
-                'GET /status?action=test_connection' => 'Test PDNSAdmin connection',
-                'GET /status?action=sync_all' => 'Sync all data from PDNSAdmin',
-                'GET /status?action=health' => 'Detailed health check',
-                
-                'GET /openapi' => 'OpenAPI 3.0 specification (JSON)',
-                'GET /openapi.yaml' => 'OpenAPI 3.0 specification (YAML)',
-                'GET /docs' => 'Swagger UI documentation'
-            ],
-            'setup_instructions' => [
-                '1. Import database/schema.sql to create the database schema',
-                '2. Update config/database.php with your database credentials',
-                '3. Update config/config.php with your PDNSAdmin API details',
-                '4. Test the connection using GET /status?action=test_connection',
-                '5. Sync initial data using GET /domains?sync=true'
-            ]
-        ];
+        // Redirect to Swagger UI documentation page
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'];
+        $path = $_SERVER['REQUEST_URI'];
         
-        sendResponse(200, $docs, 'PDNSAdmin PHP API Documentation');
+        // Build redirect URL to docs
+        $base_url = $protocol . '://' . $host;
+        $current_path = parse_url($path, PHP_URL_PATH);
+        $current_path = rtrim($current_path, '/');
+        
+        // If we're in a subdirectory like /php-api, preserve it
+        if (strpos($current_path, '/php-api') !== false) {
+            $redirect_url = $base_url . $current_path . '/docs';
+        } else {
+            $redirect_url = $base_url . $current_path . '/docs';
+        }
+        
+        header('Location: ' . $redirect_url, true, 302);
+        exit;
         break;
         
     default:
