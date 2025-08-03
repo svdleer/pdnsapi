@@ -1,0 +1,329 @@
+# PDNSAdmin PHP API
+
+A PHP-based API wrapper for PDNSAdmin that provides local database storage and extended functionality for managing DNS accounts and domains.
+
+## Features
+
+- **Account Management**: Create, read, update, delete accounts with local database storage and IP address management
+- **Domain Management**: Manage domains with synchronization from PDNSAdmin (creation only, no deletion)
+- **Domain-Account Association**: Link domains to accounts with automatic PDNSAdmin synchronization
+- **IP Address Management**: Store IPv4/IPv6 addresses for accounts (local only, not sent to PDNSAdmin)
+- **Data Synchronization**: Sync domains and accounts from PDNSAdmin API
+- **Local Database**: Store data locally for better performance and offline access
+- **RESTful API**: Clean REST endpoints for all operations
+- **Error Handling**: Comprehensive error handling and validation
+
+## Requirements
+
+- PHP 7.4 or higher
+- MySQL/MariaDB database
+- PDO extension
+- cURL extension
+- PDNSAdmin instance with API access
+
+## Installation
+
+1. **Clone/Download the API files**
+2. **Setup Database**:
+   ```bash
+   mysql -u root -p < database/schema.sql
+   ```
+
+3. **Configure Database Connection**:
+   Edit `config/database.php` with your database credentials:
+   ```php
+   private $host = 'localhost';
+   private $db_name = 'pdns_api_db';
+   private $username = 'your_username';
+   private $password = 'your_password';
+   ```
+
+4. **Configure PDNSAdmin Connection**:
+   Edit `config/config.php` with your PDNSAdmin details:
+   ```php
+   $pdns_config = [
+       'base_url' => 'http://your-pdnsadmin-host:port/api/v1',
+       'auth_type' => 'basic', // or 'apikey'
+       'username' => 'your_username',
+       'password' => 'your_password',
+       'api_key' => null // if using API key auth
+   ];
+   ```
+
+5. **Web Server Setup**:
+   Point your web server document root to the `php-api` directory.
+
+## API Endpoints
+
+### Account Management
+
+#### Get All Accounts
+```
+GET /accounts
+```
+
+#### Get Account by ID
+```
+GET /accounts?id={account_id}
+```
+
+#### Get Account by Name
+```
+GET /accounts?name={account_name}
+```
+
+#### Create Account
+```
+POST /accounts
+Content-Type: application/json
+
+{
+    "name": "example-account",
+    "description": "Example account description",
+    "contact": "John Doe",
+    "mail": "john@example.com",
+    "ip_addresses": ["192.168.1.100", "2001:db8::1"]
+}
+```
+
+#### Update Account
+```
+PUT /accounts?id={account_id}
+Content-Type: application/json
+
+{
+    "description": "Updated description",
+    "contact": "Jane Doe",
+    "mail": "jane@example.com",
+    "ip_addresses": ["192.168.1.101", "192.168.1.102"]
+}
+```
+
+#### Delete Account
+```
+DELETE /accounts?id={account_id}
+```
+
+### Domain Management
+
+#### Get All Domains
+```
+GET /domains
+```
+
+#### Get Domain by ID
+```
+GET /domains?id={domain_id}
+```
+
+#### Get Domains by Account
+```
+GET /domains?account_id={account_id}
+```
+
+#### Sync Domains from PDNSAdmin
+```
+GET /domains?sync=true
+```
+
+#### Create Domain
+```
+POST /domains
+Content-Type: application/json
+
+{
+    "name": "example.com.",
+    "kind": "Master",
+    "account_id": 1,
+    "nameservers": ["ns1.example.com.", "ns2.example.com."]
+}
+```
+*Note: When account_id is provided, the domain is automatically assigned to that account in both local database and PDNSAdmin.*
+
+#### Update Domain
+```
+PUT /domains?id={domain_id}
+Content-Type: application/json
+
+{
+    "account_id": 2,
+    "kind": "Slave",
+    "masters": ["192.168.1.100"]
+}
+```
+*Note: When account_id is changed, the domain account assignment is automatically updated in PDNSAdmin.*
+
+#### Delete Domain
+*Domain deletion has been removed for safety. Domains can only be created and updated.*
+
+### Domain-Account Operations
+
+#### Add Domain to Account
+```
+POST /domain-account?action=add
+Content-Type: application/json
+
+{
+    "domain_name": "example.com.",
+    "account_id": 1
+}
+```
+
+#### Remove Domain from Account
+```
+POST /domain-account?action=remove
+Content-Type: application/json
+
+{
+    "domain_name": "example.com."
+}
+```
+
+#### List Account Domains
+```
+POST /domain-account?action=list
+Content-Type: application/json
+
+{
+    "account_id": 1
+}
+```
+
+### System Status and Health
+
+#### API Status
+```
+GET /status
+```
+
+#### Test PDNSAdmin Connection
+```
+GET /status?action=test_connection
+```
+
+#### Sync All Data
+```
+GET /status?action=sync_all
+```
+
+#### Health Check
+```
+GET /status?action=health
+```
+
+## Database Schema
+
+The API uses the following database tables:
+
+- **accounts**: Store account information
+- **domains**: Store domain information with account associations
+- **api_logs**: Log API calls for debugging
+- **domain_sync**: Track synchronization status
+
+## Configuration
+
+### Authentication Types
+
+The API supports two authentication methods for PDNSAdmin:
+
+1. **Basic Authentication**:
+   ```php
+   'auth_type' => 'basic',
+   'username' => 'your_username',
+   'password' => 'your_password'
+   ```
+
+2. **API Key Authentication**:
+   ```php
+   'auth_type' => 'apikey',
+   'api_key' => 'your_api_key'
+   ```
+
+### CORS Configuration
+
+CORS headers are automatically set to allow cross-origin requests. Modify the headers in `config/config.php` if needed.
+
+## Usage Examples
+
+### Initial Setup
+
+1. **Test Connection**:
+   ```bash
+   curl http://your-api-host/status?action=test_connection
+   ```
+
+2. **Sync Initial Data**:
+   ```bash
+   curl http://your-api-host/domains?sync=true
+   ```
+
+### Create Account and Add Domain
+
+1. **Create Account**:
+   ```bash
+   curl -X POST http://your-api-host/accounts \
+     -H "Content-Type: application/json" \
+     -d '{"name":"customer1","description":"Customer 1","contact":"John Doe","mail":"john@customer1.com"}'
+   ```
+
+2. **Add Domain to Account**:
+   ```bash
+   curl -X POST http://your-api-host/domain-account?action=add \
+     -H "Content-Type: application/json" \
+     -d '{"domain_name":"customer1.com.","account_id":1}'
+   ```
+
+## Error Handling
+
+The API returns standardized error responses:
+
+```json
+{
+    "error": "Error message",
+    "errors": ["Additional error details"]
+}
+```
+
+Common HTTP status codes:
+- `200`: Success
+- `201`: Created
+- `204`: No Content (successful deletion/update)
+- `400`: Bad Request
+- `401`: Unauthorized
+- `403`: Forbidden
+- `404`: Not Found
+- `409`: Conflict
+- `500`: Internal Server Error
+- `503`: Service Unavailable
+
+## Security Considerations
+
+1. **Database Security**: Use strong database credentials and limit access
+2. **API Authentication**: Secure your PDNSAdmin credentials
+3. **Web Server**: Configure proper access controls
+4. **HTTPS**: Use HTTPS in production
+5. **Input Validation**: The API includes input validation for all endpoints
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Database Connection Errors**:
+   - Check database credentials in `config/database.php`
+   - Ensure database exists and schema is imported
+
+2. **PDNSAdmin Connection Errors**:
+   - Verify PDNSAdmin URL and credentials in `config/config.php`
+   - Check network connectivity to PDNSAdmin instance
+
+3. **Permission Errors**:
+   - Ensure web server has read/write access to the API directory
+   - Check database user permissions
+
+### Debug Mode
+
+Enable debug mode by checking API logs and responses. The `api_logs` table stores all external API calls for troubleshooting.
+
+## License
+
+This project is open source. Please check the license file for details.

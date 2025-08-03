@@ -1,0 +1,384 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "PDNSAdmin PHP API",
+    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Features\n- Account management with IP address storage (local only)\n- Domain management with PDNSAdmin synchronization\n- Domain-account associations\n- Data synchronization from PDNSAdmin\n- Local database storage for performance\n\n## Important Notes\n- IP addresses are stored locally and NOT sent to PDNSAdmin\n- Domain deletion is disabled for safety\n- Account changes automatically sync with PDNSAdmin\n- Domain-account assignments update both local DB and PDNSAdmin",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost/php-api",
+      "description": "Local development server"
+    },
+    {
+      "url": "https://api.yourdomain.com",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "API Documentation",
+        "description": "Returns API documentation and available endpoints",
+        "tags": ["Documentation"],
+        "responses": {
+          "200": {
+            "description": "API documentation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiDocumentation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi": {
+      "get": {
+        "summary": "OpenAPI Specification",
+        "description": "Returns the OpenAPI 3.0 specification for this API",
+        "tags": ["Documentation"],
+        "responses": {
+          "200": {
+            "description": "OpenAPI specification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "get": {
+        "summary": "Get all accounts",
+        "description": "Retrieve a list of all accounts with their details including IP addresses",
+        "tags": ["Accounts"],
+        "responses": {
+          "200": {
+            "description": "List of accounts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Account"
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new account",
+        "description": "Create a new account with optional IP addresses",
+        "tags": ["Accounts"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountCreate"
+              },
+              "examples": {
+                "basic": {
+                  "summary": "Basic account",
+                  "value": {
+                    "name": "customer-account",
+                    "description": "Customer account description",
+                    "contact": "John Doe",
+                    "mail": "john@customer.com"
+                  }
+                },
+                "with_ips": {
+                  "summary": "Account with IP addresses",
+                  "value": {
+                    "name": "server-account",
+                    "description": "Server account with IP addresses",
+                    "contact": "Admin User",
+                    "mail": "admin@server.com",
+                    "ip_addresses": ["192.168.1.100", "2001:db8::1"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains": {
+      "get": {
+        "summary": "Get all domains",
+        "description": "Retrieve a list of all domains",
+        "tags": ["Domains"],
+        "parameters": [
+          {
+            "name": "sync",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Set to true to sync domains from PDNSAdmin"
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter domains by account ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of domains",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Domain"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new domain",
+        "description": "Create a new domain in PDNSAdmin and local database",
+        "tags": ["Domains"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Domain created successfully"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Account": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "customer-account"
+          },
+          "description": {
+            "type": "string",
+            "example": "Customer account description"
+          },
+          "contact": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "mail": {
+            "type": "string",
+            "format": "email",
+            "example": "john@customer.com"
+          },
+          "ip_addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["192.168.1.100", "2001:db8::1"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AccountCreate": {
+        "type": "object",
+        "required": ["name", "mail"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "customer-account"
+          },
+          "description": {
+            "type": "string",
+            "example": "Customer account description"
+          },
+          "contact": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "mail": {
+            "type": "string",
+            "format": "email",
+            "example": "john@customer.com"
+          },
+          "ip_addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["192.168.1.100", "2001:db8::1"]
+          }
+        }
+      },
+      "Domain": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "example.com."
+          },
+          "type": {
+            "type": "string",
+            "example": "Zone"
+          },
+          "account_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "account_name": {
+            "type": "string",
+            "nullable": true,
+            "example": "customer-account"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["Native", "Master", "Slave"],
+            "example": "Master"
+          },
+          "dnssec": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "DomainCreate": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "example.com."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["Native", "Master", "Slave"],
+            "default": "Master"
+          },
+          "account_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "nameservers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["ns1.example.com.", "ns2.example.com."]
+          }
+        }
+      },
+      "SuccessMessage": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "ApiDocumentation": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "version": {"type": "string"},
+              "description": {"type": "string"},
+              "endpoints": {"type": "object"}
+            }
+          },
+          "message": {"type": "string"}
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Documentation",
+      "description": "API documentation and OpenAPI specification"
+    },
+    {
+      "name": "Accounts",
+      "description": "Account management with IP address support"
+    },
+    {
+      "name": "Domains",
+      "description": "Domain management (creation and updates only)"
+    }
+  ]
+}

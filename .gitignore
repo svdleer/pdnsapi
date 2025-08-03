@@ -1,0 +1,56 @@
+# Sensitive configuration files
+php-api/config/database.php
+php-api/config/config.php
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+logs/
+php-api/logs/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Runtime files
+*.pid
+*.sock
+
+# Database files (if using SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*.sql.bak
+
+# Cache directories
+cache/
+tmp/
+temp/
+
+# Package manager files
+composer.lock
+package-lock.json
+
+# Documentation build files
+docs/build/

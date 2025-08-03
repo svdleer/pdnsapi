@@ -1,0 +1,30 @@
+RewriteEngine On
+
+# API URL Rewriting
+RewriteRule ^accounts/?(.*)$ api/accounts.php?$1 [L,QSA]
+RewriteRule ^domains/?(.*)$ api/domains.php?$1 [L,QSA]
+RewriteRule ^status/?(.*)$ api/status.php?$1 [L,QSA]
+RewriteRule ^domain-account/?(.*)$ api/domain-account.php?$1 [L,QSA]
+
+# Security: Deny access to sensitive files and directories
+<Files "*.sql">
+    Require all denied
+</Files>
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Deny access to config and database directories
+RedirectMatch 403 ^/config/.*$
+RedirectMatch 403 ^/database/.*$
+
+# CORS Headers
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+
+# Security headers
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set X-Content-Type-Options "nosniff"

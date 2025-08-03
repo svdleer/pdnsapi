@@ -1,0 +1,83 @@
+<?php
+// PDNSAdmin API configuration
+$pdns_config = [
+    'api_url' => 'http://your-pdnsadmin-server.com/api/v1',
+    'api_key' => 'your-pdnsadmin-api-key-here',
+    'timeout' => 30,
+    'verify_ssl' => true
+];
+
+// API settings
+$api_settings = [
+    'enable_cors' => true,
+    'cors_origins' => ['*'], // For production, specify allowed origins
+    'debug_mode' => false,
+    'log_level' => 'INFO' // DEBUG, INFO, WARNING, ERROR
+];
+
+// Database table prefix (optional)
+$table_prefix = '';
+
+// Helper functions
+function sendResponse($status, $data, $message = '') {
+    http_response_code($status);
+    header('Content-Type: application/json');
+    
+    // Enable CORS if configured
+    global $api_settings;
+    if ($api_settings['enable_cors']) {
+        header('Access-Control-Allow-Origin: ' . implode(', ', $api_settings['cors_origins']));
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
+    }
+    
+    $response = [
+        'status' => $status,
+        'data' => $data
+    ];
+    
+    if ($message) {
+        $response['message'] = $message;
+    }
+    
+    echo json_encode($response, JSON_PRETTY_PRINT);
+    exit;
+}
+
+function sendError($status, $message, $details = null) {
+    http_response_code($status);
+    header('Content-Type: application/json');
+    
+    // Enable CORS if configured
+    global $api_settings;
+    if ($api_settings['enable_cors']) {
+        header('Access-Control-Allow-Origin: ' . implode(', ', $api_settings['cors_origins']));
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
+    }
+    
+    $response = [
+        'status' => $status,
+        'error' => $message
+    ];
+    
+    if ($details) {
+        $response['details'] = $details;
+    }
+    
+    echo json_encode($response, JSON_PRETTY_PRINT);
+    exit;
+}
+
+// Handle OPTIONS requests for CORS
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    if ($api_settings['enable_cors']) {
+        header('Access-Control-Allow-Origin: ' . implode(', ', $api_settings['cors_origins']));
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
+        header('Access-Control-Max-Age: 86400');
+    }
+    http_response_code(200);
+    exit;
+}
+?>

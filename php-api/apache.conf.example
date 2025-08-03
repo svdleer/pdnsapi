@@ -1,0 +1,52 @@
+<VirtualHost *:80>
+    ServerName your-domain.com
+    DocumentRoot /path/to/php-api
+    DirectoryIndex index.php
+
+    <Directory /path/to/php-api>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    # API URL Rewriting
+    RewriteEngine On
+    
+    # Redirect API calls to appropriate endpoints
+    RewriteRule ^/?accounts/?(.*)$ /api/accounts.php?$1 [L,QSA]
+    RewriteRule ^/?domains/?(.*)$ /api/domains.php?$1 [L,QSA]
+    RewriteRule ^/?status/?(.*)$ /api/status.php?$1 [L,QSA]
+    RewriteRule ^/?domain-account/?(.*)$ /api/domain-account.php?$1 [L,QSA]
+
+    # Security: Deny access to sensitive directories
+    <Directory /path/to/php-api/config>
+        Require all denied
+    </Directory>
+
+    <Directory /path/to/php-api/database>
+        Require all denied
+    </Directory>
+
+    # Security headers
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Enable compression
+    <IfModule mod_deflate.c>
+        AddOutputFilterByType DEFLATE text/plain
+        AddOutputFilterByType DEFLATE text/html
+        AddOutputFilterByType DEFLATE text/xml
+        AddOutputFilterByType DEFLATE text/css
+        AddOutputFilterByType DEFLATE application/xml
+        AddOutputFilterByType DEFLATE application/xhtml+xml
+        AddOutputFilterByType DEFLATE application/rss+xml
+        AddOutputFilterByType DEFLATE application/javascript
+        AddOutputFilterByType DEFLATE application/x-javascript
+        AddOutputFilterByType DEFLATE application/json
+    </IfModule>
+
+    # Logging
+    ErrorLog ${APACHE_LOG_DIR}/pdns-api-error.log
+    CustomLog ${APACHE_LOG_DIR}/pdns-api-access.log combined
+</VirtualHost>

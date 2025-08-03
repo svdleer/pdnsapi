@@ -1,0 +1,890 @@
+openapi: 3.0.3
+info:
+  title: PDNSAdmin PHP API
+  description: |
+    PHP API wrapper for PDNSAdmin with local database storage and extended functionality.
+    
+    ## Features
+    - Account management with IP address storage (local only)
+    - Domain management with PDNSAdmin synchronization
+    - Domain-account associations
+    - Data synchronization from PDNSAdmin
+    - Local database storage for performance
+    
+    ## Important Notes
+    - IP addresses are stored locally and NOT sent to PDNSAdmin
+    - Domain deletion is disabled for safety
+    - Account changes automatically sync with PDNSAdmin
+    - Domain-account assignments update both local DB and PDNSAdmin
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost/php-api
+    description: Local development server
+  - url: https://api.yourdomain.com
+    description: Production server
+
+paths:
+  /:
+    get:
+      summary: API Documentation
+      description: Returns API documentation and available endpoints
+      tags:
+        - Documentation
+      responses:
+        '200':
+          description: API documentation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiDocumentation'
+
+  /accounts:
+    get:
+      summary: Get all accounts
+      description: Retrieve a list of all accounts with their details including IP addresses
+      tags:
+        - Accounts
+      responses:
+        '200':
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Account'
+                  message:
+                    type: string
+                    example: "Accounts retrieved successfully"
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      summary: Create a new account
+      description: Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.
+      tags:
+        - Accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreate'
+            examples:
+              basic:
+                summary: Basic account
+                value:
+                  name: "customer-account"
+                  description: "Customer account description"
+                  contact: "John Doe"
+                  mail: "john@customer.com"
+              with_ips:
+                summary: Account with IP addresses
+                value:
+                  name: "server-account"
+                  description: "Server account with IP addresses"
+                  contact: "Admin User"
+                  mail: "admin@server.com"
+                  ip_addresses: ["192.168.1.100", "2001:db8::1", "10.0.0.50"]
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /accounts/{id}:
+    get:
+      summary: Get account by ID
+      description: Retrieve a specific account by its ID
+      tags:
+        - Accounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Account ID
+      responses:
+        '200':
+          description: Account details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Account'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update account
+      description: Update an existing account. Changes are synced with PDNSAdmin (except IP addresses).
+      tags:
+        - Accounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Account ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountUpdate'
+            examples:
+              update_details:
+                summary: Update account details
+                value:
+                  description: "Updated account description"
+                  contact: "Jane Doe"
+                  mail: "jane@customer.com"
+              update_ips:
+                summary: Update IP addresses
+                value:
+                  ip_addresses: ["192.168.1.101", "192.168.1.102", "2001:db8::2"]
+      responses:
+        '200':
+          description: Account updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      summary: Delete account
+      description: Delete an account from both PDNSAdmin and local database
+      tags:
+        - Accounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Account ID
+      responses:
+        '200':
+          description: Account deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /accounts/name/{name}:
+    get:
+      summary: Get account by name
+      description: Retrieve a specific account by its name
+      tags:
+        - Accounts
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Account name
+      responses:
+        '200':
+          description: Account details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Account'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /domains:
+    get:
+      summary: Get all domains
+      description: Retrieve a list of all domains
+      tags:
+        - Domains
+      parameters:
+        - name: sync
+          in: query
+          schema:
+            type: boolean
+          description: Set to true to sync domains from PDNSAdmin before returning results
+        - name: account_id
+          in: query
+          schema:
+            type: integer
+          description: Filter domains by account ID
+      responses:
+        '200':
+          description: List of domains
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Domain'
+                  message:
+                    type: string
+
+    post:
+      summary: Create a new domain
+      description: |
+        Create a new domain in PDNSAdmin and local database. 
+        If account_id is provided, the domain is automatically assigned to that account in PDNSAdmin.
+      tags:
+        - Domains
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DomainCreate'
+            examples:
+              basic_domain:
+                summary: Basic domain
+                value:
+                  name: "example.com."
+                  kind: "Master"
+                  nameservers: ["ns1.example.com.", "ns2.example.com."]
+              domain_with_account:
+                summary: Domain assigned to account
+                value:
+                  name: "customer.com."
+                  kind: "Master"
+                  account_id: 1
+                  nameservers: ["ns1.customer.com.", "ns2.customer.com."]
+      responses:
+        '201':
+          description: Domain created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /domains/{id}:
+    get:
+      summary: Get domain by ID
+      description: Retrieve a specific domain by its ID
+      tags:
+        - Domains
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Domain ID
+      responses:
+        '200':
+          description: Domain details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Domain'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update domain
+      description: |
+        Update an existing domain. If account_id is changed, 
+        the domain assignment is automatically updated in PDNSAdmin.
+      tags:
+        - Domains
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Domain ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DomainUpdate'
+            examples:
+              change_account:
+                summary: Change domain account
+                value:
+                  account_id: 2
+              remove_account:
+                summary: Remove from account
+                value:
+                  account_id: null
+              update_settings:
+                summary: Update domain settings
+                value:
+                  kind: "Slave"
+                  masters: ["192.168.1.100"]
+      responses:
+        '200':
+          description: Domain updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /domain-account:
+    post:
+      summary: Domain-Account operations
+      description: Perform operations to manage domain-account relationships
+      tags:
+        - Domain-Account
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [add, remove, list]
+          description: Action to perform (add, remove, list)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/DomainAccountAdd'
+                - $ref: '#/components/schemas/DomainAccountRemove'
+                - $ref: '#/components/schemas/DomainAccountList'
+            examples:
+              add_domain:
+                summary: Add domain to account
+                value:
+                  domain_name: "example.com."
+                  account_id: 1
+              remove_domain:
+                summary: Remove domain from account
+                value:
+                  domain_name: "example.com."
+              list_domains:
+                summary: List account domains
+                value:
+                  account_id: 1
+      responses:
+        '200':
+          description: Operation completed successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SuccessMessage'
+                  - $ref: '#/components/schemas/AccountDomainsList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /status:
+    get:
+      summary: API status
+      description: Get API status and health information
+      tags:
+        - Status
+      parameters:
+        - name: action
+          in: query
+          schema:
+            type: string
+            enum: [test_connection, sync_all, health]
+          description: Specific action to perform
+      responses:
+        '200':
+          description: Status information
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiStatus'
+                  - $ref: '#/components/schemas/ConnectionTest'
+                  - $ref: '#/components/schemas/SyncResult'
+                  - $ref: '#/components/schemas/HealthCheck'
+
+components:
+  schemas:
+    Account:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Account ID
+          example: 1
+        name:
+          type: string
+          description: Account name (unique)
+          example: "customer-account"
+        description:
+          type: string
+          description: Account description
+          example: "Customer account description"
+        contact:
+          type: string
+          description: Contact person
+          example: "John Doe"
+        mail:
+          type: string
+          format: email
+          description: Email address
+          example: "john@customer.com"
+        ip_addresses:
+          type: array
+          items:
+            type: string
+            format: ipv4 | ipv6
+          description: List of IP addresses (IPv4/IPv6)
+          example: ["192.168.1.100", "2001:db8::1"]
+        pdns_account_id:
+          type: integer
+          nullable: true
+          description: PDNSAdmin account ID
+          example: 5
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    AccountCreate:
+      type: object
+      required:
+        - name
+        - mail
+      properties:
+        name:
+          type: string
+          description: Account name (must be unique)
+          example: "customer-account"
+        description:
+          type: string
+          description: Account description
+          example: "Customer account description"
+        contact:
+          type: string
+          description: Contact person
+          example: "John Doe"
+        mail:
+          type: string
+          format: email
+          description: Email address
+          example: "john@customer.com"
+        ip_addresses:
+          type: array
+          items:
+            type: string
+            format: ipv4 | ipv6
+          description: List of IP addresses (IPv4/IPv6)
+          example: ["192.168.1.100", "2001:db8::1"]
+
+    AccountUpdate:
+      type: object
+      properties:
+        description:
+          type: string
+          description: Account description
+        contact:
+          type: string
+          description: Contact person
+        mail:
+          type: string
+          format: email
+          description: Email address
+        ip_addresses:
+          type: array
+          items:
+            type: string
+            format: ipv4 | ipv6
+          description: List of IP addresses (IPv4/IPv6)
+
+    Domain:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Domain ID
+          example: 1
+        name:
+          type: string
+          description: Domain name
+          example: "example.com."
+        type:
+          type: string
+          description: Domain type
+          example: "Zone"
+        account_id:
+          type: integer
+          nullable: true
+          description: Associated account ID
+          example: 1
+        account_name:
+          type: string
+          nullable: true
+          description: Associated account name
+          example: "customer-account"
+        pdns_zone_id:
+          type: string
+          description: PDNSAdmin zone ID
+          example: "example.com."
+        kind:
+          type: string
+          enum: [Native, Master, Slave]
+          description: Zone kind
+          example: "Master"
+        masters:
+          type: string
+          description: Comma-separated list of master servers
+          example: "192.168.1.100,192.168.1.101"
+        dnssec:
+          type: boolean
+          description: DNSSEC enabled
+          example: false
+        account:
+          type: string
+          description: Account name from PDNSAdmin
+          example: "customer-account"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    DomainCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Domain name (must end with dot)
+          example: "example.com."
+        kind:
+          type: string
+          enum: [Native, Master, Slave]
+          description: Zone kind
+          default: "Master"
+        account_id:
+          type: integer
+          description: Account ID to assign domain to
+          example: 1
+        masters:
+          type: array
+          items:
+            type: string
+          description: List of master servers (for slave zones)
+          example: ["192.168.1.100"]
+        nameservers:
+          type: array
+          items:
+            type: string
+          description: List of nameservers
+          example: ["ns1.example.com.", "ns2.example.com."]
+        dnssec:
+          type: boolean
+          description: Enable DNSSEC
+          default: false
+
+    DomainUpdate:
+      type: object
+      properties:
+        account_id:
+          type: integer
+          nullable: true
+          description: Account ID to assign domain to (null to remove)
+        kind:
+          type: string
+          enum: [Native, Master, Slave]
+          description: Zone kind
+        masters:
+          type: array
+          items:
+            type: string
+          description: List of master servers
+        dnssec:
+          type: boolean
+          description: Enable DNSSEC
+
+    DomainAccountAdd:
+      type: object
+      required:
+        - domain_name
+        - account_id
+      properties:
+        domain_name:
+          type: string
+          description: Domain name to add to account
+          example: "example.com."
+        account_id:
+          type: integer
+          description: Account ID
+          example: 1
+
+    DomainAccountRemove:
+      type: object
+      required:
+        - domain_name
+      properties:
+        domain_name:
+          type: string
+          description: Domain name to remove from account
+          example: "example.com."
+
+    DomainAccountList:
+      type: object
+      required:
+        - account_id
+      properties:
+        account_id:
+          type: integer
+          description: Account ID to list domains for
+          example: 1
+
+    AccountDomainsList:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            account:
+              type: object
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+            domains:
+              type: array
+              items:
+                $ref: '#/components/schemas/Domain'
+            domain_count:
+              type: integer
+        message:
+          type: string
+
+    ApiStatus:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            api_version:
+              type: string
+              example: "1.0.0"
+            timestamp:
+              type: string
+              format: date-time
+            endpoints:
+              type: object
+            pdns_admin_status:
+              type: string
+              enum: [connected, disconnected]
+            database_status:
+              type: string
+              enum: [connected, disconnected]
+        message:
+          type: string
+
+    ConnectionTest:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [connected, disconnected]
+            pdns_domains_count:
+              type: integer
+        message:
+          type: string
+
+    SyncResult:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            accounts:
+              type: object
+              properties:
+                status:
+                  type: string
+                count:
+                  type: integer
+            domains:
+              type: object
+              properties:
+                status:
+                  type: string
+                count:
+                  type: integer
+        message:
+          type: string
+
+    HealthCheck:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [connected, disconnected, unknown]
+            timestamp:
+              type: string
+              format: date-time
+            version:
+              type: string
+            local_accounts_count:
+              type: integer
+            local_domains_count:
+              type: integer
+        message:
+          type: string
+
+    ApiDocumentation:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            version:
+              type: string
+            description:
+              type: string
+            endpoints:
+              type: object
+            setup_instructions:
+              type: array
+              items:
+                type: string
+        message:
+          type: string
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operation completed successfully"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request data"
+        errors:
+          type: array
+          items:
+            type: string
+          description: Detailed error messages
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid request data"
+            errors: ["Name is required", "Email format is invalid"]
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Resource not found"
+
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Account already exists"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error"
+
+tags:
+  - name: Documentation
+    description: API documentation and information
+  - name: Accounts
+    description: Account management operations with IP address support
+  - name: Domains
+    description: Domain management operations (creation and updates only)
+  - name: Domain-Account
+    description: Domain-account relationship management
+  - name: Status
+    description: API status, health checks, and synchronization

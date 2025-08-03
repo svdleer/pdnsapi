@@ -1,0 +1,62 @@
+server {
+    listen 80;
+    server_name your-domain.com;
+    root /path/to/php-api;
+    index index.php;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Content-Type-Options "nosniff";
+
+    # Main location block
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # PHP-FPM configuration
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock; # Adjust PHP version as needed
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # API routes
+    location /accounts {
+        try_files $uri /api/accounts.php?$query_string;
+    }
+
+    location /domains {
+        try_files $uri /api/domains.php?$query_string;
+    }
+
+    location /status {
+        try_files $uri /api/status.php?$query_string;
+    }
+
+    location /domain-account {
+        try_files $uri /api/domain-account.php?$query_string;
+    }
+
+    # Deny access to sensitive files
+    location ~ /\. {
+        deny all;
+    }
+
+    location ~ /(config|database)/ {
+        deny all;
+    }
+
+    # Enable gzip compression
+    gzip on;
+    gzip_types
+        text/plain
+        text/css
+        text/js
+        text/xml
+        text/javascript
+        application/javascript
+        application/xml+rss
+        application/json;
+}
