@@ -25,9 +25,7 @@ info:
     url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: http://localhost/php-api
-    description: Local development server
-  - url: https://api.yourdomain.com
+  - url: https://pdnsapi.avant.nl
     description: Production server
 
 security:
