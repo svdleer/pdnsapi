@@ -47,17 +47,47 @@ $pdns_config = [
 ];
 ```
 
-### 3. Test the API
+### 3. Generate API Keys
 
-Test the connection:
+Generate secure API keys for authentication:
 ```bash
-curl http://your-server/php-api/status?action=test_connection
+cd php-api
+php generate-api-keys.php
+```
+
+Update the `api_keys` array in `config/config.php`:
+```php
+'api_keys' => [
+    'your-generated-64-char-key' => 'Production Key',
+    'another-key-for-development' => 'Development Key'
+],
+```
+
+### 4. Test the API
+
+Test the connection with API key:
+```bash
+curl -H "X-API-Key: your-api-key-here" http://your-server/php-api/status?action=test_connection
 ```
 
 Sync initial data:
 ```bash
-curl http://your-server/php-api/domains?sync=true
+curl -H "X-API-Key: your-api-key-here" http://your-server/php-api/domains?sync=true
 ```
+
+## Authentication
+
+The API uses API key authentication for security. See [AUTHENTICATION.md](php-api/AUTHENTICATION.md) for detailed setup instructions.
+
+### Quick Authentication Setup
+1. Generate API keys: `php php-api/generate-api-keys.php`
+2. Add keys to `config/config.php`
+3. Use in requests: `X-API-Key: your-key` or `Authorization: Bearer your-key`
+
+### Authentication Methods
+- **X-API-Key Header**: `X-API-Key: your-api-key` (Recommended)
+- **Bearer Token**: `Authorization: Bearer your-api-key`
+- **Query Parameter**: `?api_key=your-api-key` (Development only)
 
 ## API Endpoints
 
@@ -140,6 +170,7 @@ Visit `/docs` for interactive API testing and documentation.
 #### Create Account with IP Addresses
 ```bash
 curl -X POST http://your-server/php-api/accounts \
+  -H "X-API-Key: your-api-key-here" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "example-account",
@@ -151,6 +182,7 @@ curl -X POST http://your-server/php-api/accounts \
 #### Create Domain and Assign to Account
 ```bash
 curl -X POST http://your-server/php-api/domains \
+  -H "X-API-Key: your-api-key-here" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "example.com",

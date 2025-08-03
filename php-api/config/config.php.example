@@ -12,7 +12,27 @@ $api_settings = [
     'enable_cors' => true,
     'cors_origins' => ['*'], // For production, specify allowed origins
     'debug_mode' => false,
-    'log_level' => 'INFO' // DEBUG, INFO, WARNING, ERROR
+    'log_level' => 'INFO', // DEBUG, INFO, WARNING, ERROR
+    'require_api_key' => true,
+    'api_keys' => [
+        // Add your API keys here - format: 'key' => 'description'
+        'your-secure-api-key-here' => 'Default API Key',
+        'another-api-key-example' => 'Second API Key'
+        // Generate secure keys using: openssl rand -hex 32
+    ],
+    'exempt_endpoints' => [
+        // Endpoints that don't require API key authentication
+        '',           // Root/documentation endpoint
+        'index',      // Documentation endpoint
+        'docs',       // Swagger UI
+        'swagger',    // Swagger UI alternate
+        'swagger-ui', // Swagger UI alternate
+        'openapi',    // OpenAPI spec
+        'openapi.json',
+        'openapi.yaml',
+        'swagger.json',
+        'swagger.yaml'
+    ]
 ];
 
 // Database table prefix (optional)
@@ -79,5 +99,121 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     }
     http_response_code(200);
     exit;
+}
+
+// API Key Authentication Functions
+function validateApiKey() {
+    global $api_settings;
+    
+    // Skip authentication if disabled
+    if (!$api_settings['require_api_key']) {
+        return true;
+    }
+    
+    // Get current endpoint path
+    $request_uri = $_SERVER['REQUEST_URI'];
+    $path = parse_url($request_uri, PHP_URL_PATH);
+    $path = trim($path, '/');
+    
+    // Remove base path if exists
+    $base_path = 'php-api';
+    if (strpos($path, $base_path) === 0) {
+        $path = substr($path, strlen($base_path));
+        $path = trim($path, '/');
+    }
+    
+    // Check if endpoint is exempt from authentication
+    if (in_array($path, $api_settings['exempt_endpoints'])) {
+        return true;
+    }
+    
+    // Get API key from headers
+    $api_key = null;
+    
+    // Check X-API-Key header
+    if (isset($_SERVER['HTTP_X_API_KEY'])) {
+        $api_key = $_SERVER['HTTP_X_API_KEY'];
+    }
+    // Check Authorization header (Bearer token)
+    elseif (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        $auth_header = $_SERVER['HTTP_AUTHORIZATION'];
+        if (preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
+            $api_key = $matches[1];
+        }
+    }
+    // Check query parameter (less secure, for development only)
+    elseif (isset($_GET['api_key'])) {
+        $api_key = $_GET['api_key'];
+    }
+    
+    // Validate the API key
+    if (!$api_key || !isset($api_settings['api_keys'][$api_key])) {
+        return false;
+    }
+    
+    return true;
+}
+
+function requireApiKey() {
+    if (!validateApiKey()) {
+        sendError(401, 'Unauthorized: Valid API key required', [
+            'authentication_methods' => [
+                'X-API-Key header' => 'X-API-Key: your-api-key',
+                'Authorization header' => 'Authorization: Bearer your-api-key',
+                'Query parameter (dev only)' => '?api_key=your-api-key'
+            ],
+            'documentation' => 'See /docs for API documentation'
+        ]);
+    }
+}
+
+function getCurrentApiKey() {
+    global $api_settings;
+    
+    $api_key = null;
+    
+    // Check X-API-Key header
+    if (isset($_SERVER['HTTP_X_API_KEY'])) {
+        $api_key = $_SERVER['HTTP_X_API_KEY'];
+    }
+    // Check Authorization header
+    elseif (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        $auth_header = $_SERVER['HTTP_AUTHORIZATION'];
+        if (preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
+            $api_key = $matches[1];
+        }
+    }
+    // Check query parameter
+    elseif (isset($_GET['api_key'])) {
+        $api_key = $_GET['api_key'];
+    }
+    
+    if ($api_key && isset($api_settings['api_keys'][$api_key])) {
+        return [
+            'key' => $api_key,
+            'description' => $api_settings['api_keys'][$api_key]
+        ];
+    }
+    
+    return null;
+}
+
+function logApiRequest($endpoint, $method, $status_code) {
+    global $api_settings;
+    
+    if ($api_settings['debug_mode'] || $api_settings['log_level'] === 'DEBUG') {
+        $api_key_info = getCurrentApiKey();
+        $log_entry = [
+            'timestamp' => date('Y-m-d H:i:s'),
+            'endpoint' => $endpoint,
+            'method' => $method,
+            'status_code' => $status_code,
+            'api_key_used' => $api_key_info ? $api_key_info['description'] : 'None',
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'Unknown'
+        ];
+        
+        // Log to error_log or custom log file
+        error_log('API Request: ' . json_encode($log_entry));
+    }
 }
 ?>

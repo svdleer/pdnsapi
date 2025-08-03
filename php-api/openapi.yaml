@@ -30,6 +30,11 @@ servers:
   - url: https://api.yourdomain.com
     description: Production server
 
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+  - ApiKeyQuery: []
+
 paths:
   /:
     get:
@@ -37,6 +42,7 @@ paths:
       description: Returns API documentation and available endpoints
       tags:
         - Documentation
+      security: []  # No authentication required
       responses:
         '200':
           description: API documentation
@@ -453,6 +459,22 @@ paths:
                   - $ref: '#/components/schemas/HealthCheck'
 
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key authentication using X-API-Key header
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: API key authentication using Authorization Bearer token
+    ApiKeyQuery:
+      type: apiKey
+      in: query
+      name: api_key
+      description: API key authentication using query parameter (development only)
+      
   schemas:
     Account:
       type: object

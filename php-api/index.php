@@ -2,6 +2,9 @@
 require_once 'config/config.php';
 require_once 'config/database.php';
 
+// Enforce API key authentication
+requireApiKey();
+
 // Simple routing
 $request_uri = $_SERVER['REQUEST_URI'];
 $path = parse_url($request_uri, PHP_URL_PATH);

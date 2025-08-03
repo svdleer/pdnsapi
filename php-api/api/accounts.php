@@ -4,6 +4,9 @@ require_once '../config/database.php';
 require_once '../models/Account.php';
 require_once '../classes/PDNSAdminClient.php';
 
+// API key is already validated in index.php, log the request
+logApiRequest('accounts', $_SERVER['REQUEST_METHOD'], 200);
+
 // Get database connection
 $database = new Database();
 $db = $database->getConnection();
