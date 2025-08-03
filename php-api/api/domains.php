@@ -166,35 +166,90 @@ function getDomainsByAccount($domain, $account_id) {
 }
 
 function syncDomainsFromPDNS($domain, $pdns_client) {
+    global $db;
+    
     // Get all domains from PDNSAdmin
     $pdns_response = $pdns_client->getAllDomains();
     
     if($pdns_response['status_code'] == 200) {
         $pdns_domains = $pdns_response['data'];
         $synced_count = 0;
+        $updated_count = 0;
         
         foreach($pdns_domains as $pdns_domain) {
-            // Check if domain already exists in local database
-            $domain->name = $pdns_domain['name'];
-            $domain->pdns_zone_id = $pdns_domain['id'];
-            $domain->type = $pdns_domain['type'] ?? 'Zone';
-            $domain->kind = $pdns_domain['kind'] ?? 'Master';
-            $domain->masters = isset($pdns_domain['masters']) ? implode(',', $pdns_domain['masters']) : '';
-            $domain->dnssec = $pdns_domain['dnssec'] ?? false;
-            $domain->account = $pdns_domain['account'] ?? '';
+            $domain_name = $pdns_domain['name'] ?? '';
             
-            // Try to create (will fail if already exists due to unique constraint)
-            try {
-                if($domain->create()) {
-                    $synced_count++;
+            if (empty($domain_name)) {
+                continue; // Skip domains without a name
+            }
+            
+            // Create a new domain object for each domain to avoid conflicts
+            $domain_obj = new Domain($db);
+            $domain_obj->name = $domain_name;
+            
+            // Check if domain exists using a specific method
+            if ($domain_obj->readByName()) {
+                // Domain exists, update it
+                $domain_obj->type = $pdns_domain['type'] ?? 'Zone';
+                $domain_obj->pdns_zone_id = $pdns_domain['id'];
+                $domain_obj->kind = $pdns_domain['kind'] ?? 'Master';
+                $domain_obj->masters = isset($pdns_domain['masters']) ? implode(',', $pdns_domain['masters']) : '';
+                $domain_obj->dnssec = $pdns_domain['dnssec'] ?? false;
+                $domain_obj->account = $pdns_domain['account'] ?? '';
+                
+                try {
+                    if ($domain_obj->update()) {
+                        $updated_count++;
+                    }
+                } catch (Exception $e) {
+                    error_log("Failed to update domain {$domain_name}: " . $e->getMessage());
                 }
-            } catch(Exception $e) {
-                // Domain probably already exists, skip
-                continue;
+            } else {
+                // Domain doesn't exist, create it
+                $domain_obj->name = $domain_name;
+                $domain_obj->type = $pdns_domain['type'] ?? 'Zone';
+                $domain_obj->pdns_zone_id = $pdns_domain['id'];
+                $domain_obj->kind = $pdns_domain['kind'] ?? 'Master';
+                $domain_obj->masters = isset($pdns_domain['masters']) ? implode(',', $pdns_domain['masters']) : '';
+                $domain_obj->dnssec = $pdns_domain['dnssec'] ?? false;
+                $domain_obj->account = $pdns_domain['account'] ?? '';
+                $domain_obj->account_id = null; // Will be set later when we implement account linking
+                
+                try {
+                    if ($domain_obj->create()) {
+                        $synced_count++;
+                    }
+                } catch (Exception $e) {
+                    error_log("Failed to create domain {$domain_name}: " . $e->getMessage());
+                    
+                    // If it's a duplicate key error, try to update instead
+                    if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                        if ($domain_obj->readByName()) {
+                            $domain_obj->type = $pdns_domain['type'] ?? 'Zone';
+                            $domain_obj->pdns_zone_id = $pdns_domain['id'];
+                            $domain_obj->kind = $pdns_domain['kind'] ?? 'Master';
+                            $domain_obj->masters = isset($pdns_domain['masters']) ? implode(',', $pdns_domain['masters']) : '';
+                            $domain_obj->dnssec = $pdns_domain['dnssec'] ?? false;
+                            $domain_obj->account = $pdns_domain['account'] ?? '';
+                            
+                            try {
+                                if ($domain_obj->update()) {
+                                    $updated_count++;
+                                }
+                            } catch (Exception $update_e) {
+                                error_log("Failed to update domain {$domain_name} after duplicate error: " . $update_e->getMessage());
+                            }
+                        }
+                    }
+                }
             }
         }
         
-        sendResponse(200, ['synced_count' => $synced_count, 'total_pdns_domains' => count($pdns_domains)], "Domains synchronized successfully");
+        sendResponse(200, [
+            'synced_count' => $synced_count, 
+            'updated_count' => $updated_count,
+            'total_pdns_domains' => count($pdns_domains)
+        ], "Domains synchronized successfully");
     } else {
         sendError($pdns_response['status_code'], "Failed to fetch domains from PDNSAdmin");
     }

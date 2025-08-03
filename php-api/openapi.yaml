@@ -5,17 +5,23 @@ info:
     PHP API wrapper for PDNSAdmin with local database storage and extended functionality.
     
     ## Features
-    - Account management with IP address storage (local only)
-    - Domain management with PDNSAdmin synchronization
-    - Domain-account associations
-    - Data synchronization from PDNSAdmin
-    - Local database storage for performance
+    - **User management** with automatic PowerDNS Admin synchronization
+    - **IP address storage** for users (local database only)
+    - **Domain management** with PDNSAdmin synchronization
+    - **Real-time sync** from PowerDNS Admin API
+    - **Local database caching** for performance and extended metadata
+    
+    ## Key Functionality
+    - Users are automatically synced from PowerDNS Admin on each API call
+    - IP addresses can be assigned to users (stored locally, not in PowerDNS Admin)
+    - Domain management maintains compatibility with PowerDNS Admin
+    - Local database provides caching and additional user metadata storage
     
     ## Important Notes
-    - IP addresses are stored locally and NOT sent to PDNSAdmin
-    - Domain deletion is disabled for safety
-    - Account changes automatically sync with PDNSAdmin
-    - Domain-account assignments update both local DB and PDNSAdmin
+    - User data is synced FROM PowerDNS Admin (read-only sync)
+    - IP addresses are stored locally and NOT sent to PowerDNS Admin
+    - Users endpoint automatically refreshes data from PowerDNS Admin
+    - Local database maintains PowerDNS Admin user ID relationships
   version: 1.0.0
   contact:
     name: API Support
@@ -51,8 +57,20 @@ paths:
 
   /users:
     get:
-      summary: Get all users
-      description: Retrieve a list of all users with their details including IP addresses
+      summary: Get all users (synced from PowerDNS Admin)
+      description: |
+        Retrieve a list of all users with automatic synchronization from PowerDNS Admin.
+        
+        **Functionality:**
+        - Automatically fetches latest users from PowerDNS Admin API
+        - Syncs user data to local database for caching and extended metadata
+        - Returns users with IP addresses (if assigned locally)
+        - Maintains PowerDNS Admin user ID relationships
+        
+        **Data Sources:**
+        - User data: PowerDNS Admin (synchronized on each request)
+        - IP addresses: Local database only (not stored in PowerDNS Admin)
+        - Additional metadata: Local database for extended functionality
       tags:
         - Users
       responses:

@@ -50,7 +50,7 @@ class Domain {
     public function read() {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN accounts a ON d.account_id = a.id
+                LEFT JOIN users a ON d.account_id = a.id
                 ORDER BY d.created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -60,7 +60,7 @@ class Domain {
     public function readOne() {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN accounts a ON d.account_id = a.id
+                LEFT JOIN users a ON d.account_id = a.id
                 WHERE d.id = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->id);
@@ -84,10 +84,38 @@ class Domain {
         return false;
     }
 
+    public function readByName() {
+        $query = "SELECT d.*, a.name as account_name 
+                FROM " . $this->table_name . " d
+                LEFT JOIN users a ON d.account_id = a.id
+                WHERE d.name = ? LIMIT 0,1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $this->name);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            $this->id = $row['id'];
+            $this->name = $row['name'];
+            $this->type = $row['type'];
+            $this->account_id = $row['account_id'];
+            $this->pdns_zone_id = $row['pdns_zone_id'];
+            $this->kind = $row['kind'];
+            $this->masters = $row['masters'];
+            $this->dnssec = $row['dnssec'];
+            $this->account = $row['account'];
+            $this->created_at = $row['created_at'];
+            $this->updated_at = $row['updated_at'];
+            return true;
+        }
+        return false;
+    }
+
     public function readByAccountId($account_id) {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN accounts a ON d.account_id = a.id
+                LEFT JOIN users a ON d.account_id = a.id
                 WHERE d.account_id = ?
                 ORDER BY d.created_at DESC";
         $stmt = $this->conn->prepare($query);
@@ -98,13 +126,16 @@ class Domain {
 
     public function update() {
         $query = "UPDATE " . $this->table_name . "
-                SET account_id=:account_id, kind=:kind, masters=:masters,
-                    dnssec=:dnssec, account=:account, updated_at=NOW()
+                SET type=:type, account_id=:account_id, pdns_zone_id=:pdns_zone_id,
+                    kind=:kind, masters=:masters, dnssec=:dnssec, 
+                    account=:account, updated_at=NOW()
                 WHERE id=:id";
 
         $stmt = $this->conn->prepare($query);
 
+        $stmt->bindParam(':type', $this->type);
         $stmt->bindParam(':account_id', $this->account_id);
+        $stmt->bindParam(':pdns_zone_id', $this->pdns_zone_id);
         $stmt->bindParam(':kind', $this->kind);
         $stmt->bindParam(':masters', $this->masters);
         $stmt->bindParam(':dnssec', $this->dnssec);
@@ -124,7 +155,7 @@ class Domain {
     public function search($keywords) {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN accounts a ON d.account_id = a.id
+                LEFT JOIN users a ON d.account_id = a.id
                 WHERE d.name LIKE ? OR d.type LIKE ? OR a.name LIKE ?
                 ORDER BY d.created_at DESC";
 
