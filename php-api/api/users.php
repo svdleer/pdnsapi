@@ -49,6 +49,20 @@ if (!isset($pdns_config) || !is_array($pdns_config) || !isset($pdns_config['base
 $database = new Database();
 $db = $database->getConnection();
 
+// Check if database connection was successful
+if ($db === null) {
+    sendError(500, 'Database connection failed', [
+        'error' => 'Unable to connect to the database',
+        'suggestion' => 'Please check database configuration in config/database.php',
+        'troubleshooting' => [
+            'Verify MySQL server is running',
+            'Check database credentials',
+            'Ensure database exists',
+            'Verify user permissions'
+        ]
+    ]);
+}
+
 // Initialize PDNSAdmin client
 $pdns_client = new PDNSAdminClient($pdns_config);
 
@@ -99,6 +113,17 @@ switch($request_method) {
 }
 
 function getAllUsers($account) {
+    global $pdns_client;
+    
+    // First, try to sync users from PowerDNS Admin API
+    $pdns_response = $pdns_client->getAllUsers();
+    
+    if ($pdns_response['status_code'] === 200 && isset($pdns_response['data'])) {
+        // Sync users from PowerDNS Admin to local database
+        syncUsersFromPDNSAdmin($account, $pdns_response['data']);
+    }
+    
+    // Now get all users from local database
     $stmt = $account->read();
     $num = $stmt->rowCount();
     
@@ -108,24 +133,50 @@ function getAllUsers($account) {
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             extract($row);
             
-            $account_item = array(
+            $user_item = array(
                 "id" => $id,
                 "name" => $name,
                 "description" => $description,
                 "contact" => $contact,
                 "mail" => $mail,
                 "ip_addresses" => $ip_addresses ? json_decode($ip_addresses, true) : [],
-                "pdns_account_id" => $pdns_account_id,
+                "pdns_user_id" => $pdns_user_id ?? null,
                 "created_at" => $created_at,
                 "updated_at" => $updated_at
             );
             
-            array_push($users_arr, $account_item);
+            array_push($users_arr, $user_item);
         }
         
-        sendResponse(200, $users_arr);
+        sendResponse(200, $users_arr, "Users retrieved successfully");
     } else {
         sendResponse(200, array(), "No users found");
+    }
+}
+
+function syncUsersFromPDNSAdmin($account, $pdns_users) {
+    // Loop through users from PowerDNS Admin and sync to local database
+    foreach ($pdns_users as $pdns_user) {
+        // Check if user already exists in local database
+        $account->name = $pdns_user['username'] ?? $pdns_user['name'] ?? '';
+        
+        if ($account->readOne()) {
+            // User exists, update it
+            $account->description = $pdns_user['firstname'] . ' ' . $pdns_user['lastname'] ?? '';
+            $account->contact = $pdns_user['firstname'] . ' ' . $pdns_user['lastname'] ?? '';
+            $account->mail = $pdns_user['email'] ?? '';
+            $account->pdns_user_id = $pdns_user['id'] ?? null;
+            $account->update();
+        } else {
+            // User doesn't exist, create it
+            $account->name = $pdns_user['username'] ?? $pdns_user['name'] ?? '';
+            $account->description = $pdns_user['firstname'] . ' ' . $pdns_user['lastname'] ?? '';
+            $account->contact = $pdns_user['firstname'] . ' ' . $pdns_user['lastname'] ?? '';
+            $account->mail = $pdns_user['email'] ?? '';
+            $account->ip_addresses = json_encode([]); // Empty IP addresses initially
+            $account->pdns_user_id = $pdns_user['id'] ?? null;
+            $account->create();
+        }
     }
 }
 

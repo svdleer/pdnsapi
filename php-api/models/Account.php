@@ -5,11 +5,11 @@ require_once $base_path . '/config/database.php';
 require_once $base_path . '/includes/database-compat.php';
 
 /**
- * Account Model
+ * Account Model (now handles Users)
  */
 class Account {
     private $conn;
-    private $table_name = "accounts";
+    private $table_name = "users"; // Updated table name
 
     public $id;
     public $name;
@@ -17,7 +17,8 @@ class Account {
     public $contact;
     public $mail;
     public $ip_addresses;
-    public $pdns_account_id;
+    public $pdns_account_id; // Legacy field
+    public $pdns_user_id;    // New field for PowerDNS Admin user ID
     public $created_at;
     public $updated_at;
 
@@ -28,7 +29,7 @@ class Account {
     public function create() {
         $query = "INSERT INTO " . $this->table_name . "
                 SET name=:name, description=:description, contact=:contact, 
-                    mail=:mail, ip_addresses=:ip_addresses, pdns_account_id=:pdns_account_id, created_at=NOW()";
+                    mail=:mail, ip_addresses=:ip_addresses, pdns_user_id=:pdns_user_id, created_at=NOW()";
 
         $stmt = $this->conn->prepare($query);
 
@@ -37,7 +38,7 @@ class Account {
         $stmt->bindParam(":contact", $this->contact);
         $stmt->bindParam(":mail", $this->mail);
         $stmt->bindParam(":ip_addresses", $this->ip_addresses);
-        $stmt->bindParam(":pdns_account_id", $this->pdns_account_id);
+        $stmt->bindParam(":pdns_user_id", $this->pdns_user_id);
 
         return $stmt->execute();
     }
@@ -63,7 +64,8 @@ class Account {
             $this->contact = $row['contact'];
             $this->mail = $row['mail'];
             $this->ip_addresses = $row['ip_addresses'];
-            $this->pdns_account_id = $row['pdns_account_id'];
+            $this->pdns_account_id = $row['pdns_account_id'] ?? null;
+            $this->pdns_user_id = $row['pdns_user_id'] ?? null;
             $this->created_at = $row['created_at'];
             $this->updated_at = $row['updated_at'];
             return true;
@@ -85,7 +87,8 @@ class Account {
             $this->contact = $row['contact'];
             $this->mail = $row['mail'];
             $this->ip_addresses = $row['ip_addresses'];
-            $this->pdns_account_id = $row['pdns_account_id'];
+            $this->pdns_account_id = $row['pdns_account_id'] ?? null;
+            $this->pdns_user_id = $row['pdns_user_id'] ?? null;
             $this->created_at = $row['created_at'];
             $this->updated_at = $row['updated_at'];
             return true;
@@ -96,7 +99,7 @@ class Account {
     public function update() {
         $query = "UPDATE " . $this->table_name . "
                 SET description=:description, contact=:contact, mail=:mail, 
-                    ip_addresses=:ip_addresses, updated_at=NOW()
+                    ip_addresses=:ip_addresses, pdns_user_id=:pdns_user_id, updated_at=NOW()
                 WHERE id=:id";
 
         $stmt = $this->conn->prepare($query);
@@ -105,6 +108,7 @@ class Account {
         $stmt->bindParam(':contact', $this->contact);
         $stmt->bindParam(':mail', $this->mail);
         $stmt->bindParam(':ip_addresses', $this->ip_addresses);
+        $stmt->bindParam(':pdns_user_id', $this->pdns_user_id);
         $stmt->bindParam(':id', $this->id);
 
         return $stmt->execute();
