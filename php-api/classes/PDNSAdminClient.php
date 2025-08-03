@@ -29,9 +29,12 @@ class PDNSAdminClient {
         $headers = ['Content-Type: application/json'];
         
         if ($this->auth_type === 'apikey' && $this->api_key) {
-            $headers[] = 'X-API-Key: ' . $this->api_key;
+            // Use API key as base64 encoded basic auth
+            $headers[] = 'Authorization: Basic ' . $this->api_key;
         } elseif ($this->auth_type === 'basic' && $this->username && $this->password) {
-            curl_setopt($ch, CURLOPT_USERPWD, $this->username . ':' . $this->password);
+            // Encode username:password to base64 for basic auth
+            $credentials = base64_encode($this->username . ':' . $this->password);
+            $headers[] = 'Authorization: Basic ' . $credentials;
         }
         
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
