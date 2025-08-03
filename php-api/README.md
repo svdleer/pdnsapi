@@ -70,9 +70,22 @@ A PHP-based API wrapper for PDNSAdmin that provides local database storage and e
    ],
    ```
 
-6. **Web Server Setup**:
+6. **SSL/HTTPS Setup** (Recommended for production):
+   ```bash
+   # Enable Apache SSL module
+   sudo a2enmod ssl rewrite headers
+   
+   # Get Let's Encrypt certificate
+   sudo certbot --apache -d your-domain.com
+   
+   # Or use the provided SSL configuration
+   # See SSL_SETUP.md for detailed instructions
+   ```
+
+7. **Web Server Setup**:
    - **Apache**: Copy `apache.conf.example` to your Apache sites configuration
    - **Nginx**: Use `nginx.conf.example` for Nginx configuration
+   - Both configurations include HTTP→HTTPS redirect and security headers
    - Ensure proper directory permissions:
      ```bash
      sudo chown -R www-data:www-data /path/to/php-api
@@ -303,26 +316,28 @@ CORS headers are automatically set to allow cross-origin requests. Modify the he
 
 1. **Test Connection**:
    ```bash
-   curl http://your-api-host/status?action=test_connection
+   curl -H "X-API-Key: your-api-key" https://your-api-host/status?action=test_connection
    ```
 
 2. **Sync Initial Data**:
    ```bash
-   curl http://your-api-host/domains?sync=true
+   curl -H "X-API-Key: your-api-key" https://your-api-host/domains?sync=true
    ```
 
 ### Create Account and Add Domain
 
 1. **Create Account**:
    ```bash
-   curl -X POST http://your-api-host/accounts \
+   curl -X POST https://your-api-host/accounts \
+     -H "X-API-Key: your-api-key" \
      -H "Content-Type: application/json" \
      -d '{"name":"customer1","description":"Customer 1","contact":"John Doe","mail":"john@customer1.com"}'
    ```
 
 2. **Add Domain to Account**:
    ```bash
-   curl -X POST http://your-api-host/domain-account?action=add \
+   curl -X POST https://your-api-host/domain-account?action=add \
+     -H "X-API-Key: your-api-key" \
      -H "Content-Type: application/json" \
      -d '{"domain_name":"customer1.com.","account_id":1}'
    ```
@@ -352,11 +367,32 @@ Common HTTP status codes:
 
 ## Security Considerations
 
-1. **Database Security**: Use strong database credentials and limit access
-2. **API Authentication**: Secure your PDNSAdmin credentials
-3. **Web Server**: Configure proper access controls
-4. **HTTPS**: Use HTTPS in production
-5. **Input Validation**: The API includes input validation for all endpoints
+1. **SSL/HTTPS**: 
+   - Use HTTPS in production (required)
+   - Automatic HTTP to HTTPS redirection configured
+   - Modern TLS 1.2/1.3 encryption
+   - HSTS headers for security
+
+2. **API Authentication**: 
+   - 64-character secure API keys
+   - Multiple authentication methods supported
+   - API key rotation capabilities
+
+3. **Security Headers**:
+   - HSTS (HTTP Strict Transport Security)
+   - CSP (Content Security Policy)
+   - X-Frame-Options, X-XSS-Protection
+   - Referrer-Policy controls
+
+4. **Database Security**: Use strong database credentials and limit access
+
+5. **Web Server**: Configure proper access controls and file permissions
+
+6. **Input Validation**: The API includes comprehensive input validation
+
+7. **Certificate Management**: 
+   - Use trusted SSL certificates (Let's Encrypt recommended)
+   - Set up automatic certificate renewal
 
 ## Troubleshooting
 
@@ -374,7 +410,7 @@ Common HTTP status codes:
    - Ensure web server has read/write access to the API directory
    - Check database user permissions
 
-3. **Apache "AH01630: client denied by server configuration"**:
+4. **Apache "AH01630: client denied by server configuration"**:
    ```bash
    # Set proper permissions
    sudo chown -R www-data:www-data /opt/web/pdnsadpi.avant.nl
@@ -384,7 +420,21 @@ Common HTTP status codes:
    # See APACHE_TROUBLESHOOTING.md for detailed solutions
    ```
 
-4. **Authentication Issues**:
+5. **SSL/HTTPS Issues**:
+   ```bash
+   # Test SSL certificate
+   openssl s_client -connect your-domain:443 -servername your-domain
+   
+   # Check certificate expiration
+   openssl s_client -connect your-domain:443 2>/dev/null | openssl x509 -noout -dates
+   
+   # Verify HTTP to HTTPS redirect
+   curl -I http://your-domain/
+   
+   # See SSL_SETUP.md for complete SSL troubleshooting
+   ```
+
+6. **Authentication Issues**:
    - Verify API key in config/config.php
    - Check X-API-Key header is being sent
    - Ensure endpoint is not in exempt_endpoints list
@@ -401,6 +451,7 @@ This will log all API requests and authentication details to your PHP error log.
 
 ### Additional Resources
 
+- `SSL_SETUP.md` - Complete SSL/HTTPS setup guide with Let's Encrypt
 - `APACHE_TROUBLESHOOTING.md` - Detailed Apache configuration help
 - `AUTHENTICATION.md` - Complete authentication guide
 - `/docs` - Interactive Swagger UI documentation

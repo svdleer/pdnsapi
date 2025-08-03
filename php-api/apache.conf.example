@@ -1,12 +1,63 @@
-# PDNSAdmin PHP API - Apache Configuration
+# PDNSAdmin PHP API - Apache Configuration with SSL
 # 
-# This configuration provides proper access controls and security headers
-# for the PDNSAdmin PHP API.
+# This configuration provides HTTPS support with HTTP to HTTPS redirection
+# and proper security headers for the PDNSAdmin PHP API.
 
+# HTTP Virtual Host - Redirect to HTTPS
 <VirtualHost *:80>
-    ServerName pdnsapi.your-domain.com
+    ServerName pdnsapi.avant.nl
+    ServerAlias www.pdnsapi.avant.nl
+    
+    # Redirect all HTTP traffic to HTTPS
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+    
+    # Optional: Serve Let's Encrypt challenge files
+    Alias /.well-known/acme-challenge/ /var/www/letsencrypt/.well-known/acme-challenge/
+    <Directory "/var/www/letsencrypt/.well-known/acme-challenge/">
+        Options None
+        AllowOverride None
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+# HTTPS Virtual Host - Main API
+<VirtualHost *:443>
+    ServerName pdnsapi.avant.nl
+    ServerAlias www.pdnsapi.avant.nl
     DocumentRoot /opt/web/pdnsadpi.avant.nl/php-api
     DirectoryIndex index.php
+
+    # SSL Configuration
+    SSLEngine on
+    SSLProtocol all -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+    SSLCipherSuite ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256
+    SSLHonorCipherOrder off
+    SSLSessionTickets off
+    
+    # SSL Certificate files (update these paths)
+    SSLCertificateFile /etc/ssl/certs/pdnsapi.avant.nl.crt
+    SSLCertificateKeyFile /etc/ssl/private/pdnsapi.avant.nl.key
+    SSLCertificateChainFile /etc/ssl/certs/pdnsapi.avant.nl-chain.crt
+    
+    # Optional: OCSP Stapling
+    SSLUseStapling On
+    SSLStaplingCache "shmcb:logs/ssl_stapling(32768)"
+
+    # Root directory permissions (if needed)
+    <Directory /opt/web/pdnsadpi.avant.nl>
+        Options -Indexes +FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    # Root directory permissions (if needed)
+    <Directory /opt/web/pdnsadpi.avant.nl>
+        Options -Indexes +FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
 
     # Main API directory permissions
     <Directory /opt/web/pdnsadpi.avant.nl/php-api>
@@ -18,13 +69,6 @@
         <FilesMatch "\.php$">
             SetHandler application/x-httpd-php
         </FilesMatch>
-    </Directory>
-
-    # Root directory permissions (if needed)
-    <Directory /opt/web/pdnsadpi.avant.nl>
-        Options -Indexes +FollowSymLinks
-        AllowOverride None
-        Require all granted
     </Directory>
 
     # API URL Rewriting
@@ -54,6 +98,34 @@
     <FilesMatch "\.(bak|backup|tmp|temp|old|orig|save)$">
         Require all denied
     </FilesMatch>
+
+    # Enhanced Security Headers for HTTPS
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' unpkg.com; style-src 'self' 'unsafe-inline' unpkg.com; img-src 'self' data:; connect-src 'self'"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+
+    # Enable compression
+    <IfModule mod_deflate.c>
+        AddOutputFilterByType DEFLATE text/plain
+        AddOutputFilterByType DEFLATE text/html
+        AddOutputFilterByType DEFLATE text/xml
+        AddOutputFilterByType DEFLATE text/css
+        AddOutputFilterByType DEFLATE application/xml
+        AddOutputFilterByType DEFLATE application/xhtml+xml
+        AddOutputFilterByType DEFLATE application/rss+xml
+        AddOutputFilterByType DEFLATE application/javascript
+        AddOutputFilterByType DEFLATE application/x-javascript
+        AddOutputFilterByType DEFLATE application/json
+    </IfModule>
+
+    # Logging
+    ErrorLog ${APACHE_LOG_DIR}/pdns-api-ssl-error.log
+    CustomLog ${APACHE_LOG_DIR}/pdns-api-ssl-access.log combined
+</VirtualHost>
 
     # Security headers
     Header always set X-Frame-Options "SAMEORIGIN"

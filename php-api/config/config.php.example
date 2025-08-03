@@ -14,6 +14,8 @@ $api_settings = [
     'debug_mode' => false,
     'log_level' => 'INFO', // DEBUG, INFO, WARNING, ERROR
     'require_api_key' => true,
+    'force_https' => true, // Redirect HTTP to HTTPS
+    'hsts_max_age' => 31536000, // HSTS max age in seconds (1 year)
     'api_keys' => [
         // Add your API keys here - format: 'key' => 'description'
         'your-secure-api-key-here' => 'Default API Key',
@@ -38,10 +40,48 @@ $api_settings = [
 // Database table prefix (optional)
 $table_prefix = '';
 
+// HTTPS Enforcement Functions
+function enforceHTTPS() {
+    global $api_settings;
+    
+    if ($api_settings['force_https'] && !isHTTPS()) {
+        $redirect_url = 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+        header('Location: ' . $redirect_url, true, 301);
+        exit;
+    }
+}
+
+function isHTTPS() {
+    return (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') ||
+        (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+    );
+}
+
+function addSecurityHeaders() {
+    global $api_settings;
+    
+    if (isHTTPS() && $api_settings['hsts_max_age'] > 0) {
+        header('Strict-Transport-Security: max-age=' . $api_settings['hsts_max_age'] . '; includeSubDomains; preload');
+    }
+    
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-XSS-Protection: 1; mode=block');
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' unpkg.com; style-src \'self\' \'unsafe-inline\' unpkg.com; img-src \'self\' data:; connect-src \'self\'');
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+}
+
 // Helper functions
 function sendResponse($status, $data, $message = '') {
     http_response_code($status);
     header('Content-Type: application/json');
+    
+    // Add security headers
+    addSecurityHeaders();
     
     // Enable CORS if configured
     global $api_settings;
@@ -67,6 +107,9 @@ function sendResponse($status, $data, $message = '') {
 function sendError($status, $message, $details = null) {
     http_response_code($status);
     header('Content-Type: application/json');
+    
+    // Add security headers
+    addSecurityHeaders();
     
     // Enable CORS if configured
     global $api_settings;
