@@ -1,53 +1,75 @@
 <?php
+/**
+ * API Configuration Example
+ * Copy this file to config.php and update with your actual values
+ */
+
 // PDNSAdmin API configuration
 $pdns_config = [
-    'api_url' => 'http://your-pdnsadmin-server.com/api/v1',
-    'api_key' => 'your-pdnsadmin-api-key-here',
-    'timeout' => 30,
-    'verify_ssl' => true
+    'base_url' => 'https://your-pdnsadmin-server.com/api/v1', // Your PDNSAdmin API URL
+    'auth_type' => 'apikey', // 'basic' for username:password or 'apikey' for base64 encoded credentials
+    'api_key' => 'YOUR_BASE64_ENCODED_CREDENTIALS_HERE' // Base64 encoded username:password (e.g., base64_encode('admin:password'))
 ];
 
-// API settings
-$api_settings = [
-    'enable_cors' => true,
-    'cors_origins' => ['*'], // For production, specify allowed origins
-    'debug_mode' => false,
-    'log_level' => 'INFO', // DEBUG, INFO, WARNING, ERROR
-    'require_api_key' => true,
-    'force_https' => true, // Redirect HTTP to HTTPS
-    'hsts_max_age' => 31536000, // HSTS max age in seconds (1 year)
-    'api_keys' => [
-        // Add your API keys here - format: 'key' => 'description'
-        'your-secure-api-key-here' => 'Default API Key',
-        'another-api-key-example' => 'Second API Key'
-        // Generate secure keys using: openssl rand -hex 32
-    ],
-    'exempt_endpoints' => [
-        // Endpoints that don't require API key authentication
-        '',           // Root/documentation endpoint
-        'index',      // Documentation endpoint
-        'docs',       // Swagger UI
-        'swagger',    // Swagger UI alternate
-        'swagger-ui', // Swagger UI alternate
-        'openapi',    // OpenAPI spec
-        'openapi.json',
-        'openapi.yaml',
-        'swagger.json',
-        'swagger.yaml'
-    ]
+// Alternative configuration for basic auth (less secure - plain text)
+/*
+$pdns_config = [
+    'base_url' => 'https://your-pdnsadmin-server.com/api/v1',
+    'auth_type' => 'basic',
+    'username' => 'your-username',
+    'password' => 'your-password'
 ];
+*/
 
-// Database table prefix (optional)
-$table_prefix = '';
-
-// HTTPS Enforcement Functions
-function enforceHTTPS() {
-    global $api_settings;
+// API Response helper functions
+function sendResponse($status_code, $data = null, $message = null) {
+    http_response_code($status_code);
+    header('Content-Type: application/json');
     
-    if ($api_settings['force_https'] && !isHTTPS()) {
-        $redirect_url = 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-        header('Location: ' . $redirect_url, true, 301);
-        exit;
+    $response = [];
+    if ($message) $response['message'] = $message;
+    if ($data !== null) $response['data'] = $data;
+    
+    echo json_encode($response);
+    exit;
+}
+
+function sendError($status_code, $message, $errors = null) {
+    http_response_code($status_code);
+    header('Content-Type: application/json');
+    
+    $response = ['error' => $message];
+    if ($errors) $response['errors'] = $errors;
+    
+    echo json_encode($response);
+    exit;
+}
+
+// CORS headers
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    exit(0);
+}
+
+/*
+Instructions for setup:
+1. Copy this file to config.php: cp config.php.example config.php
+2. Update the PDNSAdmin URL in 'base_url'
+3. For secure setup (recommended):
+   - Encode your credentials: echo -n 'username:password' | base64
+   - Use the output in 'api_key' field
+   - Set 'auth_type' to 'apikey'
+4. For basic setup (less secure):
+   - Uncomment the alternative configuration block
+   - Set your username and password directly
+   - Set 'auth_type' to 'basic'
+*/
+?>
     }
 }
 
