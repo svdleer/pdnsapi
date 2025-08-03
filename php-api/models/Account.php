@@ -83,6 +83,7 @@ class Account {
 
         if ($row) {
             $this->id = $row['id'];
+            $this->name = $row['name'];
             $this->description = $row['description'];
             $this->contact = $row['contact'];
             $this->mail = $row['mail'];

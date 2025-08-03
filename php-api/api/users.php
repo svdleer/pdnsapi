@@ -155,63 +155,91 @@ function getAllUsers($account) {
 }
 
 function syncUsersFromPDNSAdmin($account, $pdns_users, $db) {
-    // Loop through users from PowerDNS Admin and sync to local database
-    foreach ($pdns_users as $pdns_user) {
-        $username = $pdns_user['username'] ?? $pdns_user['name'] ?? '';
-        
-        if (empty($username)) {
-            continue; // Skip users without a name
-        }
-        
-        // Create a new account object for each user to avoid conflicts
-        $user_account = new Account($db);
-        $user_account->name = $username;
-        
-        // Check if user exists using readByName which is more reliable
-        if ($user_account->readByName()) {
-            // User exists, update it
-            $user_account->description = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
-            $user_account->contact = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
-            $user_account->mail = $pdns_user['email'] ?? '';
-            $user_account->pdns_user_id = $pdns_user['id'] ?? null;
+    // Start a transaction to prevent race conditions
+    $db->beginTransaction();
+    
+    try {
+        // Loop through users from PowerDNS Admin and sync to local database
+        foreach ($pdns_users as $pdns_user) {
+            $username = $pdns_user['username'] ?? $pdns_user['name'] ?? '';
             
-            try {
-                $user_account->update();
-            } catch (Exception $e) {
-                error_log("Failed to update user {$username}: " . $e->getMessage());
+            if (empty($username)) {
+                continue; // Skip users without a name
             }
-        } else {
-            // User doesn't exist, create it
-            $user_account->name = $username;
-            $user_account->description = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
-            $user_account->contact = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
-            $user_account->mail = $pdns_user['email'] ?? '';
-            $user_account->ip_addresses = json_encode([]); // Empty IP addresses initially
-            $user_account->pdns_user_id = $pdns_user['id'] ?? null;
             
-            try {
-                $user_account->create();
-            } catch (Exception $e) {
-                // Handle duplicate key or other creation errors gracefully
-                error_log("Failed to create user {$username}: " . $e->getMessage());
+            // Create a new account object for each user to avoid conflicts
+            $user_account = new Account($db);
+            $user_account->name = $username;
+            
+            // Use a more robust check with SELECT FOR UPDATE to prevent race conditions
+            $check_query = "SELECT id FROM users WHERE name = ? FOR UPDATE";
+            $check_stmt = $db->prepare($check_query);
+            $check_stmt->bindParam(1, $username);
+            $check_stmt->execute();
+            $existing_user = $check_stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($existing_user) {
+                // User exists, update it
+                $user_account->id = $existing_user['id'];
+                $user_account->readByName(); // Load full data
+                $user_account->description = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
+                $user_account->contact = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
+                $user_account->mail = $pdns_user['email'] ?? '';
+                $user_account->pdns_user_id = $pdns_user['id'] ?? null;
                 
-                // If it's a duplicate key error, try to update instead
-                if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                    if ($user_account->readByName()) {
-                        $user_account->description = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
-                        $user_account->contact = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
-                        $user_account->mail = $pdns_user['email'] ?? '';
-                        $user_account->pdns_user_id = $pdns_user['id'] ?? null;
-                        
-                        try {
-                            $user_account->update();
-                        } catch (Exception $update_e) {
-                            error_log("Failed to update user {$username} after duplicate error: " . $update_e->getMessage());
+                try {
+                    $user_account->update();
+                    error_log("Updated existing user: {$username}");
+                } catch (Exception $e) {
+                    error_log("Failed to update user {$username}: " . $e->getMessage());
+                }
+            } else {
+                // User doesn't exist, create it
+                $user_account->name = $username;
+                $user_account->description = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
+                $user_account->contact = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
+                $user_account->mail = $pdns_user['email'] ?? '';
+                $user_account->ip_addresses = json_encode([]); // Empty IP addresses initially
+                $user_account->pdns_user_id = $pdns_user['id'] ?? null;
+                
+                try {
+                    if ($user_account->create()) {
+                        error_log("Created new user: {$username}");
+                    }
+                } catch (Exception $e) {
+                    // Handle duplicate key or other creation errors gracefully
+                    error_log("Failed to create user {$username}: " . $e->getMessage());
+                    
+                    // If it's a duplicate key error, try to update instead (fallback)
+                    if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                        error_log("Duplicate entry detected for {$username}, attempting update...");
+                        if ($user_account->readByName()) {
+                            $user_account->description = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
+                            $user_account->contact = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
+                            $user_account->mail = $pdns_user['email'] ?? '';
+                            $user_account->pdns_user_id = $pdns_user['id'] ?? null;
+                            
+                            try {
+                                $user_account->update();
+                                error_log("Successfully updated {$username} after duplicate error");
+                            } catch (Exception $update_e) {
+                                error_log("Failed to update user {$username} after duplicate error: " . $update_e->getMessage());
+                            }
                         }
                     }
                 }
             }
         }
+        
+        // Commit the transaction
+        $db->commit();
+        error_log("User sync transaction completed successfully");
+        
+    } catch (Exception $e) {
+        // Rollback on any error
+        $db->rollback();
+        error_log("User sync transaction failed, rolled back: " . $e->getMessage());
+        throw $e;
     }
 }
 
