@@ -4,6 +4,7 @@ $base_path = realpath(__DIR__ . '/..');
 
 require_once $base_path . '/config/config.php';
 require_once $base_path . '/config/database.php';
+require_once $base_path . '/includes/database-compat.php';
 require_once $base_path . '/models/Domain.php';
 require_once $base_path . '/models/Account.php';
 require_once $base_path . '/classes/PDNSAdminClient.php';
@@ -11,38 +12,12 @@ require_once $base_path . '/classes/PDNSAdminClient.php';
 // API key is already validated in index.php, log the request
 logApiRequest('domains', $_SERVER['REQUEST_METHOD'], 200);
 
-// Verify Database class is available
+// Database class should now be available through compatibility layer
 if (!class_exists('Database')) {
-    // Try alternative include paths as fallback
-    $alternative_paths = [
-        __DIR__ . '/../config/database.php',
-        dirname(__FILE__) . '/../config/database.php',
-        realpath(__DIR__ . '/..') . '/config/database.php'
-    ];
-    
-    foreach ($alternative_paths as $path) {
-        if (file_exists($path) && !class_exists('Database')) {
-            require_once $path;
-            break;
-        }
-    }
-    
-    // If still not available, provide detailed error
-    if (!class_exists('Database')) {
-        http_response_code(500);
-        header('Content-Type: application/json');
-        echo json_encode([
-            'error' => 'Database class configuration error',
-            'debug' => [
-                'base_path' => $base_path,
-                'working_dir' => getcwd(),
-                '__DIR__' => __DIR__,
-                'tried_paths' => $alternative_paths,
-                'class_exists' => class_exists('Database', false)
-            ]
-        ]);
-        exit;
-    }
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Database compatibility layer failed']);
+    exit;
 }
 
 // Get database connection

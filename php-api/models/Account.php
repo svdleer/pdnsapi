@@ -2,6 +2,7 @@
 // Determine the correct base path
 $base_path = realpath(__DIR__ . '/..');
 require_once $base_path . '/config/database.php';
+require_once $base_path . '/includes/database-compat.php';
 
 /**
  * Account Model
