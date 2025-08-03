@@ -19,12 +19,56 @@ if (!class_exists('Database')) {
         realpath(__DIR__ . '/..') . '/config/database.php'
     ];
     
+    $debug_info = [
+        'base_path' => $base_path,
+        'working_dir' => getcwd(),
+        '__DIR__' => __DIR__,
+        'tried_paths' => $alternative_paths,
+        'class_exists' => class_exists('Database', false),
+        'file_checks' => []
+    ];
+    
     foreach ($alternative_paths as $path) {
+        $debug_info['file_checks'][$path] = [
+            'exists' => file_exists($path),
+            'readable' => file_exists($path) ? is_readable($path) : false,
+            'size' => file_exists($path) ? filesize($path) : 0,
+            'contents_preview' => file_exists($path) ? substr(file_get_contents($path), 0, 200) : 'FILE NOT FOUND'
+        ];
+        
         if (file_exists($path) && !class_exists('Database')) {
-            require_once $path;
-            break;
+            // Try to include with error catching
+            ob_start();
+            $error_occurred = false;
+            try {
+                include_once $path;
+                $debug_info['file_checks'][$path]['include_result'] = 'SUCCESS';
+            } catch (ParseError $e) {
+                $debug_info['file_checks'][$path]['include_result'] = 'PARSE_ERROR: ' . $e->getMessage();
+                $error_occurred = true;
+            } catch (Error $e) {
+                $debug_info['file_checks'][$path]['include_result'] = 'ERROR: ' . $e->getMessage();
+                $error_occurred = true;
+            } catch (Exception $e) {
+                $debug_info['file_checks'][$path]['include_result'] = 'EXCEPTION: ' . $e->getMessage();
+                $error_occurred = true;
+            }
+            $output = ob_get_clean();
+            if ($output) {
+                $debug_info['file_checks'][$path]['output'] = $output;
+            }
+            
+            if (!$error_occurred) {
+                break;
+            }
         }
     }
+    
+    // Check if class exists now
+    $debug_info['class_exists_after'] = class_exists('Database', false);
+    $debug_info['declared_classes'] = array_filter(get_declared_classes(), function($class) {
+        return stripos($class, 'database') !== false;
+    });
     
     // If still not available, provide detailed error
     if (!class_exists('Database')) {
@@ -32,14 +76,8 @@ if (!class_exists('Database')) {
         header('Content-Type: application/json');
         echo json_encode([
             'error' => 'Database class configuration error',
-            'debug' => [
-                'base_path' => $base_path,
-                'working_dir' => getcwd(),
-                '__DIR__' => __DIR__,
-                'tried_paths' => $alternative_paths,
-                'class_exists' => class_exists('Database', false)
-            ]
-        ]);
+            'debug' => $debug_info
+        ], JSON_PRETTY_PRINT);
         exit;
     }
 }
