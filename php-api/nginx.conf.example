@@ -20,7 +20,7 @@ server {
 server {
     listen 443 ssl http2;
     server_name pdnsapi.avant.nl www.pdnsapi.avant.nl;
-    root /opt/web/pdnsadpi.avant.nl/php-api;
+    root /opt/web/pdnsapi.avant.nl/php-api;
     index index.php;
 
     # SSL Configuration

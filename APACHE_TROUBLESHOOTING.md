@@ -8,7 +8,7 @@ This error occurs when Apache doesn't have proper permissions configured for you
 
 ### Error Example
 ```
-[authz_core:error] [pid 4061409] [client 80.56.129.17:50983] AH01630: client denied by server configuration: /opt/web/pdnsadpi.avant.nl
+[authz_core:error] [pid 4061409] [client 80.56.129.17:50983] AH01630: client denied by server configuration: /opt/web/pdnsapi.avant.nl
 ```
 
 ### Solutions
@@ -19,11 +19,11 @@ Ensure the web directory has proper filesystem permissions:
 
 ```bash
 # Set ownership to web server user
-sudo chown -R www-data:www-data /opt/web/pdnsadpi.avant.nl
+sudo chown -R www-data:www-data /opt/web/pdnsapi.avant.nl
 
 # Set proper permissions
-sudo chmod -R 755 /opt/web/pdnsadpi.avant.nl
-sudo chmod -R 644 /opt/web/pdnsadpi.avant.nl/php-api/*.php
+sudo chmod -R 755 /opt/web/pdnsapi.avant.nl
+sudo chmod -R 644 /opt/web/pdnsapi.avant.nl/php-api/*.php
 ```
 
 #### 2. Update Apache Virtual Host Configuration
@@ -33,18 +33,18 @@ Create or update your Apache virtual host configuration:
 ```apache
 <VirtualHost *:80>
     ServerName pdnsapi.avant.nl
-    DocumentRoot /opt/web/pdnsadpi.avant.nl/php-api
+    DocumentRoot /opt/web/pdnsapi.avant.nl/php-api
     DirectoryIndex index.php
 
     # Root directory access
-    <Directory /opt/web/pdnsadpi.avant.nl>
+    <Directory /opt/web/pdnsapi.avant.nl>
         Options -Indexes +FollowSymLinks
         AllowOverride None
         Require all granted
     </Directory>
 
     # API directory access
-    <Directory /opt/web/pdnsadpi.avant.nl/php-api>
+    <Directory /opt/web/pdnsapi.avant.nl/php-api>
         Options -Indexes +FollowSymLinks +ExecCGI
         AllowOverride All
         Require all granted
@@ -56,16 +56,16 @@ Create or update your Apache virtual host configuration:
     </Directory>
 
     # Security: Deny access to sensitive directories
-    <Directory /opt/web/pdnsadpi.avant.nl/php-api/config>
+    <Directory /opt/web/pdnsapi.avant.nl/php-api/config>
         Require all denied
     </Directory>
 
-    <Directory /opt/web/pdnsadpi.avant.nl/php-api/database>
+    <Directory /opt/web/pdnsapi.avant.nl/php-api/database>
         Require all denied
     </Directory>
 
     # Enable .htaccess files
-    <Directory /opt/web/pdnsadpi.avant.nl/php-api>
+    <Directory /opt/web/pdnsapi.avant.nl/php-api>
         AllowOverride All
     </Directory>
 
@@ -106,35 +106,35 @@ sestatus
 
 # Set proper SELinux context
 sudo setsebool -P httpd_can_network_connect 1
-sudo chcon -R -t httpd_exec_t /opt/web/pdnsadpi.avant.nl/php-api/
-sudo restorecon -R /opt/web/pdnsadpi.avant.nl/
+sudo chcon -R -t httpd_exec_t /opt/web/pdnsapi.avant.nl/php-api/
+sudo restorecon -R /opt/web/pdnsapi.avant.nl/
 ```
 
 ### Quick Fix Commands
 
-For your specific path `/opt/web/pdnsadpi.avant.nl`:
+For your specific path `/opt/web/pdnsapi.avant.nl`:
 
 ```bash
 # 1. Set proper ownership
-sudo chown -R www-data:www-data /opt/web/pdnsadpi.avant.nl
+sudo chown -R www-data:www-data /opt/web/pdnsapi.avant.nl
 
 # 2. Set proper permissions
-sudo chmod -R 755 /opt/web/pdnsadpi.avant.nl
-sudo find /opt/web/pdnsadpi.avant.nl -name "*.php" -exec chmod 644 {} \;
+sudo chmod -R 755 /opt/web/pdnsapi.avant.nl
+sudo find /opt/web/pdnsapi.avant.nl -name "*.php" -exec chmod 644 {} \;
 
 # 3. Create a minimal virtual host
 sudo tee /etc/apache2/sites-available/pdnsapi.conf << EOF
 <VirtualHost *:80>
     ServerName pdnsapi.avant.nl
-    DocumentRoot /opt/web/pdnsadpi.avant.nl/php-api
+    DocumentRoot /opt/web/pdnsapi.avant.nl/php-api
     
-    <Directory /opt/web/pdnsadpi.avant.nl>
+    <Directory /opt/web/pdnsapi.avant.nl>
         Options FollowSymLinks
         AllowOverride None
         Require all granted
     </Directory>
     
-    <Directory /opt/web/pdnsadpi.avant.nl/php-api>
+    <Directory /opt/web/pdnsapi.avant.nl/php-api>
         Options FollowSymLinks
         AllowOverride All
         Require all granted
@@ -193,13 +193,13 @@ RewriteRule ^(.*)$ index.php [QSA,L]
 
 2. **Test PHP processing:**
    ```bash
-   echo "<?php phpinfo(); ?>" | sudo tee /opt/web/pdnsadpi.avant.nl/php-api/test.php
+   echo "<?php phpinfo(); ?>" | sudo tee /opt/web/pdnsapi.avant.nl/php-api/test.php
    curl http://pdnsapi.avant.nl/php-api/test.php
    ```
 
 3. **Verify file permissions:**
    ```bash
-   ls -la /opt/web/pdnsadpi.avant.nl/php-api/
+   ls -la /opt/web/pdnsapi.avant.nl/php-api/
    ```
 
 4. **Check Apache configuration syntax:**
@@ -214,7 +214,7 @@ For production, add SSL configuration:
 ```apache
 <VirtualHost *:443>
     ServerName pdnsapi.avant.nl
-    DocumentRoot /opt/web/pdnsadpi.avant.nl/php-api
+    DocumentRoot /opt/web/pdnsapi.avant.nl/php-api
     
     SSLEngine on
     SSLCertificateFile /path/to/your/certificate.crt

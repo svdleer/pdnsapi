@@ -413,8 +413,8 @@ Common HTTP status codes:
 4. **Apache "AH01630: client denied by server configuration"**:
    ```bash
    # Set proper permissions
-   sudo chown -R www-data:www-data /opt/web/pdnsadpi.avant.nl
-   sudo chmod -R 755 /opt/web/pdnsadpi.avant.nl
+   sudo chown -R www-data:www-data /opt/web/pdnsapi.avant.nl
+   sudo chmod -R 755 /opt/web/pdnsapi.avant.nl
    
    # Check Apache virtual host configuration
    # See APACHE_TROUBLESHOOTING.md for detailed solutions

@@ -79,7 +79,7 @@ sudo chmod 644 /etc/ssl/certs/pdnsapi.avant.nl.crt
 Copy the SSL configuration:
 ```bash
 # Copy the SSL-enabled configuration
-sudo cp /opt/web/pdnsadpi.avant.nl/php-api/apache.conf.example /etc/apache2/sites-available/pdnsapi-ssl.conf
+sudo cp /opt/web/pdnsapi.avant.nl/php-api/apache.conf.example /etc/apache2/sites-available/pdnsapi-ssl.conf
 
 # Edit the configuration to match your setup
 sudo nano /etc/apache2/sites-available/pdnsapi-ssl.conf

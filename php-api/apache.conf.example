@@ -30,7 +30,7 @@ SSLStaplingCache "shmcb:${APACHE_RUN_DIR}/ssl_stapling(32768)"
 <VirtualHost *:443>
     ServerName pdnsapi.avant.nl
     ServerAlias www.pdnsapi.avant.nl
-    DocumentRoot /opt/web/pdnsadpi.avant.nl/php-api
+    DocumentRoot /opt/web/pdnsapi.avant.nl/php-api
     DirectoryIndex index.php
 
     # SSL Configuration
@@ -49,21 +49,14 @@ SSLStaplingCache "shmcb:${APACHE_RUN_DIR}/ssl_stapling(32768)"
     SSLUseStapling On
 
     # Root directory permissions (if needed)
-    <Directory /opt/web/pdnsadpi.avant.nl>
-        Options -Indexes +FollowSymLinks
-        AllowOverride None
-        Require all granted
-    </Directory>
-
-    # Root directory permissions (if needed)
-    <Directory /opt/web/pdnsadpi.avant.nl>
+    <Directory /opt/web/pdnsapi.avant.nl>
         Options -Indexes +FollowSymLinks
         AllowOverride None
         Require all granted
     </Directory>
 
     # Main API directory permissions
-    <Directory /opt/web/pdnsadpi.avant.nl/php-api>
+    <Directory /opt/web/pdnsapi.avant.nl/php-api>
         Options -Indexes +FollowSymLinks +ExecCGI
         AllowOverride All
         Require all granted
@@ -84,11 +77,11 @@ SSLStaplingCache "shmcb:${APACHE_RUN_DIR}/ssl_stapling(32768)"
     RewriteRule ^/?domain-account/?(.*)$ /api/domain-account.php?$1 [L,QSA]
 
     # Security: Deny access to sensitive directories
-    <Directory /opt/web/pdnsadpi.avant.nl/php-api/config>
+    <Directory /opt/web/pdnsapi.avant.nl/php-api/config>
         Require all denied
     </Directory>
 
-    <Directory /opt/web/pdnsadpi.avant.nl/php-api/database>
+    <Directory /opt/web/pdnsapi.avant.nl/php-api/database>
         Require all denied
     </Directory>
 
