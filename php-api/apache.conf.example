@@ -3,6 +3,10 @@
 # This configuration provides HTTPS support with HTTP to HTTPS redirection
 # and proper security headers for the PDNSAdmin PHP API.
 
+# Global SSL Configuration (add to main Apache config or here)
+# OCSP Stapling Cache - must be outside VirtualHost
+SSLStaplingCache "shmcb:${APACHE_RUN_DIR}/ssl_stapling(32768)"
+
 # HTTP Virtual Host - Redirect to HTTPS
 <VirtualHost *:80>
     ServerName pdnsapi.avant.nl
@@ -41,9 +45,8 @@
     SSLCertificateKeyFile /etc/ssl/private/pdnsapi.avant.nl.key
     SSLCertificateChainFile /etc/ssl/certs/pdnsapi.avant.nl-chain.crt
     
-    # Optional: OCSP Stapling
+    # OCSP Stapling (cache configured globally above)
     SSLUseStapling On
-    SSLStaplingCache "shmcb:logs/ssl_stapling(32768)"
 
     # Root directory permissions (if needed)
     <Directory /opt/web/pdnsadpi.avant.nl>

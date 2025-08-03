@@ -202,14 +202,22 @@ openssl s_client -connect pdnsapi.avant.nl:443 2>/dev/null | openssl x509 -noout
 
 ### Common Issues
 
-1. **Certificate Not Found**
+1. **"SSLStaplingCache cannot occur within VirtualHost section"**
+   ```bash
+   # Move SSLStaplingCache to main Apache config
+   echo 'SSLStaplingCache "shmcb:${APACHE_RUN_DIR}/ssl_stapling(32768)"' | sudo tee /etc/apache2/conf-available/ssl-stapling.conf
+   sudo a2enconf ssl-stapling
+   sudo systemctl reload apache2
+   ```
+
+2. **Certificate Not Found**
    ```bash
    # Check certificate files exist
    ls -la /etc/ssl/certs/pdnsapi.avant.nl*
    ls -la /etc/ssl/private/pdnsapi.avant.nl*
    ```
 
-2. **Permission Denied**
+3. **Permission Denied**
    ```bash
    # Fix certificate permissions
    sudo chmod 644 /etc/ssl/certs/pdnsapi.avant.nl.crt
@@ -218,11 +226,11 @@ openssl s_client -connect pdnsapi.avant.nl:443 2>/dev/null | openssl x509 -noout
    sudo chown root:ssl-cert /etc/ssl/private/pdnsapi.avant.nl.key
    ```
 
-3. **Mixed Content Warnings**
+4. **Mixed Content Warnings**
    - Ensure all API calls use HTTPS
    - Update any hardcoded HTTP URLs in your application
 
-4. **Certificate Chain Issues**
+5. **Certificate Chain Issues**
    ```bash
    # Test certificate chain
    openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/pdnsapi.avant.nl.crt
@@ -261,10 +269,27 @@ SSLSessionCache shmcb:/var/cache/apache2/ssl_scache(512000)
 SSLSessionCacheTimeout 300
 ```
 
-### OCSP Stapling (Already included)
+### OCSP Stapling Configuration
+
+**Important**: The OCSP Stapling cache must be configured globally, not within VirtualHost sections.
+
+Add to main Apache configuration (usually `/etc/apache2/apache2.conf` or `/etc/apache2/conf-available/ssl-stapling.conf`):
 ```apache
+# Global OCSP Stapling configuration
+SSLStaplingCache "shmcb:${APACHE_RUN_DIR}/ssl_stapling(32768)"
+```
+
+Then in your VirtualHost:
+```apache
+# Enable OCSP Stapling (cache configured globally)
 SSLUseStapling On
-SSLStaplingCache "shmcb:logs/ssl_stapling(32768)"
+```
+
+To enable the configuration:
+```bash
+# If using a separate config file
+sudo a2enconf ssl-stapling
+sudo systemctl reload apache2
 ```
 
 ## 13. Security Recommendations
