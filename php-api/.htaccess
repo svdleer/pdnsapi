@@ -1,10 +1,14 @@
 RewriteEngine On
 
-# API URL Rewriting
-RewriteRule ^accounts/?(.*)$ api/accounts.php?$1 [L,QSA]
-RewriteRule ^domains/?(.*)$ api/domains.php?$1 [L,QSA]
-RewriteRule ^status/?(.*)$ api/status.php?$1 [L,QSA]
-RewriteRule ^domain-account/?(.*)$ api/domain-account.php?$1 [L,QSA]
+# Allow direct access to specific files
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_URI} \.(php|html|css|js|png|jpg|gif|ico|json|yaml)$
+RewriteRule .* - [L]
+
+# Route everything else through index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [L,QSA]
 
 # Security: Deny access to sensitive files and directories
 <Files "*.sql">
