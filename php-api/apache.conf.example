@@ -1,11 +1,29 @@
+# PDNSAdmin PHP API - Apache Configuration
+# 
+# This configuration provides proper access controls and security headers
+# for the PDNSAdmin PHP API.
+
 <VirtualHost *:80>
-    ServerName your-domain.com
-    DocumentRoot /path/to/php-api
+    ServerName pdnsapi.your-domain.com
+    DocumentRoot /opt/web/pdnsadpi.avant.nl/php-api
     DirectoryIndex index.php
 
-    <Directory /path/to/php-api>
-        Options -Indexes +FollowSymLinks
+    # Main API directory permissions
+    <Directory /opt/web/pdnsadpi.avant.nl/php-api>
+        Options -Indexes +FollowSymLinks +ExecCGI
         AllowOverride All
+        Require all granted
+        
+        # Enable PHP processing
+        <FilesMatch "\.php$">
+            SetHandler application/x-httpd-php
+        </FilesMatch>
+    </Directory>
+
+    # Root directory permissions (if needed)
+    <Directory /opt/web/pdnsadpi.avant.nl>
+        Options -Indexes +FollowSymLinks
+        AllowOverride None
         Require all granted
     </Directory>
 
@@ -19,13 +37,23 @@
     RewriteRule ^/?domain-account/?(.*)$ /api/domain-account.php?$1 [L,QSA]
 
     # Security: Deny access to sensitive directories
-    <Directory /path/to/php-api/config>
+    <Directory /opt/web/pdnsadpi.avant.nl/php-api/config>
         Require all denied
     </Directory>
 
-    <Directory /path/to/php-api/database>
+    <Directory /opt/web/pdnsadpi.avant.nl/php-api/database>
         Require all denied
     </Directory>
+
+    # Deny access to .git directory and other version control
+    <DirectoryMatch "/(\.git|\.svn|\.hg)/">
+        Require all denied
+    </DirectoryMatch>
+
+    # Deny access to backup and temporary files
+    <FilesMatch "\.(bak|backup|tmp|temp|old|orig|save)$">
+        Require all denied
+    </FilesMatch>
 
     # Security headers
     Header always set X-Frame-Options "SAMEORIGIN"

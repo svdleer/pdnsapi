@@ -20,46 +20,100 @@ A PHP-based API wrapper for PDNSAdmin that provides local database storage and e
 - PDO extension
 - cURL extension
 - PDNSAdmin instance with API access
+- Apache/Nginx web server with proper configuration
 
 ## Installation
 
 1. **Clone/Download the API files**
+
 2. **Setup Database**:
    ```bash
    mysql -u root -p < database/schema.sql
    ```
 
 3. **Configure Database Connection**:
-   Edit `config/database.php` with your database credentials:
-   ```php
-   private $host = 'localhost';
-   private $db_name = 'pdns_api_db';
-   private $username = 'your_username';
-   private $password = 'your_password';
+   Copy and edit the configuration files:
+   ```bash
+   cp config/database.php.example config/database.php
+   cp config/config.php.example config/config.php
    ```
-
-4. **Configure PDNSAdmin Connection**:
-   Edit `config/config.php` with your PDNSAdmin details:
+   
+   Edit `config/database.php`:
    ```php
-   $pdns_config = [
-       'base_url' => 'http://your-pdnsadmin-host:port/api/v1',
-       'auth_type' => 'basic', // or 'apikey'
+   $config = [
+       'host' => 'localhost',
+       'dbname' => 'pdns_api_db',
        'username' => 'your_username',
-       'password' => 'your_password',
-       'api_key' => null // if using API key auth
+       'password' => 'your_password'
    ];
    ```
 
-5. **Web Server Setup**:
-   Point your web server document root to the `php-api` directory.
+4. **Configure PDNSAdmin Connection**:
+   Edit `config/config.php`:
+   ```php
+   $pdns_config = [
+       'api_url' => 'http://your-pdnsadmin-host:port/api/v1',
+       'api_key' => 'your-pdnsadmin-api-key'
+   ];
+   ```
+
+5. **Generate API Keys for Authentication**:
+   ```bash
+   php generate-api-keys.php
+   ```
+   
+   Update the API keys in `config/config.php`:
+   ```php
+   'api_keys' => [
+       'your-generated-64-char-key' => 'Production Key',
+       'another-key-for-development' => 'Development Key'
+   ],
+   ```
+
+6. **Web Server Setup**:
+   - **Apache**: Copy `apache.conf.example` to your Apache sites configuration
+   - **Nginx**: Use `nginx.conf.example` for Nginx configuration
+   - Ensure proper directory permissions:
+     ```bash
+     sudo chown -R www-data:www-data /path/to/php-api
+     sudo chmod -R 755 /path/to/php-api
+     ```
+
+## Authentication
+
+All API endpoints (except documentation) require authentication using API keys.
+
+### Authentication Methods
+
+1. **X-API-Key Header (Recommended)**:
+   ```bash
+   curl -H "X-API-Key: your-api-key-here" http://your-api/accounts
+   ```
+
+2. **Authorization Bearer Token**:
+   ```bash
+   curl -H "Authorization: Bearer your-api-key-here" http://your-api/accounts
+   ```
+
+3. **Query Parameter (Development only)**:
+   ```bash
+   curl "http://your-api/accounts?api_key=your-api-key-here"
+   ```
+
+### Exempt Endpoints (No Authentication Required)
+- `/` - API documentation
+- `/docs` - Swagger UI
+- `/openapi*` - OpenAPI specifications
 
 ## API Endpoints
+
+All examples below include authentication headers.
 
 ### Account Management
 
 #### Get All Accounts
-```
-GET /accounts
+```bash
+curl -H "X-API-Key: your-api-key" GET /accounts
 ```
 
 #### Get Account by ID
@@ -320,9 +374,37 @@ Common HTTP status codes:
    - Ensure web server has read/write access to the API directory
    - Check database user permissions
 
+3. **Apache "AH01630: client denied by server configuration"**:
+   ```bash
+   # Set proper permissions
+   sudo chown -R www-data:www-data /opt/web/pdnsadpi.avant.nl
+   sudo chmod -R 755 /opt/web/pdnsadpi.avant.nl
+   
+   # Check Apache virtual host configuration
+   # See APACHE_TROUBLESHOOTING.md for detailed solutions
+   ```
+
+4. **Authentication Issues**:
+   - Verify API key in config/config.php
+   - Check X-API-Key header is being sent
+   - Ensure endpoint is not in exempt_endpoints list
+
 ### Debug Mode
 
-Enable debug mode by checking API logs and responses. The `api_logs` table stores all external API calls for troubleshooting.
+Enable debug mode in `config/config.php`:
+```php
+'debug_mode' => true,
+'log_level' => 'DEBUG'
+```
+
+This will log all API requests and authentication details to your PHP error log.
+
+### Additional Resources
+
+- `APACHE_TROUBLESHOOTING.md` - Detailed Apache configuration help
+- `AUTHENTICATION.md` - Complete authentication guide
+- `/docs` - Interactive Swagger UI documentation
+- `/openapi` - OpenAPI 3.x specification
 
 ## License
 
