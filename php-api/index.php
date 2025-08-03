@@ -5,9 +5,6 @@ require_once 'config/database.php';
 // Enforce HTTPS if configured
 enforceHTTPS();
 
-// Enforce API key authentication
-requireApiKey();
-
 // Simple routing
 $request_uri = $_SERVER['REQUEST_URI'];
 $path = parse_url($request_uri, PHP_URL_PATH);
@@ -19,6 +16,9 @@ if (strpos($path, $base_path) === 0) {
     $path = substr($path, strlen($base_path));
     $path = trim($path, '/');
 }
+
+// Enforce API key authentication (will check exempt endpoints internally)
+requireApiKey();
 
 // Route to appropriate API endpoint
 switch($path) {
