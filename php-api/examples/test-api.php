@@ -71,7 +71,7 @@ $account_data = [
     'mail' => 'test@example.com'
 ];
 
-$response = apiRequest($api_base_url . '/accounts', 'POST', $account_data);
+$response = apiRequest($api_base_url . '/users', 'POST', $account_data);
 if ($response['status_code'] == 201) {
     echo "   ✓ Account '{$account_data['name']}' created successfully\n";
     $created_account_name = $account_data['name'];
@@ -80,20 +80,20 @@ if ($response['status_code'] == 201) {
     $created_account_name = null;
 }
 
-// 5. List all accounts
-echo "\n5. Listing all accounts...\n";
-$response = apiRequest($api_base_url . '/accounts');
+// 5. List all users
+echo "\n5. Listing all users...\n";
+$response = apiRequest($api_base_url . '/users');
 if ($response['status_code'] == 200) {
-    $accounts = $response['data']['data'];
-    echo "   ✓ Found " . count($accounts) . " accounts:\n";
-    foreach ($accounts as $account) {
-        echo "     - ID: {$account['id']}, Name: {$account['name']}, Email: {$account['mail']}\n";
-        if ($account['name'] === $created_account_name) {
-            $created_account_id = $account['id'];
+    $users = $response['data']['data'];
+    echo "   ✓ Found " . count($users) . " users:\n";
+    foreach ($users as $user) {
+        echo "     - ID: {$user['id']}, Name: {$user['name']}, Email: {$user['mail']}\n";
+        if ($user['name'] === $created_account_name) {
+            $created_account_id = $user['id'];
         }
     }
 } else {
-    echo "   ✗ Failed to list accounts\n";
+    echo "   ✗ Failed to list users\n";
 }
 
 // 6. List all domains
@@ -147,7 +147,7 @@ if (isset($created_account_id) && !empty($domains)) {
 // 9. Clean up - delete the test account
 if (isset($created_account_id)) {
     echo "\n9. Cleaning up - deleting test account...\n";
-    $response = apiRequest($api_base_url . '/accounts?id=' . $created_account_id, 'DELETE');
+    $response = apiRequest($api_base_url . '/users?id=' . $created_account_id, 'DELETE');
     if ($response['status_code'] == 200) {
         echo "   ✓ Test account deleted successfully\n";
     } else {
@@ -160,10 +160,10 @@ echo "\nAPI Endpoints tested:\n";
 echo "- GET /status\n";
 echo "- GET /status?action=test_connection\n";
 echo "- GET /domains?sync=true\n";
-echo "- POST /accounts\n";
-echo "- GET /accounts\n";
+echo "- POST /users\n";
+echo "- GET /users\n";
 echo "- GET /domains\n";
 echo "- POST /domain-account?action=add\n";
 echo "- POST /domain-account?action=list\n";
-echo "- DELETE /accounts\n";
+echo "- DELETE /users\n";
 ?>

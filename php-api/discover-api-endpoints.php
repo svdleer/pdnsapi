@@ -22,8 +22,8 @@ $test_endpoints = [
     '/api/pdnsadmin/zones',
     '/api/zones',
     '/pdnsadmin/api/v1/zones',
-    '/api/v1/pdnsadmin/accounts',
-    '/api/v1/accounts'
+    '/api/v1/pdnsadmin/users',
+    '/api/v1/users'
 ];
 
 function testEndpoint($url, $credentials) {

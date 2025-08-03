@@ -9,7 +9,7 @@ require_once $base_path . '/models/Account.php';
 require_once $base_path . '/classes/PDNSAdminClient.php';
 
 // API key is already validated in index.php, log the request
-logApiRequest('accounts', $_SERVER['REQUEST_METHOD'], 200);
+logApiRequest('users', $_SERVER['REQUEST_METHOD'], 200);
 
 // Database class should now be available through compatibility layer
 if (!class_exists('Database')) {
@@ -69,7 +69,7 @@ switch($request_method) {
         } elseif ($account_name) {
             getAccountByName($account, $account_name);
         } else {
-            getAllAccounts($account);
+            getAllUsers($account);
         }
         break;
         
@@ -98,12 +98,12 @@ switch($request_method) {
         break;
 }
 
-function getAllAccounts($account) {
+function getAllUsers($account) {
     $stmt = $account->read();
     $num = $stmt->rowCount();
     
     if($num > 0) {
-        $accounts_arr = array();
+        $users_arr = array();
         
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             extract($row);
@@ -120,12 +120,12 @@ function getAllAccounts($account) {
                 "updated_at" => $updated_at
             );
             
-            array_push($accounts_arr, $account_item);
+            array_push($users_arr, $account_item);
         }
         
-        sendResponse(200, $accounts_arr);
+        sendResponse(200, $users_arr);
     } else {
-        sendResponse(200, array(), "No accounts found");
+        sendResponse(200, array(), "No users found");
     }
 }
 

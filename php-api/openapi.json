@@ -53,16 +53,16 @@
         }
       }
     },
-    "/accounts": {
+    "/users": {
       "get": {
-        "summary": "Get all accounts",
+        "summary": "Get all users",
         "description": "Retrieve a list of all accounts with their details including IP addresses",
         "tags": [
-          "Accounts"
+          "Users"
         ],
         "responses": {
           "200": {
-            "description": "List of accounts",
+            "description": "List of users",
             "content": {
               "application/json": {
                 "schema": {
@@ -76,7 +76,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "Accounts retrieved successfully"
+                      "example": "Users retrieved successfully"
                     }
                   }
                 }
@@ -92,7 +92,7 @@
         "summary": "Create a new account",
         "description": "Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.",
         "tags": [
-          "Accounts"
+          "Users"
         ],
         "requestBody": {
           "required": true,
@@ -152,12 +152,12 @@
         }
       }
     },
-    "/accounts/{id}": {
+    "/users/{id}": {
       "get": {
         "summary": "Get account by ID",
         "description": "Retrieve a specific account by its ID",
         "tags": [
-          "Accounts"
+          "Users"
         ],
         "parameters": [
           {
@@ -195,7 +195,7 @@
         "summary": "Update account",
         "description": "Update an existing account. Changes are synced with PDNSAdmin (except IP addresses).",
         "tags": [
-          "Accounts"
+          "Users"
         ],
         "parameters": [
           {
@@ -264,7 +264,7 @@
         "summary": "Delete account",
         "description": "Delete an account from both PDNSAdmin and local database",
         "tags": [
-          "Accounts"
+          "Users"
         ],
         "parameters": [
           {
@@ -297,12 +297,12 @@
         }
       }
     },
-    "/accounts/name/{name}": {
+    "/users/name/{name}": {
       "get": {
         "summary": "Get account by name",
         "description": "Retrieve a specific account by its name",
         "tags": [
-          "Accounts"
+          "Users"
         ],
         "parameters": [
           {
@@ -1338,7 +1338,7 @@
       "description": "API documentation and information"
     },
     {
-      "name": "Accounts",
+      "name": "Users",
       "description": "Account management operations with IP address support"
     },
     {
