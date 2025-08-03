@@ -29,6 +29,22 @@ if (!class_exists('Database')) {
     exit;
 }
 
+// Verify PDNSAdmin config
+if (!isset($pdns_config) || !is_array($pdns_config) || !isset($pdns_config['base_url'])) {
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'error' => 'PDNSAdmin configuration missing or invalid',
+        'debug' => [
+            'pdns_config_isset' => isset($pdns_config),
+            'pdns_config_is_array' => isset($pdns_config) ? is_array($pdns_config) : false,
+            'pdns_config_keys' => isset($pdns_config) && is_array($pdns_config) ? array_keys($pdns_config) : [],
+            'pdns_config_preview' => isset($pdns_config) ? (is_array($pdns_config) ? array_slice($pdns_config, 0, 3, true) : gettype($pdns_config)) : 'NOT_SET'
+        ]
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
 // Get database connection
 $database = new Database();
 $db = $database->getConnection();

@@ -70,4 +70,25 @@ if (isset($config) && is_array($config)) {
         }
     }
 }
+
+// PDNSAdmin Configuration Compatibility
+if (!isset($pdns_config) || !is_array($pdns_config)) {
+    // Create default PDNSAdmin config if missing
+    $pdns_config = [
+        'base_url' => 'http://localhost:80/api/v1',
+        'auth_type' => 'basic',
+        'username' => 'admin',
+        'password' => 'password',
+        'api_key' => null
+    ];
+} else {
+    // Ensure required keys exist
+    $pdns_config = array_merge([
+        'base_url' => 'http://localhost:80/api/v1',
+        'auth_type' => 'basic',
+        'username' => 'admin',
+        'password' => 'password',
+        'api_key' => null
+    ], $pdns_config);
+}
 ?>
