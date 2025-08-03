@@ -2,6 +2,19 @@
 require_once 'config/config.php';
 require_once 'config/database.php';
 
+// Handle OPTIONS requests for CORS preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    global $api_settings;
+    if ($api_settings['enable_cors']) {
+        header('Access-Control-Allow-Origin: ' . implode(', ', $api_settings['cors_origins']));
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
+        header('Access-Control-Max-Age: 86400');
+    }
+    http_response_code(200);
+    exit;
+}
+
 // Enforce HTTPS if configured
 enforceHTTPS();
 
