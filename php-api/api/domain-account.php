@@ -7,6 +7,40 @@ require_once $base_path . '/config/database.php';
 require_once $base_path . '/models/Account.php';
 require_once $base_path . '/models/Domain.php';
 
+// Verify Database class is available
+if (!class_exists('Database')) {
+    // Try alternative include paths as fallback
+    $alternative_paths = [
+        __DIR__ . '/../config/database.php',
+        dirname(__FILE__) . '/../config/database.php',
+        realpath(__DIR__ . '/..') . '/config/database.php'
+    ];
+    
+    foreach ($alternative_paths as $path) {
+        if (file_exists($path) && !class_exists('Database')) {
+            require_once $path;
+            break;
+        }
+    }
+    
+    // If still not available, provide detailed error
+    if (!class_exists('Database')) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'error' => 'Database class configuration error',
+            'debug' => [
+                'base_path' => $base_path,
+                'working_dir' => getcwd(),
+                '__DIR__' => __DIR__,
+                'tried_paths' => $alternative_paths,
+                'class_exists' => class_exists('Database', false)
+            ]
+        ]);
+        exit;
+    }
+}
+
 // Get database connection
 $database = new Database();
 $db = $database->getConnection();
