@@ -1,8 +1,8 @@
 <?php
-require_once '../config/config.php';
-require_once '../config/database.php';
-require_once '../models/Account.php';
-require_once '../models/Domain.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/Account.php';
+require_once __DIR__ . '/../models/Domain.php';
 
 // Get database connection
 $database = new Database();
