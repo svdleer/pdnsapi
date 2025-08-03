@@ -40,12 +40,14 @@ A PHP-based API wrapper for PDNSAdmin that provides local database storage and e
    
    Edit `config/database.php`:
    ```php
-   $config = [
-       'host' => 'localhost',
-       'dbname' => 'pdns_api_db',
-       'username' => 'your_username',
-       'password' => 'your_password'
-   ];
+   <?php
+   class Database {
+       private $host = 'localhost';
+       private $db_name = 'pdns_api_db';
+       private $username = 'your_username';
+       private $password = 'your_password';
+       // ... rest of the class
+   }
    ```
 
 4. **Configure PDNSAdmin Connection**:
