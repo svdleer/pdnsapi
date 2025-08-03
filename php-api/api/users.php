@@ -186,6 +186,7 @@ function syncUsersFromPDNSAdmin($account, $pdns_users, $db) {
                 $user_account->contact = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
                 $user_account->mail = $pdns_user['email'] ?? '';
                 $user_account->pdns_user_id = $pdns_user['id'] ?? null;
+                $user_account->klant_id = $pdns_user['klant_id'] ?? null;
                 
                 try {
                     $user_account->update();
@@ -201,6 +202,7 @@ function syncUsersFromPDNSAdmin($account, $pdns_users, $db) {
                 $user_account->mail = $pdns_user['email'] ?? '';
                 $user_account->ip_addresses = json_encode([]); // Empty IP addresses initially
                 $user_account->pdns_user_id = $pdns_user['id'] ?? null;
+                $user_account->klant_id = $pdns_user['klant_id'] ?? null;
                 
                 try {
                     if ($user_account->create()) {
@@ -218,6 +220,7 @@ function syncUsersFromPDNSAdmin($account, $pdns_users, $db) {
                             $user_account->contact = ($pdns_user['firstname'] ?? '') . ' ' . ($pdns_user['lastname'] ?? '');
                             $user_account->mail = $pdns_user['email'] ?? '';
                             $user_account->pdns_user_id = $pdns_user['id'] ?? null;
+                            $user_account->klant_id = $pdns_user['klant_id'] ?? null;
                             
                             try {
                                 $user_account->update();

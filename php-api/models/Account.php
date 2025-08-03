@@ -19,6 +19,7 @@ class Account {
     public $ip_addresses;
     public $pdns_account_id; // Legacy field
     public $pdns_user_id;    // New field for PowerDNS Admin user ID
+    public $klant_id;        // Customer ID field
     public $created_at;
     public $updated_at;
 
@@ -29,7 +30,8 @@ class Account {
     public function create() {
         $query = "INSERT INTO " . $this->table_name . "
                 SET name=:name, description=:description, contact=:contact, 
-                    mail=:mail, ip_addresses=:ip_addresses, pdns_user_id=:pdns_user_id, created_at=NOW()";
+                    mail=:mail, ip_addresses=:ip_addresses, pdns_user_id=:pdns_user_id, 
+                    klant_id=:klant_id, created_at=NOW()";
 
         $stmt = $this->conn->prepare($query);
 
@@ -39,6 +41,7 @@ class Account {
         $stmt->bindParam(":mail", $this->mail);
         $stmt->bindParam(":ip_addresses", $this->ip_addresses);
         $stmt->bindParam(":pdns_user_id", $this->pdns_user_id);
+        $stmt->bindParam(":klant_id", $this->klant_id);
 
         return $stmt->execute();
     }
@@ -90,6 +93,7 @@ class Account {
             $this->ip_addresses = $row['ip_addresses'];
             $this->pdns_account_id = $row['pdns_account_id'] ?? null;
             $this->pdns_user_id = $row['pdns_user_id'] ?? null;
+            $this->klant_id = $row['klant_id'] ?? null;
             $this->created_at = $row['created_at'];
             $this->updated_at = $row['updated_at'];
             return true;
@@ -100,7 +104,8 @@ class Account {
     public function update() {
         $query = "UPDATE " . $this->table_name . "
                 SET description=:description, contact=:contact, mail=:mail, 
-                    ip_addresses=:ip_addresses, pdns_user_id=:pdns_user_id, updated_at=NOW()
+                    ip_addresses=:ip_addresses, pdns_user_id=:pdns_user_id, 
+                    klant_id=:klant_id, updated_at=NOW()
                 WHERE id=:id";
 
         $stmt = $this->conn->prepare($query);
@@ -110,6 +115,7 @@ class Account {
         $stmt->bindParam(':mail', $this->mail);
         $stmt->bindParam(':ip_addresses', $this->ip_addresses);
         $stmt->bindParam(':pdns_user_id', $this->pdns_user_id);
+        $stmt->bindParam(':klant_id', $this->klant_id);
         $stmt->bindParam(':id', $this->id);
 
         return $stmt->execute();

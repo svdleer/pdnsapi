@@ -253,8 +253,18 @@ paths:
 
   /domains:
     get:
-      summary: Get all domains
-      description: Retrieve a list of all domains
+      summary: Get all domains (synced from PowerDNS Admin)
+      description: |
+        Retrieve a list of all domains with automatic synchronization from PowerDNS Admin.
+        
+        **Important:** Domain creation is not supported through this API. 
+        Domains must be created in PowerDNS Admin directly, then synced using the ?action=sync parameter.
+        
+        **Functionality:**
+        - Automatically fetches latest domains from PowerDNS Admin API
+        - Syncs domain data to local database for caching
+        - Returns domains with account relationships
+        - Use ?action=sync to force refresh from PowerDNS Admin
       tags:
         - Domains
       parameters:
@@ -282,45 +292,6 @@ paths:
                       $ref: '#/components/schemas/Domain'
                   message:
                     type: string
-
-    post:
-      summary: Create a new domain
-      description: |
-        Create a new domain in PDNSAdmin and local database. 
-        If account_id is provided, the domain is automatically assigned to that account in PDNSAdmin.
-      tags:
-        - Domains
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DomainCreate'
-            examples:
-              basic_domain:
-                summary: Basic domain
-                value:
-                  name: "example.com."
-                  kind: "Master"
-                  nameservers: ["ns1.example.com.", "ns2.example.com."]
-              domain_with_account:
-                summary: Domain assigned to account
-                value:
-                  name: "customer.com."
-                  kind: "Master"
-                  account_id: 1
-                  nameservers: ["ns1.customer.com.", "ns2.customer.com."]
-      responses:
-        '201':
-          description: Domain created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessMessage'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
 
   /domains/{id}:
     get:
@@ -526,8 +497,18 @@ components:
         pdns_account_id:
           type: integer
           nullable: true
-          description: PDNSAdmin account ID
+          description: PDNSAdmin account ID (legacy)
           example: 5
+        pdns_user_id:
+          type: integer
+          nullable: true
+          description: PowerDNS Admin user ID (synced from PowerDNS Admin)
+          example: 12
+        klant_id:
+          type: integer
+          nullable: true
+          description: Customer ID for business relationships
+          example: 1001
         created_at:
           type: string
           format: date-time
@@ -642,41 +623,6 @@ components:
           type: string
           format: date-time
           description: Last update timestamp
-
-    DomainCreate:
-      type: object
-      required:
-        - name
-      properties:
-        name:
-          type: string
-          description: Domain name (must end with dot)
-          example: "example.com."
-        kind:
-          type: string
-          enum: [Native, Master, Slave]
-          description: Zone kind
-          default: "Master"
-        account_id:
-          type: integer
-          description: Account ID to assign domain to
-          example: 1
-        masters:
-          type: array
-          items:
-            type: string
-          description: List of master servers (for slave zones)
-          example: ["192.168.1.100"]
-        nameservers:
-          type: array
-          items:
-            type: string
-          description: List of nameservers
-          example: ["ns1.example.com.", "ns2.example.com."]
-        dnssec:
-          type: boolean
-          description: Enable DNSSEC
-          default: false
 
     DomainUpdate:
       type: object

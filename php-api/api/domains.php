@@ -56,7 +56,7 @@ switch($request_method) {
         if (isset($_GET['action']) && $_GET['action'] === 'add_to_account') {
             addDomainToAccount($domain, $_POST);
         } else {
-            createDomain($domain, $pdns_client);
+            sendError(405, "Domain creation is not supported. Use sync action to import domains from PowerDNS Admin.");
         }
         break;
         
@@ -279,62 +279,6 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
         }
     } else {
         sendError($pdns_response['status_code'], "Failed to fetch domains from PDNSAdmin");
-    }
-}
-
-function createDomain($domain, $pdns_client) {
-    global $db;
-    $data = json_decode(file_get_contents("php://input"));
-    
-    if(!empty($data->name)) {
-        // Get account information if account_id is provided
-        $account_name = null;
-        if (!empty($data->account_id)) {
-            $account = new Account($db);
-            $account->id = $data->account_id;
-            if ($account->readOne()) {
-                $account_name = $account->name;
-            }
-        }
-        
-        // Prepare data for PDNSAdmin
-        $pdns_data = [
-            'name' => $data->name,
-            'kind' => $data->kind ?? 'Master',
-            'masters' => $data->masters ?? [],
-            'nameservers' => $data->nameservers ?? []
-        ];
-        
-        // Add account to PDNSAdmin data if available
-        if ($account_name) {
-            $pdns_data['account'] = $account_name;
-        }
-        
-        // Create domain in PDNSAdmin first
-        $pdns_response = $pdns_client->createDomain($pdns_data);
-        
-        if($pdns_response['status_code'] == 201) {
-            // If successful in PDNSAdmin, save to local database
-            $domain->name = $data->name;
-            $domain->type = 'Zone';
-            $domain->account_id = $data->account_id ?? null;
-            $domain->pdns_zone_id = $pdns_response['data']['id'] ?? null;
-            $domain->kind = $data->kind ?? 'Master';
-            $domain->masters = is_array($data->masters ?? []) ? implode(',', $data->masters) : '';
-            $domain->dnssec = $data->dnssec ?? false;
-            $domain->account = $account_name ?? '';
-            
-            if($domain->create()) {
-                sendResponse(201, null, "Domain created successfully and assigned to account");
-            } else {
-                sendError(503, "Unable to create domain in local database");
-            }
-        } else {
-            $error_msg = $pdns_response['data']['error'] ?? 'Failed to create domain in PDNSAdmin';
-            sendError($pdns_response['status_code'], $error_msg);
-        }
-    } else {
-        sendError(400, "Unable to create domain. Domain name is required");
     }
 }
 
