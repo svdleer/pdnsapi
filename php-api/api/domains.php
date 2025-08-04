@@ -88,10 +88,10 @@ function getAllDomains($domain) {
             extract($row);
             
             $domain_item = array(
-                "id" => $id,
+                "id" => (int)$id,
                 "name" => rtrim($name, '.'), // Remove trailing dot
-                "pdns_zone_id" => $pdns_zone_id,
-                "account_id" => $account_id
+                "pdns_zone_id" => (int)$pdns_zone_id, // Ensure it's an integer
+                "account_id" => $account_id ? (int)$account_id : null
             );
             
             array_push($domains_arr, $domain_item);
@@ -108,10 +108,10 @@ function getDomain($domain, $domain_id) {
     
     if($domain->readOne()) {
         $domain_arr = array(
-            "id" => $domain->id,
+            "id" => (int)$domain->id,
             "name" => rtrim($domain->name, '.'), // Remove trailing dot
-            "pdns_zone_id" => $domain->pdns_zone_id,
-            "account_id" => $domain->account_id
+            "pdns_zone_id" => (int)$domain->pdns_zone_id, // Ensure it's an integer
+            "account_id" => $domain->account_id ? (int)$domain->account_id : null
         );
         
         sendResponse(200, $domain_arr);
@@ -131,10 +131,10 @@ function getDomainsByAccount($domain, $account_id) {
             extract($row);
             
             $domain_item = array(
-                "id" => $id,
+                "id" => (int)$id,
                 "name" => rtrim($name, '.'), // Remove trailing dot
-                "pdns_zone_id" => $pdns_zone_id,
-                "account_id" => $account_id
+                "pdns_zone_id" => (int)$pdns_zone_id, // Ensure it's an integer
+                "account_id" => $account_id ? (int)$account_id : null
             );
             
             array_push($domains_arr, $domain_item);
@@ -216,7 +216,7 @@ function syncDomainsFromPDNSAdminDB($domain, $pdns_admin_conn) {
         
         foreach ($domains_grouped as $domain_data) {
             $domain_name = $domain_data['domain_name'];
-            $pdns_zone_id = $domain_data['pdns_domain_id'];
+            $pdns_zone_id = (int)$domain_data['pdns_domain_id']; // Use the numeric ID from PowerDNS Admin DB
             
             if (empty($domain_name)) {
                 continue; // Skip domains without a name
