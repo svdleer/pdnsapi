@@ -183,6 +183,7 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
             foreach($pdns_domains as $pdns_domain) {
                 $domain_name = $pdns_domain['name'] ?? '';
                 $pdns_zone_id = $pdns_domain['id'] ?? null;
+                $account_name = $pdns_domain['account'] ?? '';
                 
                 if (empty($domain_name)) {
                     continue; // Skip domains without a name
@@ -195,6 +196,19 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                 $check_stmt->execute();
                 $existing_domain = $check_stmt->fetch(PDO::FETCH_ASSOC);
                 
+                // Find account_id if account name is provided
+                $account_id = null;
+                if (!empty($account_name)) {
+                    $account_query = "SELECT id FROM accounts WHERE name = ?";
+                    $account_stmt = $db->prepare($account_query);
+                    $account_stmt->bindParam(1, $account_name);
+                    $account_stmt->execute();
+                    $account_result = $account_stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($account_result) {
+                        $account_id = $account_result['id'];
+                    }
+                }
+                
                 // Create a new domain object for each domain to avoid conflicts
                 $domain_obj = new Domain($db);
                 
@@ -204,32 +218,34 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                     $domain_obj->readByName(); // Load full data
                     $domain_obj->pdns_zone_id = $pdns_zone_id;
                     $domain_obj->name = $domain_name;
+                    $domain_obj->account = $account_name;
+                    $domain_obj->account_id = $account_id;
                     // Note: PowerDNS Admin API /pdnsadmin/zones provides id, name, and account info
-                    // We only update basic fields here to preserve other existing data
+                    // We update the account connection here
                     
                     try {
                         if ($domain_obj->updateBasic()) {
                             $updated_count++;
-                            error_log("Updated existing domain: {$domain_name} (zone_id: {$pdns_zone_id})");
+                            error_log("Updated existing domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_name})");
                         }
                     } catch (Exception $e) {
                         error_log("Failed to update domain {$domain_name}: " . $e->getMessage());
                     }
                 } else {
-                    // Domain doesn't exist, create it with minimal data
+                    // Domain doesn't exist, create it with account info
                     $domain_obj->name = $domain_name;
                     $domain_obj->type = 'Zone'; // Default type
                     $domain_obj->pdns_zone_id = $pdns_zone_id;
                     $domain_obj->kind = 'Master'; // Default kind
                     $domain_obj->masters = '';
                     $domain_obj->dnssec = false;
-                    $domain_obj->account = ''; // No account info available from API
-                    $domain_obj->account_id = null; // No user linking available
+                    $domain_obj->account = $account_name;
+                    $domain_obj->account_id = $account_id;
                     
                     try {
                         if ($domain_obj->create()) {
                             $synced_count++;
-                            error_log("Created new domain: {$domain_name} (zone_id: {$pdns_zone_id})");
+                            error_log("Created new domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_name})");
                         }
                     } catch (Exception $e) {
                         error_log("Failed to create domain {$domain_name}: " . $e->getMessage());
