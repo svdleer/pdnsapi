@@ -5,7 +5,8 @@
 $pdns_config = [
     'base_url' => 'https://dnsadmin.avant.nl/api/v1',
     'auth_type' => 'apikey',
-    'api_key' => 'beuePDTD2C8HzSx'
+    'api_key' => 'SHc4bmMxR2JMOENZZGRv', // PowerDNS Admin API key
+    'pdns_server_key' => 'morWehofCidwiWejishOwko=!b' // PowerDNS server API key for proxied requests
 ];
 
 // API settings

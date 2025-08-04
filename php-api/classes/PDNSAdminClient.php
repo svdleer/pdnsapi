@@ -5,6 +5,7 @@
 class PDNSAdminClient {
     private $base_url;
     private $api_key;
+    private $pdns_server_key;
     private $auth_type;
     private $username;
     private $password;
@@ -12,6 +13,7 @@ class PDNSAdminClient {
     public function __construct($config) {
         $this->base_url = rtrim($config['base_url'], '/');
         $this->api_key = $config['api_key'] ?? null;
+        $this->pdns_server_key = $config['pdns_server_key'] ?? null;
         $this->auth_type = $config['auth_type'] ?? 'apikey'; // 'apikey' or 'basic'
         $this->username = $config['username'] ?? null;
         $this->password = $config['password'] ?? null;
@@ -28,9 +30,13 @@ class PDNSAdminClient {
         // Set headers
         $headers = ['Content-Type: application/json'];
         
-        if ($this->auth_type === 'apikey' && $this->api_key) {
-            // Use X-API-Key header for PowerDNS Admin API
-            $headers[] = 'X-API-Key: ' . $this->api_key;
+        // Determine which API key to use based on endpoint
+        $use_server_key = $this->isServerEndpoint($endpoint);
+        $key_to_use = $use_server_key ? $this->pdns_server_key : $this->api_key;
+        
+        if ($this->auth_type === 'apikey' && $key_to_use) {
+            // Use X-API-Key header
+            $headers[] = 'X-API-Key: ' . $key_to_use;
         } elseif ($this->auth_type === 'basic' && $this->username && $this->password) {
             // Encode username:password to base64 for basic auth
             $credentials = base64_encode($this->username . ':' . $this->password);
@@ -120,6 +126,30 @@ class PDNSAdminClient {
 
     public function deleteApiKey($apikey_id) {
         return $this->makeRequest("/pdnsadmin/apikeys/{$apikey_id}", 'DELETE');
+    }
+
+    /**
+     * Determine if endpoint requires PowerDNS server API key (for proxied requests)
+     */
+    private function isServerEndpoint($endpoint) {
+        // Endpoints that are proxied to PowerDNS server
+        $server_endpoints = [
+            '/servers/1/zones',
+            '/servers/localhost/zones',
+            '/servers/1/config',
+            '/servers/localhost/config',
+            '/servers/1/statistics',
+            '/servers/localhost/statistics'
+        ];
+        
+        // Check if endpoint starts with any server endpoint pattern
+        foreach ($server_endpoints as $server_endpoint) {
+            if (strpos($endpoint, $server_endpoint) === 0) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
 ?>
