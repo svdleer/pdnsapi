@@ -222,11 +222,11 @@ function syncDomainsFromPDNSAdminDB($domain, $pdns_admin_conn) {
                 continue; // Skip domains without a name
             }
             
-            // Check if domain exists in our database (handle both with and without trailing dot)
+            // Check if domain exists in our database
             $domain_name_no_dot = rtrim($domain_name, '.');
-            $check_query = "SELECT id FROM domains WHERE name = ? OR name = ? FOR UPDATE";
+            $check_query = "SELECT id, name FROM domains WHERE name = ? FOR UPDATE";
             $check_stmt = $db->prepare($check_query);
-            $check_stmt->execute([$domain_name, $domain_name_no_dot . '.']);
+            $check_stmt->execute([$domain_name_no_dot]);
             $existing_domain = $check_stmt->fetch(PDO::FETCH_ASSOC);
             
             // Determine account info from users
@@ -270,7 +270,7 @@ function syncDomainsFromPDNSAdminDB($domain, $pdns_admin_conn) {
                 $domain_obj->id = $existing_domain['id'];
                 if ($domain_obj->readOne()) {
                     $domain_obj->pdns_zone_id = $pdns_zone_id;
-                    $domain_obj->name = $domain_name; // Store without trailing dot
+                    $domain_obj->name = $domain_name_no_dot; // Always store without trailing dot
                     $domain_obj->type = $domain_data['domain_type'] ?: 'Zone';
                     $domain_obj->dnssec = (bool)$domain_data['dnssec'];
                     $domain_obj->account = $account_name;
@@ -287,7 +287,7 @@ function syncDomainsFromPDNSAdminDB($domain, $pdns_admin_conn) {
                 }
             } else {
                 // Domain doesn't exist, create it
-                $domain_obj->name = $domain_name; // Store without trailing dot
+                $domain_obj->name = $domain_name_no_dot; // Always store without trailing dot
                 $domain_obj->type = $domain_data['domain_type'] ?: 'Zone';
                 $domain_obj->pdns_zone_id = $pdns_zone_id;
                 $domain_obj->kind = 'Master'; // Default kind
