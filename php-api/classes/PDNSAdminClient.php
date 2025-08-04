@@ -45,6 +45,10 @@ class PDNSAdminClient {
         
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
+        // Add timeouts to prevent hanging
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        
         if ($data && in_array($method, ['POST', 'PUT', 'PATCH'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
@@ -62,7 +66,7 @@ class PDNSAdminClient {
 
     // Domain/Zone operations
     public function getAllDomains() {
-        return $this->makeRequest('/servers/1/zones');
+        return $this->makeRequest('/servers/localhost/zones');
     }
 
     public function getDomain($zone_id) {
@@ -129,20 +133,24 @@ class PDNSAdminClient {
     }
 
     /**
-     * Determine if endpoint requires PowerDNS server API key (for proxied requests)
+     * Determine if endpoint requires PowerDNS server API key (for direct PowerDNS requests)
+     * Since we're going through PowerDNS Admin, we should use Admin API key for all requests
      */
     private function isServerEndpoint($endpoint) {
-        // Endpoints that are proxied to PowerDNS server
+        // For now, always use PowerDNS Admin API key since all requests go through PowerDNS Admin
+        // Only use PowerDNS server key if we were making direct requests to PowerDNS server
+        return false;
+        
+        /* Original logic for direct PowerDNS server requests:
         $server_endpoints = [
-            '/servers/1/zones',
             '/servers/localhost/zones',
-            '/servers/1/config',
+            '/servers/1/zones',
             '/servers/localhost/config',
-            '/servers/1/statistics',
-            '/servers/localhost/statistics'
+            '/servers/1/config',
+            '/servers/localhost/statistics',
+            '/servers/1/statistics'
         ];
         
-        // Check if endpoint starts with any server endpoint pattern
         foreach ($server_endpoints as $server_endpoint) {
             if (strpos($endpoint, $server_endpoint) === 0) {
                 return true;
@@ -150,6 +158,7 @@ class PDNSAdminClient {
         }
         
         return false;
+        */
     }
 }
 ?>
