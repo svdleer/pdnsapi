@@ -70,7 +70,7 @@ function getAllAssignments() {
     $query = "
         SELECT 
             uda.domain_id,
-            uda.account_id,
+            uda.user_id as account_id,
             uda.assigned_at,
             d.name as domain_name,
             d.pdns_zone_id,
@@ -78,7 +78,7 @@ function getAllAssignments() {
             a.mail as account_email
         FROM user_domain_assignments uda
         JOIN domains d ON uda.domain_id = d.id
-        JOIN accounts a ON uda.account_id = a.id
+        JOIN accounts a ON uda.user_id = a.id
         ORDER BY d.name, a.name
     ";
     
@@ -95,7 +95,7 @@ function getAssignmentsByDomain($domain_id) {
     $query = "
         SELECT 
             uda.domain_id,
-            uda.account_id,
+            uda.user_id as account_id,
             uda.assigned_at,
             d.name as domain_name,
             d.pdns_zone_id,
@@ -103,7 +103,7 @@ function getAssignmentsByDomain($domain_id) {
             a.mail as account_email
         FROM user_domain_assignments uda
         JOIN domains d ON uda.domain_id = d.id
-        JOIN accounts a ON uda.account_id = a.id
+        JOIN accounts a ON uda.user_id = a.id
         WHERE uda.domain_id = ?
         ORDER BY a.name
     ";
@@ -122,7 +122,7 @@ function getAssignmentsByAccount($account_id) {
     $query = "
         SELECT 
             uda.domain_id,
-            uda.account_id,
+            uda.user_id as account_id,
             uda.assigned_at,
             d.name as domain_name,
             d.pdns_zone_id,
@@ -130,8 +130,8 @@ function getAssignmentsByAccount($account_id) {
             a.mail as account_email
         FROM user_domain_assignments uda
         JOIN domains d ON uda.domain_id = d.id
-        JOIN accounts a ON uda.account_id = a.id
-        WHERE uda.account_id = ?
+        JOIN accounts a ON uda.user_id = a.id
+        WHERE uda.user_id = ?
         ORDER BY d.name
     ";
     
@@ -149,7 +149,7 @@ function getAssignment($domain_id, $account_id) {
     $query = "
         SELECT 
             uda.domain_id,
-            uda.account_id,
+            uda.user_id as account_id,
             uda.assigned_at,
             d.name as domain_name,
             d.pdns_zone_id,
@@ -157,8 +157,8 @@ function getAssignment($domain_id, $account_id) {
             a.mail as account_email
         FROM user_domain_assignments uda
         JOIN domains d ON uda.domain_id = d.id
-        JOIN accounts a ON uda.account_id = a.id
-        WHERE uda.domain_id = ? AND uda.account_id = ?
+        JOIN accounts a ON uda.user_id = a.id
+        WHERE uda.domain_id = ? AND uda.user_id = ?
     ";
     
     $stmt = $db->prepare($query);
@@ -209,7 +209,7 @@ function createAssignment() {
     }
     
     // Check if assignment already exists
-    $check_query = "SELECT 1 FROM user_domain_assignments WHERE domain_id = ? AND account_id = ?";
+    $check_query = "SELECT 1 FROM user_domain_assignments WHERE domain_id = ? AND user_id = ?";
     $check_stmt = $db->prepare($check_query);
     $check_stmt->bindParam(1, $data->domain_id);
     $check_stmt->bindParam(2, $data->account_id);
@@ -221,7 +221,7 @@ function createAssignment() {
     }
     
     // Create assignment
-    $insert_query = "INSERT INTO user_domain_assignments (domain_id, account_id) VALUES (?, ?)";
+    $insert_query = "INSERT INTO user_domain_assignments (domain_id, user_id) VALUES (?, ?)";
     $insert_stmt = $db->prepare($insert_query);
     $insert_stmt->bindParam(1, $data->domain_id);
     $insert_stmt->bindParam(2, $data->account_id);
@@ -242,7 +242,7 @@ function deleteAssignment($domain_id, $account_id) {
     global $db;
     
     // Check if assignment exists
-    $check_query = "SELECT 1 FROM user_domain_assignments WHERE domain_id = ? AND account_id = ?";
+    $check_query = "SELECT 1 FROM user_domain_assignments WHERE domain_id = ? AND user_id = ?";
     $check_stmt = $db->prepare($check_query);
     $check_stmt->bindParam(1, $domain_id);
     $check_stmt->bindParam(2, $account_id);
@@ -254,7 +254,7 @@ function deleteAssignment($domain_id, $account_id) {
     }
     
     // Delete assignment
-    $delete_query = "DELETE FROM user_domain_assignments WHERE domain_id = ? AND account_id = ?";
+    $delete_query = "DELETE FROM user_domain_assignments WHERE domain_id = ? AND user_id = ?";
     $delete_stmt = $db->prepare($delete_query);
     $delete_stmt->bindParam(1, $domain_id);
     $delete_stmt->bindParam(2, $account_id);
