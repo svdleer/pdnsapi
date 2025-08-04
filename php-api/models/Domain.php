@@ -145,6 +145,20 @@ class Domain {
         return $stmt->execute();
     }
 
+    public function updateBasic() {
+        // Update only basic fields available from PowerDNS Admin API
+        $query = "UPDATE " . $this->table_name . "
+                SET pdns_zone_id=:pdns_zone_id, updated_at=NOW()
+                WHERE id=:id";
+
+        $stmt = $this->conn->prepare($query);
+
+        $stmt->bindParam(':pdns_zone_id', $this->pdns_zone_id);
+        $stmt->bindParam(':id', $this->id);
+
+        return $stmt->execute();
+    }
+
     public function delete() {
         $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
         $stmt = $this->conn->prepare($query);

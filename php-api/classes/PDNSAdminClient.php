@@ -29,8 +29,8 @@ class PDNSAdminClient {
         $headers = ['Content-Type: application/json'];
         
         if ($this->auth_type === 'apikey' && $this->api_key) {
-            // Use API key as base64 encoded basic auth
-            $headers[] = 'Authorization: Basic ' . $this->api_key;
+            // Use X-API-Key header for PowerDNS Admin API
+            $headers[] = 'X-API-Key: ' . $this->api_key;
         } elseif ($this->auth_type === 'basic' && $this->username && $this->password) {
             // Encode username:password to base64 for basic auth
             $credentials = base64_encode($this->username . ':' . $this->password);
@@ -56,7 +56,11 @@ class PDNSAdminClient {
 
     // Domain/Zone operations
     public function getAllDomains() {
-        return $this->makeRequest('/pdnsadmin/zones');
+        return $this->makeRequest('/servers/1/zones');
+    }
+
+    public function getDomain($zone_id) {
+        return $this->makeRequest("/pdnsadmin/zones/{$zone_id}");
     }
 
     public function createDomain($zone_data) {
