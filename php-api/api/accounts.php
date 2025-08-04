@@ -6,7 +6,6 @@ require_once $base_path . '/config/config.php';
 require_once $base_path . '/config/database.php';
 require_once $base_path . '/includes/database-compat.php';
 require_once $base_path . '/models/Account.php';
-require_once $base_path . '/classes/PDNSAdminClient.php';
 
 // API key is already validated in index.php, log the request
 logApiRequest('accounts', $_SERVER['REQUEST_METHOD'], 200);
@@ -19,12 +18,16 @@ if (!class_exists('Database')) {
     exit;
 }
 
-// Get database connection
+// Get database connections
 $database = new Database();
 $db = $database->getConnection();
 
-// Initialize PDNSAdmin client
-$pdns_client = new PDNSAdminClient($pdns_config);
+// Get PowerDNS Admin database connection
+$pdns_admin_conn = null;
+if (class_exists('PDNSAdminDatabase')) {
+    $pdns_admin_db = new PDNSAdminDatabase();
+    $pdns_admin_conn = $pdns_admin_db->getConnection();
+}
 
 // Initialize account object
 $account = new Account($db);
@@ -40,7 +43,7 @@ $sync = isset($_GET['sync']) ? $_GET['sync'] : null;
 switch($request_method) {
     case 'GET':
         if ($sync === 'true') {
-            syncAccountsFromPDNS($account, $pdns_client);
+            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
         } elseif ($account_id) {
             getAccount($account, $account_id);
         } elseif ($account_name) {
@@ -51,12 +54,12 @@ switch($request_method) {
         break;
         
     case 'POST':
-        createAccount($account, $pdns_client);
+        createAccount($account);
         break;
         
     case 'PUT':
         if ($account_id) {
-            updateAccount($account, $pdns_client, $account_id);
+            updateAccount($account, $account_id);
         } else {
             sendError(400, "Account ID required for update");
         }
@@ -64,7 +67,7 @@ switch($request_method) {
         
     case 'DELETE':
         if ($account_id) {
-            deleteAccount($account, $pdns_client, $account_id);
+            deleteAccount($account, $account_id);
         } else {
             sendError(400, "Account ID required for deletion");
         }
@@ -73,6 +76,83 @@ switch($request_method) {
     default:
         sendError(405, "Method not allowed");
         break;
+}
+
+function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
+    global $db;
+    
+    if (!$pdns_admin_conn) {
+        sendError(500, "Failed to connect to PowerDNS Admin database");
+        return;
+    }
+    
+    // Get all users from PowerDNS Admin database
+    $users_query = "SELECT id, username, firstname, lastname, email FROM user";
+    $stmt = $pdns_admin_conn->prepare($users_query);
+    $stmt->execute();
+    $pdns_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (empty($pdns_users)) {
+        sendError(500, "No users found in PowerDNS Admin database");
+        return;
+    }
+    
+    $synced_count = 0;
+    $updated_count = 0;
+    
+    // Start a transaction
+    $db->beginTransaction();
+    
+    try {
+        foreach ($pdns_users as $pdns_user) {
+            $username = $pdns_user['username'];
+            $firstname = $pdns_user['firstname'];
+            $lastname = $pdns_user['lastname'];
+            $email = $pdns_user['email'];
+            
+            // Check if account exists
+            $check_query = "SELECT id FROM accounts WHERE name = ? FOR UPDATE";
+            $check_stmt = $db->prepare($check_query);
+            $check_stmt->execute([$username]);
+            $existing_account = $check_stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($existing_account) {
+                // Update existing account
+                $update_query = "UPDATE accounts SET description = ?, contact = ?, mail = ?, updated_at = NOW() WHERE id = ?";
+                $update_stmt = $db->prepare($update_query);
+                $description = $firstname . ' ' . $lastname;
+                
+                if ($update_stmt->execute([$description, $description, $email, $existing_account['id']])) {
+                    $updated_count++;
+                }
+            } else {
+                // Create new account
+                $create_query = "INSERT INTO accounts (name, description, contact, mail, created_at) VALUES (?, ?, ?, ?, NOW())";
+                $create_stmt = $db->prepare($create_query);
+                $description = $firstname . ' ' . $lastname;
+                
+                if ($create_stmt->execute([$username, $description, $description, $email])) {
+                    $synced_count++;
+                }
+            }
+        }
+        
+        // Commit the transaction
+        $db->commit();
+        
+        $message = "Database sync completed: {$synced_count} accounts added, {$updated_count} accounts updated from PowerDNS Admin database";
+        sendResponse(200, array(
+            'synced' => $synced_count,
+            'updated' => $updated_count,
+            'total_processed' => count($pdns_users)
+        ), $message);
+        
+    } catch (Exception $e) {
+        // Rollback the transaction
+        $db->rollback();
+        error_log("Account sync from database failed: " . $e->getMessage());
+        sendError(500, "Account sync from database failed: " . $e->getMessage());
+    }
 }
 
 function getAllAccounts($account) {
