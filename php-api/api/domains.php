@@ -89,17 +89,9 @@ function getAllDomains($domain) {
             
             $domain_item = array(
                 "id" => $id,
-                "name" => $name,
-                "type" => $type,
-                "account_id" => $account_id,
-                "account_name" => $account_name,
+                "name" => rtrim($name, '.'), // Remove trailing dot
                 "pdns_zone_id" => $pdns_zone_id,
-                "kind" => $kind,
-                "masters" => $masters,
-                "dnssec" => (bool)$dnssec,
-                "account" => $account,
-                "created_at" => $created_at,
-                "updated_at" => $updated_at
+                "account_id" => $account_id
             );
             
             array_push($domains_arr, $domain_item);
@@ -117,16 +109,9 @@ function getDomain($domain, $domain_id) {
     if($domain->readOne()) {
         $domain_arr = array(
             "id" => $domain->id,
-            "name" => $domain->name,
-            "type" => $domain->type,
-            "account_id" => $domain->account_id,
+            "name" => rtrim($domain->name, '.'), // Remove trailing dot
             "pdns_zone_id" => $domain->pdns_zone_id,
-            "kind" => $domain->kind,
-            "masters" => $domain->masters,
-            "dnssec" => (bool)$domain->dnssec,
-            "account" => $domain->account,
-            "created_at" => $domain->created_at,
-            "updated_at" => $domain->updated_at
+            "account_id" => $domain->account_id
         );
         
         sendResponse(200, $domain_arr);
@@ -147,17 +132,9 @@ function getDomainsByAccount($domain, $account_id) {
             
             $domain_item = array(
                 "id" => $id,
-                "name" => $name,
-                "type" => $type,
-                "account_id" => $account_id,
-                "account_name" => $account_name,
+                "name" => rtrim($name, '.'), // Remove trailing dot
                 "pdns_zone_id" => $pdns_zone_id,
-                "kind" => $kind,
-                "masters" => $masters,
-                "dnssec" => (bool)$dnssec,
-                "account" => $account,
-                "created_at" => $created_at,
-                "updated_at" => $updated_at
+                "account_id" => $account_id
             );
             
             array_push($domains_arr, $domain_item);
