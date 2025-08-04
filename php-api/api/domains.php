@@ -168,8 +168,8 @@ function getDomainsByAccount($domain, $account_id) {
 function syncDomainsFromPDNS($domain, $pdns_client) {
     global $db;
     
-    // Get all domains from PowerDNS Admin
-    $pdns_response = $pdns_client->getAllDomains();
+    // Get all zones from PowerDNS Admin API (includes proper zone IDs)
+    $pdns_response = $pdns_client->getAllZones();
     
     if($pdns_response['status_code'] == 200) {
         $pdns_domains = $pdns_response['data'];
@@ -204,9 +204,8 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                     $domain_obj->readByName(); // Load full data
                     $domain_obj->pdns_zone_id = $pdns_zone_id;
                     $domain_obj->name = $domain_name;
-                    // Note: PowerDNS Admin API /pdnsadmin/zones only provides id and name
-                    // Other fields like account, type, kind etc. are not available
-                    // so we don't update them here to preserve existing data
+                    // Note: PowerDNS Admin API /pdnsadmin/zones provides id, name, and account info
+                    // We only update basic fields here to preserve other existing data
                     
                     try {
                         if ($domain_obj->updateBasic()) {
