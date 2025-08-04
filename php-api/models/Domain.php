@@ -50,7 +50,7 @@ class Domain {
     public function read() {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
+                LEFT JOIN accounts a ON d.account_id = a.id
                 ORDER BY d.created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -60,7 +60,7 @@ class Domain {
     public function readOne() {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
+                LEFT JOIN accounts a ON d.account_id = a.id
                 WHERE d.id = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->id);
@@ -87,7 +87,7 @@ class Domain {
     public function readByName() {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
+                LEFT JOIN accounts a ON d.account_id = a.id
                 WHERE d.name = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->name);
@@ -115,7 +115,7 @@ class Domain {
     public function readByAccountId($account_id) {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
+                LEFT JOIN accounts a ON d.account_id = a.id
                 WHERE d.account_id = ?
                 ORDER BY d.created_at DESC";
         $stmt = $this->conn->prepare($query);
@@ -169,7 +169,7 @@ class Domain {
     public function search($keywords) {
         $query = "SELECT d.*, a.name as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
+                LEFT JOIN accounts a ON d.account_id = a.id
                 WHERE d.name LIKE ? OR d.type LIKE ? OR a.name LIKE ?
                 ORDER BY d.created_at DESC";
 
