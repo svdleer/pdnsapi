@@ -5,7 +5,7 @@
 $pdns_config = [
     'base_url' => 'https://dnsadmin.avant.nl/api/v1',
     'auth_type' => 'apikey',
-    'api_key' => 'YmV1ZVBEVEQyQzhIelN4'
+    'api_key' => 'beuePDTD2C8HzSx'
 ];
 
 // API settings
