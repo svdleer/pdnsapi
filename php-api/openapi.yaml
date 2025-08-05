@@ -111,21 +111,24 @@ paths:
             schema:
               $ref: '#/components/schemas/AccountCreate'
             examples:
-              basic:
-                summary: Basic account
+              powerdns_admin_user:
+                summary: PowerDNS Admin User Creation
+                value:
+                  username: "testuser1754424578"
+                  plain_text_password: "36440b7d5ab7521f"
+                  firstname: "Test"
+                  lastname: "User"
+                  email: "test@example.com"
+                  role:
+                    id: 2
+                    name: "User"
+              basic_account:
+                summary: Basic local account
                 value:
                   name: "customer-account"
                   description: "Customer account description"
                   contact: "John Doe"
                   mail: "john@customer.com"
-              with_ips:
-                summary: Account with IP addresses
-                value:
-                  name: "server-account"
-                  description: "Server account with IP addresses"
-                  contact: "Admin User"
-                  mail: "admin@server.com"
-                  ip_addresses: ["192.168.1.100", "2001:db8::1", "10.0.0.50"]
       responses:
         '201':
           description: Account created successfully
@@ -524,32 +527,72 @@ components:
     AccountCreate:
       type: object
       required:
-        - name
-        - mail
+        - username
+        - plain_text_password
+        - firstname  
+        - email
+        - role
       properties:
+        username:
+          type: string
+          description: Username for PowerDNS Admin (must be unique)
+          example: "testuser1754424578"
+        plain_text_password:
+          type: string
+          description: Plain text password for PowerDNS Admin user
+          example: "36440b7d5ab7521f"
+        firstname:
+          type: string
+          description: First name
+          example: "Test"
+        lastname:
+          type: string
+          description: Last name
+          example: "User"
+        email:
+          type: string
+          format: email
+          description: Email address
+          example: "test@example.com"
+        role:
+          type: object
+          description: User role object
+          properties:
+            id:
+              type: integer
+              description: Role ID (2 = User, 1 = Admin)
+              example: 2
+            name:
+              type: string
+              description: Role name
+              example: "User"
+          required:
+            - id
+            - name
+        # Legacy fields for backward compatibility
         name:
           type: string
-          description: Account name (must be unique)
+          description: Account name (legacy, maps to username)
           example: "customer-account"
         description:
           type: string
-          description: Account description
+          description: Account description (legacy)
           example: "Customer account description"
         contact:
           type: string
-          description: Contact person
+          description: Contact person (legacy, maps to firstname)
           example: "John Doe"
         mail:
           type: string
           format: email
-          description: Email address
+          description: Email address (legacy, same as email)
           example: "john@customer.com"
         ip_addresses:
           type: array
           items:
             type: string
             format: ipv4 | ipv6
-          description: List of IP addresses (IPv4/IPv6)
+          description: List of IP addresses (IPv4/IPv6, local storage only)
           example: ["192.168.1.100", "2001:db8::1"]
 
     AccountUpdate:
