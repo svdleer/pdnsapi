@@ -1,100 +1,82 @@
 <?php
-require_once 'classes/PDNSAdminClient.php';
-require_once 'config/config.php';
+// Test to find correct PowerDNS API server ID and zone details
+$base_path = __DIR__;
+require_once $base_path . '/config/config.php';
+require_once $base_path . '/classes/PDNSAdminClient.php';
 
-echo "=== Testing /zones endpoint for account_id ===\n\n";
+echo "Finding correct PowerDNS API endpoints...\n";
+echo "Base URL: https://dnsadmin.avant.nl/api/v1\n\n";
 
-$client = new PDNSAdminClient($pdns_config);
+// Initialize PDNSAdmin client
+$pdns_client = new PDNSAdminClient($pdns_config);
 
-// Test the /zones endpoint
-echo "1. Testing /zones endpoint...\n";
-$zones_response = $client->makeRequest('/zones', 'GET');
-
-echo "   📊 HTTP " . $zones_response['status_code'] . " - " . strlen($zones_response['raw_response']) . " bytes\n";
-
-if ($zones_response['status_code'] == 200) {
-    $zones = $zones_response['data'];
-    echo "   ✅ Found " . count($zones) . " zones\n";
+// Test 1: Try to find PowerDNS servers
+echo "=== Test 1: Find PowerDNS servers ===\n";
+$servers_response = $pdns_client->makeRequest('/api/v1/servers', 'GET');
+echo "Status Code: " . $servers_response['status_code'] . "\n";
+if ($servers_response['status_code'] == 200) {
+    $servers = $servers_response['data'];
+    echo "Found servers:\n";
+    print_r($servers);
     
-    if (count($zones) > 0) {
-        $sample_zone = $zones[0];
-        echo "   🔍 Zone fields: " . implode(', ', array_keys($sample_zone)) . "\n";
-        
-        // Check for account_id
-        if (isset($sample_zone['account_id'])) {
-            echo "   ✅ account_id field found!\n";
-            
-            // Analyze account_id distribution
-            $account_stats = [];
-            $zones_with_account = 0;
-            
-            foreach ($zones as $zone) {
-                if (isset($zone['account_id']) && $zone['account_id']) {
-                    $account_id = $zone['account_id'];
-                    if (!isset($account_stats[$account_id])) {
-                        $account_stats[$account_id] = [
-                            'count' => 0,
-                            'account_name' => $zone['account'] ?? 'Unknown'
-                        ];
-                    }
-                    $account_stats[$account_id]['count']++;
-                    $zones_with_account++;
-                }
+    // If we found servers, try to get zones from the first one
+    if (!empty($servers)) {
+        $server_id = $servers[0]['id'] ?? $servers[0]['name'] ?? 'localhost';
+        echo "\nTrying zones for server: $server_id\n";
+        $zones_response = $pdns_client->makeRequest("/api/v1/servers/{$server_id}/zones", 'GET');
+        echo "Zones Status Code: " . $zones_response['status_code'] . "\n";
+        if ($zones_response['status_code'] == 200) {
+            $zones = $zones_response['data'];
+            echo "Found " . count($zones) . " zones\n";
+            if (!empty($zones)) {
+                echo "First zone structure:\n";
+                print_r($zones[0]);
             }
-            
-            echo "   📊 Zones with account_id: $zones_with_account\n";
-            echo "   📊 Unique accounts: " . count($account_stats) . "\n";
-            
-            // Show account breakdown
-            if (count($account_stats) > 0) {
-                echo "\n   🏢 Account breakdown:\n";
-                foreach (array_slice($account_stats, 0, 15) as $account_id => $stats) {
-                    echo "      Account ID $account_id ({$stats['account_name']}): {$stats['count']} zones\n";
-                }
-            }
-            
-            // Show sample zones with account_id
-            echo "\n   📋 Sample zones with account_id:\n";
-            $shown = 0;
-            foreach ($zones as $zone) {
-                if (isset($zone['account_id']) && $zone['account_id'] && $shown < 10) {
-                    $name = $zone['name'] ?? 'Unknown';
-                    $account_id = $zone['account_id'];
-                    $account_name = $zone['account'] ?? '';
-                    echo "      $name -> Account ID: $account_id ($account_name)\n";
-                    $shown++;
-                }
-            }
-            
         } else {
-            echo "   ❌ No account_id field found\n";
-        }
-        
-        // Show first zone structure
-        echo "\n   🔍 First zone structure:\n";
-        foreach ($sample_zone as $key => $value) {
-            $preview = is_array($value) ? '[array]' : (is_string($value) ? '"' . substr($value, 0, 50) . '"' : json_encode($value));
-            echo "      $key: $preview\n";
+            echo "Zones Error: " . json_encode($zones_response['data']) . "\n";
         }
     }
-    
 } else {
-    echo "   ❌ Failed to get /zones\n";
-    echo "   📝 Response: " . $zones_response['raw_response'] . "\n";
+    echo "Error: " . json_encode($servers_response['data']) . "\n";
 }
 
-// Compare with /pdnsadmin/zones
-echo "\n2. Comparing with /pdnsadmin/zones...\n";
-$pdns_zones_response = $client->makeRequest('/pdnsadmin/zones', 'GET');
-echo "   📊 /pdnsadmin/zones: HTTP " . $pdns_zones_response['status_code'];
-if ($pdns_zones_response['status_code'] == 200) {
-    $pdns_zones = $pdns_zones_response['data'];
-    echo " - " . count($pdns_zones) . " zones";
-    if (count($pdns_zones) > 0) {
-        echo " (fields: " . implode(', ', array_keys($pdns_zones[0])) . ")";
+// Test 2: Try different server IDs
+$server_ids = ['localhost', '0', '1', 'default'];
+echo "\n=== Test 2: Try different server IDs ===\n";
+foreach ($server_ids as $server_id) {
+    echo "Trying server ID: $server_id\n";
+    $zones_response = $pdns_client->makeRequest("/api/v1/servers/{$server_id}/zones", 'GET');
+    echo "Status Code: " . $zones_response['status_code'] . "\n";
+    if ($zones_response['status_code'] == 200) {
+        $zones = $zones_response['data'];
+        echo "✓ SUCCESS! Found " . count($zones) . " zones for server $server_id\n";
+        if (!empty($zones)) {
+            echo "First zone structure:\n";
+            print_r($zones[0]);
+        }
+        break;
+    } else {
+        echo "✗ Failed for server $server_id\n";
     }
 }
-echo "\n";
 
-echo "\n=== Test Complete ===\n";
+// Test 3: Check PowerDNS Admin specific zone detail endpoint
+echo "\n=== Test 3: PowerDNS Admin zone details ===\n";
+$pdns_admin_zones = $pdns_client->makeRequest('/pdnsadmin/zones', 'GET');
+if ($pdns_admin_zones['status_code'] == 200 && !empty($pdns_admin_zones['data'])) {
+    $first_zone = $pdns_admin_zones['data'][0];
+    $zone_name = $first_zone['name'];
+    
+    echo "Trying to get details for zone: $zone_name\n";
+    $zone_detail = $pdns_client->makeRequest("/pdnsadmin/zones/{$zone_name}", 'GET');
+    echo "Zone detail status: " . $zone_detail['status_code'] . "\n";
+    if ($zone_detail['status_code'] == 200) {
+        echo "Zone detail structure:\n";
+        print_r($zone_detail['data']);
+    } else {
+        echo "Zone detail error: " . json_encode($zone_detail['data']) . "\n";
+    }
+}
+
+echo "\nTest completed!\n";
 ?>

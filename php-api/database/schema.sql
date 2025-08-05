@@ -24,7 +24,6 @@ CREATE TABLE IF NOT EXISTS domains (
     type VARCHAR(50) DEFAULT 'Zone',
     account_id INT,
     pdns_zone_id VARCHAR(255),
-    pdns_account_id INT, -- PowerDNS Admin account_id from zones API
     kind ENUM('Native', 'Master', 'Slave') DEFAULT 'Master',
     masters TEXT,
     dnssec BOOLEAN DEFAULT FALSE,
@@ -34,8 +33,7 @@ CREATE TABLE IF NOT EXISTS domains (
     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL,
     INDEX idx_name (name),
     INDEX idx_account_id (account_id),
-    INDEX idx_pdns_zone_id (pdns_zone_id),
-    INDEX idx_pdns_account_id (pdns_account_id)
+    INDEX idx_pdns_zone_id (pdns_zone_id)
 );
 
 -- API logs table for tracking external API calls

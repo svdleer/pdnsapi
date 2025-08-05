@@ -12,7 +12,7 @@ info:
     - **Local database caching** for performance and extended metadata
     
     ## Key Functionality
-    - Accounts are automatically synced from PowerDNS Admin on each API call
+    - Users are automatically synced from PowerDNS Admin on each API call
     - IP addresses can be assigned to users (stored locally, not in PowerDNS Admin)
     - Domain management maintains compatibility with PowerDNS Admin
     - Local database provides caching and additional user metadata storage
@@ -20,7 +20,7 @@ info:
     ## Important Notes
     - User data is synced FROM PowerDNS Admin (read-only sync)
     - IP addresses are stored locally and NOT sent to PowerDNS Admin
-    - Accounts endpoint automatically refreshes data from PowerDNS Admin
+    - Users endpoint automatically refreshes data from PowerDNS Admin
     - Local database maintains PowerDNS Admin user ID relationships
   version: 1.0.0
   contact:
@@ -55,7 +55,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiDocumentation'
 
-  /accounts:
+  /users:
     get:
       summary: Get all users (synced from PowerDNS Admin)
       description: |
@@ -72,7 +72,7 @@ paths:
         - IP addresses: Local database only (not stored in PowerDNS Admin)
         - Additional metadata: Local database for extended functionality
       tags:
-        - Accounts
+        - Users
       responses:
         '200':
           description: List of users
@@ -87,7 +87,7 @@ paths:
                       $ref: '#/components/schemas/Account'
                   message:
                     type: string
-                    example: "Accounts retrieved successfully"
+                    example: "Users retrieved successfully"
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -95,7 +95,7 @@ paths:
       summary: Create a new account
       description: Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.
       tags:
-        - Accounts
+        - Users
       requestBody:
         required: true
         content:
@@ -132,12 +132,12 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /accounts/{id}:
+  /users/{id}:
     get:
       summary: Get account by ID
       description: Retrieve a specific account by its ID
       tags:
-        - Accounts
+        - Users
       parameters:
         - name: id
           in: path
@@ -162,7 +162,7 @@ paths:
       summary: Update account
       description: Update an existing account. Changes are synced with PDNSAdmin (except IP addresses).
       tags:
-        - Accounts
+        - Users
       parameters:
         - name: id
           in: path
@@ -205,7 +205,7 @@ paths:
       summary: Delete account
       description: Delete an account from both PDNSAdmin and local database
       tags:
-        - Accounts
+        - Users
       parameters:
         - name: id
           in: path
@@ -225,12 +225,12 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /accounts/name/{name}:
+  /users/name/{name}:
     get:
       summary: Get account by name
       description: Retrieve a specific account by its name
       tags:
-        - Accounts
+        - Users
       parameters:
         - name: name
           in: path
@@ -253,23 +253,18 @@ paths:
 
   /domains:
     get:
-      summary: Get all domains (synced from PowerDNS Admin database)
+      summary: Get all domains (synced from PowerDNS Admin)
       description: |
-        Retrieve a list of all domains with direct synchronization from PowerDNS Admin database.
-        
-        **Returns simplified domain objects with essential fields only:**
-        - `id`: Internal domain ID
-        - `name`: Domain name (without trailing dot)
-        - `pdns_zone_id`: PowerDNS Admin domain ID (numeric)
-        - `account_id`: Associated account ID (if assigned)
+        Retrieve a list of all domains with automatic synchronization from PowerDNS Admin.
         
         **Important:** Domain creation is not supported through this API. 
-        Domains must be created in PowerDNS Admin directly, then synced using ?sync=true parameter.
+        Domains must be created in PowerDNS Admin directly, then synced using the ?action=sync parameter.
         
         **Functionality:**
-        - Direct database sync from PowerDNS Admin for optimal performance
-        - Clean, simplified response format
-        - Use ?sync=true to force refresh from PowerDNS Admin database
+        - Automatically fetches latest domains from PowerDNS Admin API
+        - Syncs domain data to local database for caching
+        - Returns domains with account relationships
+        - Use ?action=sync to force refresh from PowerDNS Admin
       tags:
         - Domains
       parameters:
@@ -277,7 +272,7 @@ paths:
           in: query
           schema:
             type: boolean
-          description: Set to true to sync domains from PowerDNS Admin database before returning results
+          description: Set to true to sync domains from PDNSAdmin before returning results
         - name: account_id
           in: query
           schema:
@@ -583,22 +578,46 @@ components:
           example: 1
         name:
           type: string
-          description: Domain name (without trailing dot)
-          example: "example.com"
-        pdns_zone_id:
-          type: integer
-          description: PowerDNS Admin domain ID (numeric)
-          example: 123
+          description: Domain name
+          example: "example.com."
+        type:
+          type: string
+          description: Domain type
+          example: "Zone"
         account_id:
           type: integer
           nullable: true
           description: Associated account ID
           example: 1
-      required:
-        - id
-        - name
-        - pdns_zone_id
-      description: Simplified domain response with essential fields only
+        account_name:
+          type: string
+          nullable: true
+          description: Associated account name
+          example: "customer-account"
+        pdns_zone_id:
+          type: string
+          description: PDNSAdmin zone ID
+          example: "example.com."
+        kind:
+          type: string
+          enum: [Native, Master, Slave]
+          description: Zone kind
+          example: "Master"
+        masters:
+          type: string
+          description: Comma-separated list of master servers
+          example: "192.168.1.100,192.168.1.101"
+        dnssec:
+          type: boolean
+          description: DNSSEC enabled
+          example: false
+        account:
+          type: string
+          description: Account name from PDNSAdmin
+          example: "customer-account"
+        created_at:
+          type: string
+          format: date-time
           description: Creation timestamp
         updated_at:
           type: string
@@ -845,7 +864,7 @@ components:
 tags:
   - name: Documentation
     description: API documentation and information
-  - name: Accounts
+  - name: Users
     description: Account management operations with IP address support
   - name: Domains
     description: Domain management operations (creation and updates only)

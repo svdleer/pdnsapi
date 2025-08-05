@@ -30,28 +30,20 @@ class PDNSAdminClient {
         // Set headers
         $headers = ['Content-Type: application/json'];
         
-        // Determine authentication method based on endpoint
-        if ($this->isPDNSAdminEndpoint($endpoint)) {
-            // PowerDNS Admin endpoints (/pdnsadmin/*) use Basic Auth with username/password
-            if ($this->username && $this->password) {
-                $credentials = base64_encode($this->username . ':' . $this->password);
-                $headers[] = 'Authorization: Basic ' . $credentials;
-            }
-        } else {
-            // PowerDNS server endpoints use X-API-Key header
-            $use_server_key = $this->isServerEndpoint($endpoint);
-            $key_to_use = $use_server_key ? $this->pdns_server_key : $this->api_key;
-            
-            if ($key_to_use) {
-                $headers[] = 'X-API-Key: ' . $key_to_use;
-            }
+        // Determine which API key to use based on endpoint
+        $use_server_key = $this->isServerEndpoint($endpoint);
+        $key_to_use = $use_server_key ? $this->pdns_server_key : $this->api_key;
+        
+        if ($this->auth_type === 'apikey' && $key_to_use) {
+            // Use X-API-Key header
+            $headers[] = 'X-API-Key: ' . $key_to_use;
+        } elseif ($this->auth_type === 'basic' && $this->username && $this->password) {
+            // Encode username:password to base64 for basic auth
+            $credentials = base64_encode($this->username . ':' . $this->password);
+            $headers[] = 'Authorization: Basic ' . $credentials;
         }
         
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        
-        // Add timeouts to prevent hanging
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         
         if ($data && in_array($method, ['POST', 'PUT', 'PATCH'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
@@ -70,7 +62,7 @@ class PDNSAdminClient {
 
     // Domain/Zone operations
     public function getAllDomains() {
-        return $this->makeRequest('/servers/localhost/zones');
+        return $this->makeRequest('/servers/1/zones');
     }
 
     public function getDomain($zone_id) {
@@ -83,11 +75,6 @@ class PDNSAdminClient {
 
     public function deleteDomain($zone_id) {
         return $this->makeRequest("/pdnsadmin/zones/{$zone_id}", 'DELETE');
-    }
-
-    // PowerDNS Admin Zones (with account relationships)
-    public function getAllZones() {
-        return $this->makeRequest('/pdnsadmin/zones');
     }
 
     // Account operations
@@ -116,36 +103,46 @@ class PDNSAdminClient {
         return $this->makeRequest('/pdnsadmin/users');
     }
 
-    public function getUser($user_id) {
-        return $this->makeRequest("/pdnsadmin/users/{$user_id}");
+    public function createUser($user_data) {
+        return $this->makeRequest('/pdnsadmin/users', 'POST', $user_data);
+    }
+
+    public function updateUser($username, $user_data) {
+        return $this->makeRequest("/pdnsadmin/users/{$username}", 'PUT', $user_data);
+    }
+
+    public function deleteUser($username) {
+        return $this->makeRequest("/pdnsadmin/users/{$username}", 'DELETE');
+    }
+
+    // API Key operations
+    public function getAllApiKeys() {
+        return $this->makeRequest('/pdnsadmin/apikeys');
+    }
+
+    public function createApiKey($apikey_data) {
+        return $this->makeRequest('/pdnsadmin/apikeys', 'POST', $apikey_data);
+    }
+
+    public function deleteApiKey($apikey_id) {
+        return $this->makeRequest("/pdnsadmin/apikeys/{$apikey_id}", 'DELETE');
     }
 
     /**
-     * Determine if endpoint is a PowerDNS Admin specific endpoint requiring Basic Auth
-     */
-    private function isPDNSAdminEndpoint($endpoint) {
-        return strpos($endpoint, '/pdnsadmin/') === 0;
-    }
-
-    /**
-     * Determine if endpoint requires PowerDNS server API key (for direct PowerDNS requests)
-     * Since we're going through PowerDNS Admin, we should use Admin API key for all requests
+     * Determine if endpoint requires PowerDNS server API key (for proxied requests)
      */
     private function isServerEndpoint($endpoint) {
-        // For now, always use PowerDNS Admin API key since all requests go through PowerDNS Admin
-        // Only use PowerDNS server key if we were making direct requests to PowerDNS server
-        return false;
-        
-        /* Original logic for direct PowerDNS server requests:
+        // Endpoints that are proxied to PowerDNS server
         $server_endpoints = [
-            '/servers/localhost/zones',
             '/servers/1/zones',
-            '/servers/localhost/config',
+            '/servers/localhost/zones',
             '/servers/1/config',
-            '/servers/localhost/statistics',
-            '/servers/1/statistics'
+            '/servers/localhost/config',
+            '/servers/1/statistics',
+            '/servers/localhost/statistics'
         ];
         
+        // Check if endpoint starts with any server endpoint pattern
         foreach ($server_endpoints as $server_endpoint) {
             if (strpos($endpoint, $server_endpoint) === 0) {
                 return true;
@@ -153,7 +150,6 @@ class PDNSAdminClient {
         }
         
         return false;
-        */
     }
 }
 ?>
