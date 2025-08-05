@@ -6,17 +6,7 @@ require_once $base_path . '/config/config.php';
 require_once $base_path . '/config/database.php';
 require_once $base_path . '/includes/database-compat.php';
 require_once $base_path . '/models/Account.php';
-require_once $base_path . '/classes/PDNSAdm        sendResponse(201, [
-            'id' => $db->lastInsertId(),
-            'username' => $account->username,
-            'firstname' => $account->firstname,
-            'lastname' => $account->lastname,
-            'email' => $account->email,
-            'role_id' => $account->role_id,
-            'pdns_account_id' => $account->pdns_account_id,
-            'ip_addresses' => $validated_ips,
-            'customer_id' => $customer_id
-        ], "Account created successfully in PowerDNS Admin and synced to local database");p';
+require_once $base_path . '/classes/PDNSAdminClient.php';
 
 // API key is already validated in index.php, log the request
 logApiRequest('accounts', $_SERVER['REQUEST_METHOD'], 200);
