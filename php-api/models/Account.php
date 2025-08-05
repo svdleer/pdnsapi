@@ -9,7 +9,7 @@ require_once $base_path . '/includes/database-compat.php';
  */
 class Account {
     private $conn;
-    private $table_name = "users"; // Updated table name
+    private $table_name = "accounts"; // Correct table name
 
     public $id;
     public $name;

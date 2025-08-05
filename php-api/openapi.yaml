@@ -12,7 +12,7 @@ info:
     - **Local database caching** for performance and extended metadata
     
     ## Key Functionality
-    - Users are automatically synced from PowerDNS Admin on each API call
+    - Accounts are automatically synced from PowerDNS Admin on each API call
     - IP addresses can be assigned to users (stored locally, not in PowerDNS Admin)
     - Domain management maintains compatibility with PowerDNS Admin
     - Local database provides caching and additional user metadata storage
@@ -20,7 +20,7 @@ info:
     ## Important Notes
     - User data is synced FROM PowerDNS Admin (read-only sync)
     - IP addresses are stored locally and NOT sent to PowerDNS Admin
-    - Users endpoint automatically refreshes data from PowerDNS Admin
+    - Accounts endpoint automatically refreshes data from PowerDNS Admin
     - Local database maintains PowerDNS Admin user ID relationships
   version: 1.0.0
   contact:
@@ -55,7 +55,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiDocumentation'
 
-  /users:
+  /accounts:
     get:
       summary: Get all users (synced from PowerDNS Admin)
       description: |
@@ -72,7 +72,7 @@ paths:
         - IP addresses: Local database only (not stored in PowerDNS Admin)
         - Additional metadata: Local database for extended functionality
       tags:
-        - Users
+        - Accounts
       responses:
         '200':
           description: List of users
@@ -87,7 +87,7 @@ paths:
                       $ref: '#/components/schemas/Account'
                   message:
                     type: string
-                    example: "Users retrieved successfully"
+                    example: "Accounts retrieved successfully"
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -95,7 +95,7 @@ paths:
       summary: Create a new account
       description: Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.
       tags:
-        - Users
+        - Accounts
       requestBody:
         required: true
         content:
@@ -132,12 +132,12 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /users/{id}:
+  /accounts/{id}:
     get:
       summary: Get account by ID
       description: Retrieve a specific account by its ID
       tags:
-        - Users
+        - Accounts
       parameters:
         - name: id
           in: path
@@ -162,7 +162,7 @@ paths:
       summary: Update account
       description: Update an existing account. Changes are synced with PDNSAdmin (except IP addresses).
       tags:
-        - Users
+        - Accounts
       parameters:
         - name: id
           in: path
@@ -205,7 +205,7 @@ paths:
       summary: Delete account
       description: Delete an account from both PDNSAdmin and local database
       tags:
-        - Users
+        - Accounts
       parameters:
         - name: id
           in: path
@@ -225,12 +225,12 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /users/name/{name}:
+  /accounts/name/{name}:
     get:
       summary: Get account by name
       description: Retrieve a specific account by its name
       tags:
-        - Users
+        - Accounts
       parameters:
         - name: name
           in: path
@@ -845,7 +845,7 @@ components:
 tags:
   - name: Documentation
     description: API documentation and information
-  - name: Users
+  - name: Accounts
     description: Account management operations with IP address support
   - name: Domains
     description: Domain management operations (creation and updates only)

@@ -35,9 +35,9 @@ requireApiKey();
 
 // Route to appropriate API endpoint
 switch($path) {
-    case 'users':
-    case 'api/users':
-        require_once 'api/users.php';
+    case 'accounts':
+    case 'api/accounts':
+        require_once 'api/accounts.php';
         break;
         
     case 'domains':
@@ -98,7 +98,7 @@ switch($path) {
     default:
         sendError(404, "Endpoint not found", [
             'available_endpoints' => [
-                '/users', '/domains', '/status', '/openapi', '/docs', '/'
+                '/accounts', '/domains', '/status', '/openapi', '/docs', '/'
             ]
         ]);
         break;
