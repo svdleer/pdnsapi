@@ -418,13 +418,32 @@ function updateAccount($account, $account_id) {
 }
 
 function deleteAccount($account, $account_id) {
+    global $pdns_config;
+    
     $account->id = $account_id;
     
     if($account->readOne()) {
-        if($account->delete()) {
-            sendResponse(200, null, "Account deleted successfully");
+        // Delete from PowerDNS Admin API only
+        $delete_url = rtrim($pdns_config['pdns_admin_url'], '/') . "/api/v1/pdnsadmin/users/" . $account->username;
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $delete_url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'Authorization: Basic ' . base64_encode($pdns_config['pdns_admin_user'] . ':' . $pdns_config['pdns_admin_password'])
+        ));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($http_code >= 200 && $http_code < 300) {
+            sendResponse(200, null, "Account deleted from PowerDNS Admin successfully. Use sync to update local database.");
         } else {
-            sendError(503, "Unable to delete account");
+            sendError(503, "Unable to delete account from PowerDNS Admin. HTTP Code: " . $http_code);
         }
     } else {
         sendError(404, "Account not found");

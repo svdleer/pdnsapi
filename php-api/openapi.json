@@ -62,6 +62,14 @@
               "type": "boolean"
             },
             "description": "Set to true to sync accounts from PowerDNS Admin before returning results"
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by specific username to retrieve a single account"
           }
         ],
         "responses": {
@@ -294,46 +302,6 @@
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
-          }
-        }
-      }
-    },
-    "/accounts/name/{name}": {
-      "get": {
-        "summary": "Get account by name",
-        "description": "Retrieve a specific account by its name",
-        "tags": [
-          "Accounts"
-        ],
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Account name"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Account details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Account"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
           }
         }
       }
