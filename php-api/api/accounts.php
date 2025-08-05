@@ -38,7 +38,7 @@ $request_method = $_SERVER["REQUEST_METHOD"];
 
 // Get parameters from URL
 $account_id = isset($_GET['id']) ? $_GET['id'] : null;
-$account_name = isset($_GET['name']) ? $_GET['name'] : null;
+$account_username = isset($_GET['username']) ? $_GET['username'] : null;
 $sync = isset($_GET['sync']) ? $_GET['sync'] : null;
 
 switch($request_method) {
@@ -47,8 +47,8 @@ switch($request_method) {
             syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
         } elseif ($account_id) {
             getAccount($account, $account_id);
-        } elseif ($account_name) {
-            getAccountByName($account, $account_name);
+        } elseif ($account_username) {
+            getAccountByName($account, $account_username);
         } else {
             getAllAccounts($account);
         }
