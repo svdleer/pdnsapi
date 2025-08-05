@@ -4,6 +4,10 @@ info:
   description: |
     PHP API wrapper for PDNSAdmin with local database storage and extended functionality.
     
+    ## Authentication
+    This API uses **Basic Authentication** with base64 encoded credentials.
+    Use the `Authorization: Basic <base64-credentials>` header for all authenticated requests.
+    
     ## Features
     - **Account management** with automatic PowerDNS Admin synchronization
     - **IP address storage** for accounts (local database only)
@@ -35,9 +39,7 @@ servers:
     description: Production server
 
 security:
-  - ApiKeyAuth: []
-  - BearerAuth: []
-  - ApiKeyQuery: []
+  - BasicAuth: []
 
 paths:
   /:
@@ -453,20 +455,20 @@ paths:
 
 components:
   securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key authentication using X-API-Key header
-    BearerAuth:
+    BasicAuth:
       type: http
-      scheme: bearer
-      description: API key authentication using Authorization Bearer token
-    ApiKeyQuery:
-      type: apiKey
-      in: query
-      name: api_key
-      description: API key authentication using query parameter (development only)
+      scheme: basic
+      description: |
+        Basic Authentication using base64 encoded credentials.
+        
+        **Format:** `Authorization: Basic <base64-encoded-credentials>`
+        
+        **Example:** 
+        ```
+        Authorization: Basic YXBpYWRtaW46VmV2ZWxnSWNzXm9tMg==
+        ```
+        
+        **Note:** The credentials should be base64 encoded before sending the request.
       
   schemas:
     Account:

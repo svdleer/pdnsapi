@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "PDNSAdmin PHP API",
-    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Features\n- **Account management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n\n## Key Functionality\n- Accounts are automatically synced from PowerDNS Admin on each API call\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin (read-only sync)\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Accounts endpoint automatically refreshes data from PowerDNS Admin\n- Local database maintains PowerDNS Admin account ID relationships\n",
+    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Authentication\nThis API uses **Basic Authentication** with base64 encoded credentials.\nUse the `Authorization: Basic <base64-credentials>` header for all authenticated requests.\n\n## Features\n- **Account management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n\n## Key Functionality\n- Accounts are automatically synced from PowerDNS Admin on each API call\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin (read-only sync)\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Accounts endpoint automatically refreshes data from PowerDNS Admin\n- Local database maintains PowerDNS Admin account ID relationships\n",
     "version": "1.0.1",
     "contact": {
       "name": "API Support",
@@ -21,13 +21,7 @@
   ],
   "security": [
     {
-      "ApiKeyAuth": []
-    },
-    {
-      "BearerAuth": []
-    },
-    {
-      "ApiKeyQuery": []
+      "BasicAuth": []
     }
   ],
   "paths": {
@@ -655,22 +649,10 @@
   },
   "components": {
     "securitySchemes": {
-      "ApiKeyAuth": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-API-Key",
-        "description": "API key authentication using X-API-Key header"
-      },
-      "BearerAuth": {
+      "BasicAuth": {
         "type": "http",
-        "scheme": "bearer",
-        "description": "API key authentication using Authorization Bearer token"
-      },
-      "ApiKeyQuery": {
-        "type": "apiKey",
-        "in": "query",
-        "name": "api_key",
-        "description": "API key authentication using query parameter (development only)"
+        "scheme": "basic",
+        "description": "Basic Authentication using base64 encoded credentials.\n\n**Format:** `Authorization: Basic <base64-encoded-credentials>`\n\n**Example:** \n```\nAuthorization: Basic YXBpYWRtaW46VmV2ZWxnSWNzXm9tMg==\n```\n\n**Note:** The credentials should be base64 encoded before sending the request.\n"
       }
     },
     "schemas": {
