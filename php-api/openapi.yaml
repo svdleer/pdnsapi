@@ -22,7 +22,7 @@ info:
     - IP addresses are stored locally and NOT sent to PowerDNS Admin
     - Accounts endpoint automatically refreshes data from PowerDNS Admin
     - Local database maintains PowerDNS Admin account ID relationships
-  version: 1.0.0
+  version: 1.0.1
   contact:
     name: API Support
     email: support@example.com
