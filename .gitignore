@@ -1,6 +1,6 @@
 # Sensitive configuration files
 php-api/config/database.php
-#php-api/config/config.php
+php-api/config/config.php
 
 # Environment files
 .env
