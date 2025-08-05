@@ -4,8 +4,10 @@ $base_path = realpath(__DIR__ . '/..');
 
 require_once $base_path . '/config/config.php';
 require_once $base_path . '/config/database.php';
+require_once $base_path . '/config/pdns-admin-database.php';
 require_once $base_path . '/includes/database-compat.php';
 require_once $base_path . '/models/Account.php';
+require_once $base_path . '/classes/PDNSAdminClient.php';
 
 // API key is already validated in index.php, log the request
 logApiRequest('accounts', $_SERVER['REQUEST_METHOD'], 200);
@@ -22,8 +24,12 @@ if (!class_exists('Database')) {
 $database = new Database();
 $db = $database->getConnection();
 
-// PowerDNS Admin database connection is not needed - we use API-only approach
+// Get PowerDNS Admin database connection for READ operations
 $pdns_admin_conn = null;
+if (class_exists('PDNSAdminDatabase')) {
+    $pdns_admin_db = new PDNSAdminDatabase();
+    $pdns_admin_conn = $pdns_admin_db->getConnection();
+}
 
 // Initialize account object
 $account = new Account($db);
@@ -75,29 +81,26 @@ switch($request_method) {
 }
 
 function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
-    global $db, $pdns_config;
+    global $db;
     
-    // Use PowerDNS Admin API instead of direct database connection
-    $client = new PDNSAdminClient($pdns_config);
+    if (!$pdns_admin_conn) {
+        sendError(500, "Failed to connect to PowerDNS Admin database");
+        return;
+    }
     
-    try {
-        // Get all users from PowerDNS Admin API
-        $response = $client->makeRequest('/users');
-        
-        if (!$response || !isset($response['success']) || !$response['success']) {
-            sendError(500, "Failed to fetch users from PowerDNS Admin API");
-            return;
-        }
-        
-        $pdns_users = $response['data'] ?? [];
-        
-        if (empty($pdns_users)) {
-            sendResponse(200, [], "No users found in PowerDNS Admin");
-            return;
-        }
-        
-        $synced_count = 0;
-        $updated_count = 0;
+    // Get all users from PowerDNS Admin database (READ operation - use DB)
+    $users_query = "SELECT id, username, firstname, lastname, email FROM user";
+    $stmt = $pdns_admin_conn->prepare($users_query);
+    $stmt->execute();
+    $pdns_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (empty($pdns_users)) {
+        sendError(500, "No users found in PowerDNS Admin database");
+        return;
+    }
+    
+    $synced_count = 0;
+    $updated_count = 0;
     
     // Start a transaction
     $db->beginTransaction();
@@ -228,19 +231,46 @@ function getAccountByName($account, $account_name) {
 }
 
 function createAccount($account) {
+    global $pdns_config;
+    
     $data = json_decode(file_get_contents("php://input"));
     
     if(!empty($data->name)) {
+        // First create in PowerDNS Admin via API (WRITE operation - use API)
+        $client = new PDNSAdminClient($pdns_config);
+        
+        $pdns_data = [
+            'username' => $data->name,
+            'firstname' => $data->contact ?? $data->name,
+            'lastname' => '',
+            'email' => $data->mail ?? '',
+            'password' => bin2hex(random_bytes(16)), // Generate a random password
+            'role' => 'User' // Default role
+        ];
+        
+        $api_response = $client->makeRequest('/users', 'POST', $pdns_data);
+        
+        if (!$api_response || !isset($api_response['success']) || !$api_response['success']) {
+            sendError(500, "Failed to create account in PowerDNS Admin: " . ($api_response['msg'] ?? 'Unknown error'));
+            return;
+        }
+        
+        // Then create in local database
         $account->name = $data->name;
         $account->description = $data->description ?? '';
         $account->contact = $data->contact ?? '';
         $account->mail = $data->mail ?? '';
         $account->ip_addresses = isset($data->ip_addresses) ? json_encode($data->ip_addresses) : json_encode([]);
         
+        // Store the PowerDNS Admin user ID if available
+        if (isset($api_response['data']['id'])) {
+            $account->pdns_account_id = $api_response['data']['id'];
+        }
+        
         if($account->create()) {
-            sendResponse(201, null, "Account created successfully");
+            sendResponse(201, null, "Account created successfully in both PowerDNS Admin and local database");
         } else {
-            sendError(503, "Unable to create account");
+            sendError(503, "Account created in PowerDNS Admin but failed to create in local database");
         }
     } else {
         sendError(400, "Account name is required");
@@ -248,11 +278,32 @@ function createAccount($account) {
 }
 
 function updateAccount($account, $account_id) {
+    global $pdns_config;
+    
     $data = json_decode(file_get_contents("php://input"));
     
     $account->id = $account_id;
     
     if($account->readOne()) {
+        // Update in PowerDNS Admin via API if we have a PowerDNS Admin ID (WRITE operation - use API)
+        if ($account->pdns_account_id) {
+            $client = new PDNSAdminClient($pdns_config);
+            
+            $pdns_data = [];
+            if (isset($data->contact)) $pdns_data['firstname'] = $data->contact;
+            if (isset($data->mail)) $pdns_data['email'] = $data->mail;
+            
+            if (!empty($pdns_data)) {
+                $api_response = $client->makeRequest('/users/' . $account->pdns_account_id, 'PUT', $pdns_data);
+                
+                if (!$api_response || !isset($api_response['success']) || !$api_response['success']) {
+                    error_log("Failed to update account in PowerDNS Admin: " . ($api_response['msg'] ?? 'Unknown error'));
+                    // Continue with local update even if PowerDNS Admin update fails
+                }
+            }
+        }
+        
+        // Update in local database
         $account->name = $data->name ?? $account->name;
         $account->description = $data->description ?? $account->description;
         $account->contact = $data->contact ?? $account->contact;

@@ -5,11 +5,11 @@ require_once $base_path . '/config/database.php';
 require_once $base_path . '/includes/database-compat.php';
 
 /**
- * Account Model (now handles Users)
+ * Account Model
  */
 class Account {
     private $conn;
-    private $table_name = "users"; // Updated table name
+    private $table_name = "accounts"; // Updated table name
 
     public $id;
     public $name;
@@ -17,8 +17,7 @@ class Account {
     public $contact;
     public $mail;
     public $ip_addresses;
-    public $pdns_account_id; // Legacy field
-    public $pdns_user_id;    // New field for PowerDNS Admin user ID
+    public $pdns_account_id; // PowerDNS Admin user ID
     public $klant_id;        // Customer ID field
     public $created_at;
     public $updated_at;
