@@ -230,20 +230,46 @@ function getAccountByName($account, $account_name) {
 }
 
 function createAccount($account) {
+    global $pdns_config;
+    
     $data = json_decode(file_get_contents("php://input"));
     
     if(!empty($data->name)) {
-        // Create directly in local database (database-only approach)
+        // First create in PowerDNS Admin via API (WRITE operation - use API)
+        $client = new PDNSAdminClient($pdns_config);
+        
+        $pdns_data = [
+            'username' => $data->name,
+            'firstname' => $data->contact ?? $data->name,
+            'lastname' => '',
+            'email' => $data->mail ?? '',
+            'password' => bin2hex(random_bytes(16)), // Generate a random password
+            'role' => 'User' // Default role
+        ];
+        
+        $api_response = $client->makeRequest('/users', 'POST', $pdns_data);
+        
+        if (!$api_response || !isset($api_response['success']) || !$api_response['success']) {
+            sendError(500, "Failed to create account in PowerDNS Admin: " . ($api_response['msg'] ?? 'Unknown error'));
+            return;
+        }
+        
+        // Then create in local database
         $account->name = $data->name;
         $account->description = $data->description ?? '';
         $account->contact = $data->contact ?? '';
         $account->mail = $data->mail ?? '';
         $account->ip_addresses = isset($data->ip_addresses) ? json_encode($data->ip_addresses) : json_encode([]);
         
+        // Store the PowerDNS Admin user ID if available
+        if (isset($api_response['data']['id'])) {
+            $account->pdns_account_id = $api_response['data']['id'];
+        }
+        
         if($account->create()) {
-            sendResponse(201, null, "Account created successfully in local database");
+            sendResponse(201, null, "Account created successfully in both PowerDNS Admin and local database");
         } else {
-            sendError(503, "Unable to create account in local database");
+            sendError(503, "Account created in PowerDNS Admin but failed to create in local database");
         }
     } else {
         sendError(400, "Account name is required");
