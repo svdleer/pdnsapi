@@ -123,7 +123,7 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
             $existing_account = $check_stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($existing_account) {
-                // Update existing account (preserve ip_address and customer_id)
+                // Update existing account (preserve ip_addresses and customer_id)
                 $update_query = "UPDATE accounts SET firstname = ?, lastname = ?, email = ?, role_id = ?, pdns_account_id = ?, updated_at = NOW() WHERE username = ?";
                 $update_stmt = $db->prepare($update_query);
                 
@@ -347,7 +347,7 @@ function createAccount($account) {
             'email' => $account->email,
             'role_id' => $account->role_id,
             'pdns_account_id' => $account->pdns_account_id,
-            'ip_address' => $account->ip_address,
+            'ip_addresses' => $account->ip_addresses ? json_decode($account->ip_addresses, true) : [],
             'customer_id' => $account->customer_id
         ], "Account created successfully in PowerDNS Admin and synced to local database");
     } else {
