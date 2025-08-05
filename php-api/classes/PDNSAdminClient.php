@@ -37,6 +37,9 @@ class PDNSAdminClient {
         if ($this->auth_type === 'apikey' && $key_to_use) {
             // Use X-API-Key header
             $headers[] = 'X-API-Key: ' . $key_to_use;
+        } elseif ($this->auth_type === 'basic' && $key_to_use) {
+            // Use the already base64 encoded API key for Basic Auth
+            $headers[] = 'Authorization: Basic ' . $key_to_use;
         } elseif ($this->auth_type === 'basic' && $this->username && $this->password) {
             // Encode username:password to base64 for basic auth
             $credentials = base64_encode($this->username . ':' . $this->password);
