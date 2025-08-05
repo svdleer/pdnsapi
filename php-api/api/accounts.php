@@ -101,10 +101,14 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
     $synced_count = 0;
     $updated_count = 0;
     
+    // Create array of PowerDNS Admin usernames for quick lookup
+    $pdns_usernames = array_column($pdns_users, 'username');
+    
     // Start a transaction
     $db->beginTransaction();
     
     try {
+        // Process PowerDNS Admin users (create/update)
         foreach ($pdns_users as $pdns_user) {
             // Check if account exists
             $check_query = "SELECT id, ip_addresses, customer_id FROM accounts WHERE username = ? FOR UPDATE";
@@ -145,10 +149,13 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
             }
         }
         
+        // Note: We do NOT delete local accounts that don't exist in PowerDNS Admin
+        // The API is the source of truth for deletions
+        
         // Commit the transaction
         $db->commit();
         
-        $message = "Database sync completed: {$synced_count} accounts added, {$updated_count} accounts updated from PowerDNS Admin database";
+        $message = "Database sync completed: {$synced_count} accounts added, {$updated_count} accounts updated (local accounts are preserved - API is source of truth for deletions)";
         sendResponse(200, array(
             'synced' => $synced_count,
             'updated' => $updated_count,
