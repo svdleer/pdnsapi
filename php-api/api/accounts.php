@@ -22,12 +22,8 @@ if (!class_exists('Database')) {
 $database = new Database();
 $db = $database->getConnection();
 
-// Get PowerDNS Admin database connection
+// PowerDNS Admin database connection is not needed - we use API-only approach
 $pdns_admin_conn = null;
-if (class_exists('PDNSAdminDatabase')) {
-    $pdns_admin_db = new PDNSAdminDatabase();
-    $pdns_admin_conn = $pdns_admin_db->getConnection();
-}
 
 // Initialize account object
 $account = new Account($db);
@@ -79,26 +75,29 @@ switch($request_method) {
 }
 
 function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
-    global $db;
+    global $db, $pdns_config;
     
-    if (!$pdns_admin_conn) {
-        sendError(500, "Failed to connect to PowerDNS Admin database");
-        return;
-    }
+    // Use PowerDNS Admin API instead of direct database connection
+    $client = new PDNSAdminClient($pdns_config);
     
-    // Get all users from PowerDNS Admin database
-    $users_query = "SELECT id, username, firstname, lastname, email FROM user";
-    $stmt = $pdns_admin_conn->prepare($users_query);
-    $stmt->execute();
-    $pdns_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if (empty($pdns_users)) {
-        sendError(500, "No users found in PowerDNS Admin database");
-        return;
-    }
-    
-    $synced_count = 0;
-    $updated_count = 0;
+    try {
+        // Get all users from PowerDNS Admin API
+        $response = $client->makeRequest('/users');
+        
+        if (!$response || !isset($response['success']) || !$response['success']) {
+            sendError(500, "Failed to fetch users from PowerDNS Admin API");
+            return;
+        }
+        
+        $pdns_users = $response['data'] ?? [];
+        
+        if (empty($pdns_users)) {
+            sendResponse(200, [], "No users found in PowerDNS Admin");
+            return;
+        }
+        
+        $synced_count = 0;
+        $updated_count = 0;
     
     // Start a transaction
     $db->beginTransaction();
