@@ -4,7 +4,6 @@ $base_path = realpath(__DIR__ . '/..');
 
 require_once $base_path . '/config/config.php';
 require_once $base_path . '/config/database.php';
-require_once $base_path . '/config/pdns-admin-database.php';
 require_once $base_path . '/includes/database-compat.php';
 require_once $base_path . '/models/Account.php';
 require_once $base_path . '/classes/PDNSAdminClient.php';
