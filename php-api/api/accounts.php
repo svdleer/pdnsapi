@@ -240,17 +240,26 @@ function createAccount($account) {
         
         $pdns_data = [
             'username' => $data->name,
+            'plain_text_password' => bin2hex(random_bytes(16)), // Generate a random password
             'firstname' => $data->contact ?? $data->name,
             'lastname' => '',
             'email' => $data->mail ?? '',
-            'password' => bin2hex(random_bytes(16)), // Generate a random password
-            'role' => 'User' // Default role
+            'role' => [
+                'id' => 2,
+                'name' => 'User'
+            ]
         ];
         
-        $api_response = $client->makeRequest('/users', 'POST', $pdns_data);
+        $api_response = $client->makeRequest('/pdnsadmin/users', 'POST', $pdns_data);
         
-        if (!$api_response || !isset($api_response['success']) || !$api_response['success']) {
-            sendError(500, "Failed to create account in PowerDNS Admin: " . ($api_response['msg'] ?? 'Unknown error'));
+        if (!$api_response || $api_response['status_code'] !== 201) {
+            $error_msg = "Unknown error";
+            if (isset($api_response['data']['msg'])) {
+                $error_msg = $api_response['data']['msg'];
+            } elseif (isset($api_response['raw_response'])) {
+                $error_msg = substr($api_response['raw_response'], 0, 200);
+            }
+            sendError(500, "Failed to create account in PowerDNS Admin: " . $error_msg);
             return;
         }
         
