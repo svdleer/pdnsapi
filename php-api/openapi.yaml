@@ -21,7 +21,7 @@ info:
     - Account data is synced FROM PowerDNS Admin (read-only sync)
     - IP addresses are stored locally and NOT sent to PowerDNS Admin
     - Accounts endpoint automatically refreshes data from PowerDNS Admin
-    - Local database maintains PowerDNS Admin user ID relationships
+    - Local database maintains PowerDNS Admin account ID relationships
   version: 1.0.0
   contact:
     name: API Support
@@ -65,7 +65,7 @@ paths:
         - Automatically fetches latest accounts from PowerDNS Admin API
         - Syncs account data to local database for caching and extended metadata
         - Returns accounts with IP addresses (if assigned locally)
-        - Maintains PowerDNS Admin user ID relationships
+        - Maintains PowerDNS Admin account ID relationships
         
         **Data Sources:**
         - Account data: PowerDNS Admin (synchronized on each request)
@@ -503,12 +503,7 @@ components:
         pdns_account_id:
           type: integer
           nullable: true
-          description: PDNSAdmin account ID (legacy)
-          example: 5
-        pdns_user_id:
-          type: integer
-          nullable: true
-          description: PowerDNS Admin user ID (synced from PowerDNS Admin)
+          description: PowerDNS Admin account ID (synced from PowerDNS Admin)
           example: 12
         klant_id:
           type: integer
