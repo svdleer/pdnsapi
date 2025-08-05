@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "PDNSAdmin PHP API",
-    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Features\n- Account management with IP address storage (local only)\n- Domain management with PDNSAdmin synchronization\n- Domain-account associations\n- Data synchronization from PDNSAdmin\n- Local database storage for performance\n\n## Important Notes\n- IP addresses are stored locally and NOT sent to PDNSAdmin\n- Domain deletion is disabled for safety\n- Account changes automatically sync with PDNSAdmin\n- Domain-account assignments update both local DB and PDNSAdmin\n",
-    "version": "1.0.0",
+    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Features\n- **Account management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n\n## Key Functionality\n- Accounts are automatically synced from PowerDNS Admin on each API call\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin (read-only sync)\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Accounts endpoint automatically refreshes data from PowerDNS Admin\n- Local database maintains PowerDNS Admin account ID relationships\n",
+    "version": "1.0.1",
     "contact": {
       "name": "API Support",
       "email": "support@example.com"
@@ -53,16 +53,26 @@
         }
       }
     },
-    "/users": {
+    "/accounts": {
       "get": {
-        "summary": "Get all users",
-        "description": "Retrieve a list of all accounts with their details including IP addresses",
+        "summary": "Get all accounts (synced from PowerDNS Admin)",
+        "description": "Retrieve a list of all accounts with automatic synchronization from PowerDNS Admin.\n\n**Functionality:**\n- Automatically fetches latest accounts from PowerDNS Admin API\n- Syncs account data to local database for caching and extended metadata\n- Returns accounts with IP addresses (if assigned locally)\n- Maintains PowerDNS Admin account ID relationships\n\n**Data Sources:**\n- Account data: PowerDNS Admin (synchronized on each request)\n- IP addresses: Local database only (not stored in PowerDNS Admin)\n- Additional metadata: Local database for extended functionality\n",
         "tags": [
-          "Users"
+          "Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "sync",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Set to true to sync accounts from PowerDNS Admin before returning results"
+          }
         ],
         "responses": {
           "200": {
-            "description": "List of users",
+            "description": "List of accounts",
             "content": {
               "application/json": {
                 "schema": {
@@ -76,7 +86,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "Users retrieved successfully"
+                      "example": "Accounts retrieved successfully"
                     }
                   }
                 }
@@ -92,7 +102,7 @@
         "summary": "Create a new account",
         "description": "Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.",
         "tags": [
-          "Users"
+          "Accounts"
         ],
         "requestBody": {
           "required": true,
@@ -152,12 +162,12 @@
         }
       }
     },
-    "/users/{id}": {
+    "/accounts/{id}": {
       "get": {
         "summary": "Get account by ID",
         "description": "Retrieve a specific account by its ID",
         "tags": [
-          "Users"
+          "Accounts"
         ],
         "parameters": [
           {
@@ -195,7 +205,7 @@
         "summary": "Update account",
         "description": "Update an existing account. Changes are synced with PDNSAdmin (except IP addresses).",
         "tags": [
-          "Users"
+          "Accounts"
         ],
         "parameters": [
           {
@@ -264,7 +274,7 @@
         "summary": "Delete account",
         "description": "Delete an account from both PDNSAdmin and local database",
         "tags": [
-          "Users"
+          "Accounts"
         ],
         "parameters": [
           {
@@ -297,12 +307,12 @@
         }
       }
     },
-    "/users/name/{name}": {
+    "/accounts/name/{name}": {
       "get": {
         "summary": "Get account by name",
         "description": "Retrieve a specific account by its name",
         "tags": [
-          "Users"
+          "Accounts"
         ],
         "parameters": [
           {
@@ -339,8 +349,8 @@
     },
     "/domains": {
       "get": {
-        "summary": "Get all domains",
-        "description": "Retrieve a list of all domains",
+        "summary": "Get all domains (synced from PowerDNS Admin)",
+        "description": "Retrieve a list of all domains with automatic synchronization from PowerDNS Admin.\n\n**Important:** Domain creation is not supported through this API. \nDomains must be created in PowerDNS Admin directly, then synced using the ?action=sync parameter.\n\n**Functionality:**\n- Automatically fetches latest domains from PowerDNS Admin API\n- Syncs domain data to local database for caching\n- Returns domains with account relationships\n- Use ?action=sync to force refresh from PowerDNS Admin\n",
         "tags": [
           "Domains"
         ],
@@ -383,66 +393,6 @@
                 }
               }
             }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create a new domain",
-        "description": "Create a new domain in PDNSAdmin and local database. \nIf account_id is provided, the domain is automatically assigned to that account in PDNSAdmin.\n",
-        "tags": [
-          "Domains"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DomainCreate"
-              },
-              "examples": {
-                "basic_domain": {
-                  "summary": "Basic domain",
-                  "value": {
-                    "name": "example.com.",
-                    "kind": "Master",
-                    "nameservers": [
-                      "ns1.example.com.",
-                      "ns2.example.com."
-                    ]
-                  }
-                },
-                "domain_with_account": {
-                  "summary": "Domain assigned to account",
-                  "value": {
-                    "name": "customer.com.",
-                    "kind": "Master",
-                    "account_id": 1,
-                    "nameservers": [
-                      "ns1.customer.com.",
-                      "ns2.customer.com."
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Domain created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessMessage"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
           }
         }
       }
@@ -768,8 +718,14 @@
           "pdns_account_id": {
             "type": "integer",
             "nullable": true,
-            "description": "PDNSAdmin account ID",
-            "example": 5
+            "description": "PowerDNS Admin account ID (synced from PowerDNS Admin)",
+            "example": 12
+          },
+          "klant_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Customer ID for business relationships",
+            "example": 1001
           },
           "created_at": {
             "type": "string",
@@ -923,60 +879,6 @@
           }
         }
       },
-      "DomainCreate": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Domain name (must end with dot)",
-            "example": "example.com."
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "Native",
-              "Master",
-              "Slave"
-            ],
-            "description": "Zone kind",
-            "default": "Master"
-          },
-          "account_id": {
-            "type": "integer",
-            "description": "Account ID to assign domain to",
-            "example": 1
-          },
-          "masters": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of master servers (for slave zones)",
-            "example": [
-              "192.168.1.100"
-            ]
-          },
-          "nameservers": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of nameservers",
-            "example": [
-              "ns1.example.com.",
-              "ns2.example.com."
-            ]
-          },
-          "dnssec": {
-            "type": "boolean",
-            "description": "Enable DNSSEC",
-            "default": false
-          }
-        }
-      },
       "DomainUpdate": {
         "type": "object",
         "properties": {
@@ -1100,7 +1002,15 @@
                 "format": "date-time"
               },
               "endpoints": {
-                "type": "object"
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "example": {
+                  "accounts": "/api/accounts",
+                  "domains": "/api/domains",
+                  "status": "/api/status"
+                }
               },
               "pdns_admin_status": {
                 "type": "string",
@@ -1231,7 +1141,15 @@
                 "type": "string"
               },
               "endpoints": {
-                "type": "object"
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "example": {
+                  "accounts": "/api/accounts",
+                  "domains": "/api/domains",
+                  "status": "/api/status"
+                }
               },
               "setup_instructions": {
                 "type": "array",
@@ -1338,7 +1256,7 @@
       "description": "API documentation and information"
     },
     {
-      "name": "Users",
+      "name": "Accounts",
       "description": "Account management operations with IP address support"
     },
     {
