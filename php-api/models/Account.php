@@ -18,7 +18,7 @@ class Account {
     public $lastname;
     public $email;
     public $role_id;
-    public $ip_address;
+    public $ip_addresses;
     public $customer_id;
     public $pdns_account_id;
     public $created_at;
@@ -32,7 +32,7 @@ class Account {
         $query = "INSERT INTO " . $this->table_name . "
                 SET username=:username, password=:password, firstname=:firstname, 
                     lastname=:lastname, email=:email, role_id=:role_id, 
-                    ip_address=:ip_address, customer_id=:customer_id, 
+                    ip_addresses=:ip_addresses, customer_id=:customer_id, 
                     pdns_account_id=:pdns_account_id, created_at=NOW()";
 
         $stmt = $this->conn->prepare($query);
@@ -43,7 +43,7 @@ class Account {
         $stmt->bindParam(":lastname", $this->lastname);
         $stmt->bindParam(":email", $this->email);
         $stmt->bindParam(":role_id", $this->role_id);
-        $stmt->bindParam(":ip_address", $this->ip_address);
+        $stmt->bindParam(":ip_addresses", $this->ip_addresses);
         $stmt->bindParam(":customer_id", $this->customer_id);
         $stmt->bindParam(":pdns_account_id", $this->pdns_account_id);
 
@@ -72,7 +72,7 @@ class Account {
             $this->lastname = $row['lastname'];
             $this->email = $row['email'];
             $this->role_id = $row['role_id'];
-            $this->ip_address = $row['ip_address'];
+            $this->ip_addresses = $row['ip_addresses'];
             $this->customer_id = $row['customer_id'];
             $this->pdns_account_id = $row['pdns_account_id'];
             $this->created_at = $row['created_at'];
@@ -99,7 +99,7 @@ class Account {
             $this->lastname = $row['lastname'];
             $this->email = $row['email'];
             $this->role_id = $row['role_id'];
-            $this->ip_address = $row['ip_address'];
+            $this->ip_addresses = $row['ip_addresses'];
             $this->customer_id = $row['customer_id'];
             $this->pdns_account_id = $row['pdns_account_id'];
             $this->created_at = $row['created_at'];
@@ -112,7 +112,7 @@ class Account {
     public function update() {
         $query = "UPDATE " . $this->table_name . "
                 SET password=:password, firstname=:firstname, lastname=:lastname, 
-                    email=:email, role_id=:role_id, ip_address=:ip_address, 
+                    email=:email, role_id=:role_id, ip_addresses=:ip_addresses, 
                     customer_id=:customer_id, pdns_account_id=:pdns_account_id, 
                     updated_at=NOW()
                 WHERE id=:id";
@@ -124,7 +124,7 @@ class Account {
         $stmt->bindParam(':lastname', $this->lastname);
         $stmt->bindParam(':email', $this->email);
         $stmt->bindParam(':role_id', $this->role_id);
-        $stmt->bindParam(':ip_address', $this->ip_address);
+        $stmt->bindParam(':ip_addresses', $this->ip_addresses);
         $stmt->bindParam(':customer_id', $this->customer_id);
         $stmt->bindParam(':pdns_account_id', $this->pdns_account_id);
         $stmt->bindParam(':id', $this->id);
@@ -141,7 +141,7 @@ class Account {
 
     public function search($keywords) {
         $query = "SELECT * FROM " . $this->table_name . " 
-                WHERE username LIKE ? OR firstname LIKE ? OR lastname LIKE ? OR email LIKE ? OR ip_address LIKE ?
+                WHERE username LIKE ? OR firstname LIKE ? OR lastname LIKE ? OR email LIKE ? OR ip_addresses LIKE ?
                 ORDER BY created_at DESC";
 
         $stmt = $this->conn->prepare($query);

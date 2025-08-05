@@ -118,7 +118,11 @@
                       "id": 2,
                       "name": "User"
                     },
-                    "ip_address": "192.168.1.100",
+                    "ip_addresses": [
+                      "192.168.1.101",
+                      "192.168.1.102",
+                      "2001:db8::2"
+                    ],
                     "customer_id": 1001
                   }
                 }
@@ -773,12 +777,17 @@
               "name"
             ]
           },
-          "ip_address": {
-            "type": "string",
-            "format": "ipv4 | ipv6",
-            "nullable": true,
-            "description": "IP address (IPv4/IPv6, local storage only)",
-            "example": "192.168.1.100"
+          "ip_addresses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "ipv4 | ipv6"
+            },
+            "description": "List of IP addresses (IPv4/IPv6, local storage only)",
+            "example": [
+              "192.168.1.100",
+              "2001:db8::1"
+            ]
           },
           "customer_id": {
             "type": "integer",
@@ -807,11 +816,13 @@
             "type": "integer",
             "description": "Role ID"
           },
-          "ip_address": {
-            "type": "string",
-            "format": "ipv4 | ipv6",
-            "nullable": true,
-            "description": "IP address (IPv4/IPv6)"
+          "ip_addresses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "ipv4 | ipv6"
+            },
+            "description": "List of IP addresses (IPv4/IPv6)"
           },
           "customer_id": {
             "type": "integer",

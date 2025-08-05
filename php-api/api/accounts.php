@@ -6,7 +6,17 @@ require_once $base_path . '/config/config.php';
 require_once $base_path . '/config/database.php';
 require_once $base_path . '/includes/database-compat.php';
 require_once $base_path . '/models/Account.php';
-require_once $base_path . '/classes/PDNSAdminClient.php';
+require_once $base_path . '/classes/PDNSAdm        sendResponse(201, [
+            'id' => $db->lastInsertId(),
+            'username' => $account->username,
+            'firstname' => $account->firstname,
+            'lastname' => $account->lastname,
+            'email' => $account->email,
+            'role_id' => $account->role_id,
+            'pdns_account_id' => $account->pdns_account_id,
+            'ip_addresses' => $validated_ips,
+            'customer_id' => $customer_id
+        ], "Account created successfully in PowerDNS Admin and synced to local database");p';
 
 // API key is already validated in index.php, log the request
 logApiRequest('accounts', $_SERVER['REQUEST_METHOD'], 200);
@@ -107,7 +117,7 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
     try {
         foreach ($pdns_users as $pdns_user) {
             // Check if account exists
-            $check_query = "SELECT id, ip_address, customer_id FROM accounts WHERE username = ? FOR UPDATE";
+            $check_query = "SELECT id, ip_addresses, customer_id FROM accounts WHERE username = ? FOR UPDATE";
             $check_stmt = $db->prepare($check_query);
             $check_stmt->execute([$pdns_user['username']]);
             $existing_account = $check_stmt->fetch(PDO::FETCH_ASSOC);
@@ -180,7 +190,7 @@ function getAllAccounts($account) {
                 "lastname" => $lastname,
                 "email" => $email,
                 "role_id" => $role_id,
-                "ip_address" => $ip_address,
+                "ip_addresses" => $ip_addresses ? json_decode($ip_addresses, true) : [],
                 "customer_id" => $customer_id,
                 "pdns_account_id" => $pdns_account_id,
                 "created_at" => $created_at,
@@ -207,7 +217,7 @@ function getAccount($account, $account_id) {
             "lastname" => $account->lastname,
             "email" => $account->email,
             "role_id" => $account->role_id,
-            "ip_address" => $account->ip_address,
+            "ip_addresses" => $account->ip_addresses ? json_decode($account->ip_addresses, true) : [],
             "customer_id" => $account->customer_id,
             "pdns_account_id" => $account->pdns_account_id,
             "created_at" => $account->created_at,
@@ -229,7 +239,7 @@ function getAccountByName($account, $account_name) {
             "lastname" => $account->lastname,
             "email" => $account->email,
             "role_id" => $account->role_id,
-            "ip_address" => $account->ip_address,
+            "ip_addresses" => $account->ip_addresses ? json_decode($account->ip_addresses, true) : [],
             "customer_id" => $account->customer_id,
             "pdns_account_id" => $account->pdns_account_id,
             "created_at" => $account->created_at,
@@ -253,14 +263,16 @@ function createAccount($account) {
         return;
     }
     
-    // Validate IP address if provided
-    $validated_ip = null;
-    if (isset($data->ip_address) && !empty($data->ip_address)) {
-        if (!filter_var($data->ip_address, FILTER_VALIDATE_IP)) {
-            sendError(400, "Invalid IP address format: " . $data->ip_address);
-            return;
+    // Validate IP addresses if provided
+    $validated_ips = [];
+    if (isset($data->ip_addresses) && is_array($data->ip_addresses)) {
+        foreach ($data->ip_addresses as $ip) {
+            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                sendError(400, "Invalid IP address format: " . $ip);
+                return;
+            }
+            $validated_ips[] = $ip;
         }
-        $validated_ip = $data->ip_address;
     }
     
     // Validate customer_id if provided
@@ -322,7 +334,7 @@ function createAccount($account) {
     $account->lastname = $pdns_user['lastname'];
     $account->email = $pdns_user['email'];
     $account->role_id = $pdns_user['role_id'];
-    $account->ip_address = $validated_ip;
+    $account->ip_addresses = json_encode($validated_ips);
     $account->customer_id = $customer_id;
     $account->pdns_account_id = $pdns_user['id'];
     
@@ -351,14 +363,21 @@ function updateAccount($account, $account_id) {
     $account->id = $account_id;
     
     if($account->readOne()) {
-        // Validate IP address if provided
-        $validated_ip = $account->ip_address; // Keep existing if not provided
-        if (isset($data->ip_address)) {
-            if (!empty($data->ip_address) && !filter_var($data->ip_address, FILTER_VALIDATE_IP)) {
-                sendError(400, "Invalid IP address format: " . $data->ip_address);
+        // Validate IP addresses if provided
+        $validated_ips = $account->ip_addresses ? json_decode($account->ip_addresses, true) : []; // Keep existing if not provided
+        if (isset($data->ip_addresses)) {
+            if (!is_array($data->ip_addresses)) {
+                sendError(400, "ip_addresses must be an array");
                 return;
             }
-            $validated_ip = empty($data->ip_address) ? null : $data->ip_address;
+            $validated_ips = [];
+            foreach ($data->ip_addresses as $ip) {
+                if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                    sendError(400, "Invalid IP address format: " . $ip);
+                    return;
+                }
+                $validated_ips[] = $ip;
+            }
         }
         
         // Validate customer_id if provided
@@ -395,7 +414,7 @@ function updateAccount($account, $account_id) {
         $account->lastname = $data->lastname ?? $account->lastname;
         $account->email = $data->email ?? $account->email;
         $account->role_id = $data->role_id ?? $account->role_id;
-        $account->ip_address = $validated_ip;
+        $account->ip_addresses = json_encode($validated_ips);
         $account->customer_id = $customer_id;
         
         if($account->update()) {
