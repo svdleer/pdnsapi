@@ -652,7 +652,7 @@
       "BasicAuth": {
         "type": "http",
         "scheme": "basic",
-        "description": "Basic Authentication using base64 encoded credentials.\n\n**Format:** `Authorization: Basic <base64-encoded-credentials>`\n\n**Example:** \n```\nAuthorization: Basic YXBpYWRtaW46VmV2ZWxnSWNzXm9tMg==\n```\n\n**Note:** The credentials should be base64 encoded before sending the request.\n"
+        "description": "Basic Authentication using base64 encoded credentials.\n\n**Format:** `Authorization: Basic <base64-encoded-credentials>`\n\n**Example:** \n```\nAuthorization: Basic YWRtaW46YWRtaW4=\n```\n\n**Note:** The credentials should be base64 encoded before sending the request.\n"
       }
     },
     "schemas": {

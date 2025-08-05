@@ -468,7 +468,7 @@ components:
         
         **Example:** 
         ```
-        Authorization: Basic YXBpYWRtaW46VmV2ZWxnSWNzXm9tMg==
+        Authorization: Basic YWRtaW46YWRtaW4=
         ```
         
         **Note:** The credentials should be base64 encoded before sending the request.
