@@ -117,16 +117,9 @@
                     "role": {
                       "id": 2,
                       "name": "User"
-                    }
-                  }
-                },
-                "basic_account": {
-                  "summary": "Basic local account",
-                  "value": {
-                    "name": "customer-account",
-                    "description": "Customer account description",
-                    "contact": "John Doe",
-                    "mail": "john@customer.com"
+                    },
+                    "ip_address": "192.168.1.100",
+                    "customer_id": 1001
                   }
                 }
               }
@@ -664,26 +657,31 @@
             "description": "Account ID",
             "example": 1
           },
-          "name": {
+          "username": {
             "type": "string",
-            "description": "Account name (unique)",
-            "example": "customer-account"
+            "description": "Username (unique)",
+            "example": "testuser"
           },
-          "description": {
+          "firstname": {
             "type": "string",
-            "description": "Account description",
-            "example": "Customer account description"
+            "description": "First name",
+            "example": "John"
           },
-          "contact": {
+          "lastname": {
             "type": "string",
-            "description": "Contact person",
-            "example": "John Doe"
+            "description": "Last name",
+            "example": "Doe"
           },
-          "mail": {
+          "email": {
             "type": "string",
             "format": "email",
             "description": "Email address",
-            "example": "john@customer.com"
+            "example": "john@example.com"
+          },
+          "role_id": {
+            "type": "integer",
+            "description": "Role ID (2 = User, 1 = Admin)",
+            "example": 2
           },
           "ip_addresses": {
             "type": "array",
@@ -691,23 +689,22 @@
               "type": "string",
               "format": "ipv4 | ipv6"
             },
-            "description": "List of IP addresses (IPv4/IPv6)",
+            "description": "List of IP addresses (IPv4/IPv6, local storage only)",
             "example": [
               "192.168.1.100",
               "2001:db8::1"
             ]
+          },
+          "klant_id": {
+            "type": "integer",
+            "description": "Customer ID for business relationships",
+            "example": 1001
           },
           "pdns_account_id": {
             "type": "integer",
             "nullable": true,
             "description": "PowerDNS Admin account ID (synced from PowerDNS Admin)",
             "example": 12
-          },
-          "klant_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Customer ID for business relationships",
-            "example": 1001
           },
           "created_at": {
             "type": "string",
@@ -727,8 +724,7 @@
           "username",
           "plain_text_password",
           "firstname",
-          "email",
-          "role"
+          "email"
         ],
         "properties": {
           "username": {
@@ -777,64 +773,50 @@
               "name"
             ]
           },
-          "name": {
+          "ip_address": {
             "type": "string",
-            "description": "Account name (legacy, maps to username)",
-            "example": "customer-account"
+            "format": "ipv4 | ipv6",
+            "nullable": true,
+            "description": "IP address (IPv4/IPv6, local storage only)",
+            "example": "192.168.1.100"
           },
-          "description": {
-            "type": "string",
-            "description": "Account description (legacy)",
-            "example": "Customer account description"
-          },
-          "contact": {
-            "type": "string",
-            "description": "Contact person (legacy, maps to firstname)",
-            "example": "John Doe"
-          },
-          "mail": {
-            "type": "string",
-            "format": "email",
-            "description": "Email address (legacy, same as email)",
-            "example": "john@customer.com"
-          },
-          "ip_addresses": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "ipv4 | ipv6"
-            },
-            "description": "List of IP addresses (IPv4/IPv6, local storage only)",
-            "example": [
-              "192.168.1.100",
-              "2001:db8::1"
-            ]
+          "customer_id": {
+            "type": "integer",
+            "description": "Customer ID for business relationships",
+            "example": 1001
           }
         }
       },
       "AccountUpdate": {
         "type": "object",
         "properties": {
-          "description": {
+          "firstname": {
             "type": "string",
-            "description": "Account description"
+            "description": "First name"
           },
-          "contact": {
+          "lastname": {
             "type": "string",
-            "description": "Contact person"
+            "description": "Last name"
           },
-          "mail": {
+          "email": {
             "type": "string",
             "format": "email",
             "description": "Email address"
           },
-          "ip_addresses": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "ipv4 | ipv6"
-            },
-            "description": "List of IP addresses (IPv4/IPv6)"
+          "role_id": {
+            "type": "integer",
+            "description": "Role ID"
+          },
+          "ip_address": {
+            "type": "string",
+            "format": "ipv4 | ipv6",
+            "nullable": true,
+            "description": "IP address (IPv4/IPv6)"
+          },
+          "customer_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Customer ID"
           }
         }
       },

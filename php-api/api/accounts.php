@@ -87,8 +87,8 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
         return;
     }
     
-    // Get all users from PowerDNS Admin database (READ operation - use DB)
-    $users_query = "SELECT id, username, firstname, lastname, email FROM user";
+    // Get all users from PowerDNS Admin database
+    $users_query = "SELECT id, username, firstname, lastname, email, role_id FROM user";
     $stmt = $pdns_admin_conn->prepare($users_query);
     $stmt->execute();
     $pdns_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -106,33 +106,40 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
     
     try {
         foreach ($pdns_users as $pdns_user) {
-            $username = $pdns_user['username'];
-            $firstname = $pdns_user['firstname'];
-            $lastname = $pdns_user['lastname'];
-            $email = $pdns_user['email'];
-            
             // Check if account exists
-            $check_query = "SELECT id FROM accounts WHERE name = ? FOR UPDATE";
+            $check_query = "SELECT id, ip_address, customer_id FROM accounts WHERE username = ? FOR UPDATE";
             $check_stmt = $db->prepare($check_query);
-            $check_stmt->execute([$username]);
+            $check_stmt->execute([$pdns_user['username']]);
             $existing_account = $check_stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($existing_account) {
-                // Update existing account
-                $update_query = "UPDATE accounts SET description = ?, contact = ?, mail = ?, updated_at = NOW() WHERE id = ?";
+                // Update existing account (preserve ip_address and customer_id)
+                $update_query = "UPDATE accounts SET firstname = ?, lastname = ?, email = ?, role_id = ?, pdns_account_id = ?, updated_at = NOW() WHERE username = ?";
                 $update_stmt = $db->prepare($update_query);
-                $description = $firstname . ' ' . $lastname;
                 
-                if ($update_stmt->execute([$description, $description, $email, $existing_account['id']])) {
+                if ($update_stmt->execute([
+                    $pdns_user['firstname'],
+                    $pdns_user['lastname'], 
+                    $pdns_user['email'],
+                    $pdns_user['role_id'],
+                    $pdns_user['id'],
+                    $pdns_user['username']
+                ])) {
                     $updated_count++;
                 }
             } else {
                 // Create new account
-                $create_query = "INSERT INTO accounts (name, description, contact, mail, created_at) VALUES (?, ?, ?, ?, NOW())";
+                $create_query = "INSERT INTO accounts (username, firstname, lastname, email, role_id, pdns_account_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())";
                 $create_stmt = $db->prepare($create_query);
-                $description = $firstname . ' ' . $lastname;
                 
-                if ($create_stmt->execute([$username, $description, $description, $email])) {
+                if ($create_stmt->execute([
+                    $pdns_user['username'],
+                    $pdns_user['firstname'],
+                    $pdns_user['lastname'],
+                    $pdns_user['email'],
+                    $pdns_user['role_id'],
+                    $pdns_user['id']
+                ])) {
                     $synced_count++;
                 }
             }
@@ -168,11 +175,13 @@ function getAllAccounts($account) {
             
             $account_item = array(
                 "id" => $id,
-                "name" => $name,
-                "description" => $description,
-                "contact" => $contact,
-                "mail" => $mail,
-                "ip_addresses" => $ip_addresses ? json_decode($ip_addresses, true) : [],
+                "username" => $username,
+                "firstname" => $firstname,
+                "lastname" => $lastname,
+                "email" => $email,
+                "role_id" => $role_id,
+                "ip_address" => $ip_address,
+                "customer_id" => $customer_id,
                 "pdns_account_id" => $pdns_account_id,
                 "created_at" => $created_at,
                 "updated_at" => $updated_at
@@ -193,11 +202,13 @@ function getAccount($account, $account_id) {
     if($account->readOne()) {
         $account_arr = array(
             "id" => $account->id,
-            "name" => $account->name,
-            "description" => $account->description,
-            "contact" => $account->contact,
-            "mail" => $account->mail,
-            "ip_addresses" => $account->ip_addresses ? json_decode($account->ip_addresses, true) : [],
+            "username" => $account->username,
+            "firstname" => $account->firstname,
+            "lastname" => $account->lastname,
+            "email" => $account->email,
+            "role_id" => $account->role_id,
+            "ip_address" => $account->ip_address,
+            "customer_id" => $account->customer_id,
             "pdns_account_id" => $account->pdns_account_id,
             "created_at" => $account->created_at,
             "updated_at" => $account->updated_at
@@ -213,11 +224,13 @@ function getAccountByName($account, $account_name) {
     if($account->readByName($account_name)) {
         $account_arr = array(
             "id" => $account->id,
-            "name" => $account->name,
-            "description" => $account->description,
-            "contact" => $account->contact,
-            "mail" => $account->mail,
-            "ip_addresses" => $account->ip_addresses ? json_decode($account->ip_addresses, true) : [],
+            "username" => $account->username,
+            "firstname" => $account->firstname,
+            "lastname" => $account->lastname,
+            "email" => $account->email,
+            "role_id" => $account->role_id,
+            "ip_address" => $account->ip_address,
+            "customer_id" => $account->customer_id,
             "pdns_account_id" => $account->pdns_account_id,
             "created_at" => $account->created_at,
             "updated_at" => $account->updated_at
@@ -230,58 +243,103 @@ function getAccountByName($account, $account_name) {
 }
 
 function createAccount($account) {
-    global $pdns_config;
+    global $pdns_config, $db, $pdns_admin_conn;
     
     $data = json_decode(file_get_contents("php://input"));
     
-    if(!empty($data->name)) {
-        // First create in PowerDNS Admin via API (WRITE operation - use API)
-        $client = new PDNSAdminClient($pdns_config);
-        
-        $pdns_data = [
-            'username' => $data->name,
-            'plain_text_password' => bin2hex(random_bytes(16)), // Generate a random password
-            'firstname' => $data->contact ?? $data->name,
-            'lastname' => '',
-            'email' => $data->mail ?? '',
-            'role' => [
-                'id' => 2,
-                'name' => 'User'
-            ]
-        ];
-        
-        $api_response = $client->makeRequest('/pdnsadmin/users', 'POST', $pdns_data);
-        
-        if (!$api_response || $api_response['status_code'] !== 201) {
-            $error_msg = "Unknown error";
-            if (isset($api_response['data']['msg'])) {
-                $error_msg = $api_response['data']['msg'];
-            } elseif (isset($api_response['raw_response'])) {
-                $error_msg = substr($api_response['raw_response'], 0, 200);
-            }
-            sendError(500, "Failed to create account in PowerDNS Admin: " . $error_msg);
+    // Validate required PowerDNS Admin fields
+    if (empty($data->username) || empty($data->plain_text_password) || empty($data->firstname) || empty($data->email)) {
+        sendError(400, "Username, plain_text_password, firstname, and email are required");
+        return;
+    }
+    
+    // Validate IP address if provided
+    $validated_ip = null;
+    if (isset($data->ip_address) && !empty($data->ip_address)) {
+        if (!filter_var($data->ip_address, FILTER_VALIDATE_IP)) {
+            sendError(400, "Invalid IP address format: " . $data->ip_address);
             return;
         }
-        
-        // Then create in local database
-        $account->name = $data->name;
-        $account->description = $data->description ?? '';
-        $account->contact = $data->contact ?? '';
-        $account->mail = $data->mail ?? '';
-        $account->ip_addresses = isset($data->ip_addresses) ? json_encode($data->ip_addresses) : json_encode([]);
-        
-        // Store the PowerDNS Admin user ID if available
-        if (isset($api_response['data']['id'])) {
-            $account->pdns_account_id = $api_response['data']['id'];
+        $validated_ip = $data->ip_address;
+    }
+    
+    // Validate customer_id if provided
+    $customer_id = null;
+    if (isset($data->customer_id)) {
+        if (!is_numeric($data->customer_id) || $data->customer_id <= 0) {
+            sendError(400, "customer_id must be a positive integer");
+            return;
         }
-        
-        if($account->create()) {
-            sendResponse(201, null, "Account created successfully in both PowerDNS Admin and local database");
-        } else {
-            sendError(503, "Account created in PowerDNS Admin but failed to create in local database");
+        $customer_id = (int)$data->customer_id;
+    }
+    
+    // Create user in PowerDNS Admin via API
+    $client = new PDNSAdminClient($pdns_config);
+    
+    $pdns_data = [
+        'username' => $data->username,
+        'plain_text_password' => $data->plain_text_password,
+        'firstname' => $data->firstname,
+        'lastname' => $data->lastname ?? '',
+        'email' => $data->email,
+        'role' => $data->role ?? ['id' => 2, 'name' => 'User']
+    ];
+    
+    $api_response = $client->makeRequest('/pdnsadmin/users', 'POST', $pdns_data);
+    
+    if (!$api_response || $api_response['status_code'] !== 201) {
+        $error_msg = "Unknown error";
+        if (isset($api_response['data']['msg'])) {
+            $error_msg = $api_response['data']['msg'];
+        } elseif (isset($api_response['raw_response'])) {
+            $error_msg = substr($api_response['raw_response'], 0, 200);
         }
+        sendError(500, "Failed to create user in PowerDNS Admin: " . $error_msg);
+        return;
+    }
+    
+    // Sync users from PowerDNS Admin to get the created user
+    if (!$pdns_admin_conn) {
+        sendError(500, "Failed to connect to PowerDNS Admin database for sync");
+        return;
+    }
+    
+    // Get the newly created user from PowerDNS Admin database
+    $user_query = "SELECT id, username, firstname, lastname, email, role_id FROM user WHERE username = ?";
+    $stmt = $pdns_admin_conn->prepare($user_query);
+    $stmt->execute([$data->username]);
+    $pdns_user = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$pdns_user) {
+        sendError(500, "User created in PowerDNS Admin but not found in database sync");
+        return;
+    }
+    
+    // Create in local database with additional fields
+    $account->username = $pdns_user['username'];
+    $account->password = null; // Don't store password locally
+    $account->firstname = $pdns_user['firstname'];
+    $account->lastname = $pdns_user['lastname'];
+    $account->email = $pdns_user['email'];
+    $account->role_id = $pdns_user['role_id'];
+    $account->ip_address = $validated_ip;
+    $account->customer_id = $customer_id;
+    $account->pdns_account_id = $pdns_user['id'];
+    
+    if($account->create()) {
+        sendResponse(201, [
+            'id' => $db->lastInsertId(),
+            'username' => $account->username,
+            'firstname' => $account->firstname,
+            'lastname' => $account->lastname,
+            'email' => $account->email,
+            'role_id' => $account->role_id,
+            'pdns_account_id' => $account->pdns_account_id,
+            'ip_address' => $account->ip_address,
+            'customer_id' => $account->customer_id
+        ], "Account created successfully in PowerDNS Admin and synced to local database");
     } else {
-        sendError(400, "Account name is required");
+        sendError(503, "User created in PowerDNS Admin but failed to sync to local database");
     }
 }
 
@@ -293,13 +351,34 @@ function updateAccount($account, $account_id) {
     $account->id = $account_id;
     
     if($account->readOne()) {
-        // Update in PowerDNS Admin via API if we have a PowerDNS Admin ID (WRITE operation - use API)
-        if ($account->pdns_account_id) {
+        // Validate IP address if provided
+        $validated_ip = $account->ip_address; // Keep existing if not provided
+        if (isset($data->ip_address)) {
+            if (!empty($data->ip_address) && !filter_var($data->ip_address, FILTER_VALIDATE_IP)) {
+                sendError(400, "Invalid IP address format: " . $data->ip_address);
+                return;
+            }
+            $validated_ip = empty($data->ip_address) ? null : $data->ip_address;
+        }
+        
+        // Validate customer_id if provided
+        $customer_id = $account->customer_id; // Keep existing if not provided
+        if (isset($data->customer_id)) {
+            if ($data->customer_id !== null && (!is_numeric($data->customer_id) || $data->customer_id <= 0)) {
+                sendError(400, "customer_id must be a positive integer or null");
+                return;
+            }
+            $customer_id = $data->customer_id;
+        }
+        
+        // Update in PowerDNS Admin via API if we have a PowerDNS Admin ID and relevant fields are being updated
+        if ($account->pdns_account_id && (isset($data->firstname) || isset($data->lastname) || isset($data->email))) {
             $client = new PDNSAdminClient($pdns_config);
             
             $pdns_data = [];
-            if (isset($data->contact)) $pdns_data['firstname'] = $data->contact;
-            if (isset($data->mail)) $pdns_data['email'] = $data->mail;
+            if (isset($data->firstname)) $pdns_data['firstname'] = $data->firstname;
+            if (isset($data->lastname)) $pdns_data['lastname'] = $data->lastname;
+            if (isset($data->email)) $pdns_data['email'] = $data->email;
             
             if (!empty($pdns_data)) {
                 $api_response = $client->makeRequest('/users/' . $account->pdns_account_id, 'PUT', $pdns_data);
@@ -312,11 +391,12 @@ function updateAccount($account, $account_id) {
         }
         
         // Update in local database
-        $account->name = $data->name ?? $account->name;
-        $account->description = $data->description ?? $account->description;
-        $account->contact = $data->contact ?? $account->contact;
-        $account->mail = $data->mail ?? $account->mail;
-        $account->ip_addresses = isset($data->ip_addresses) ? json_encode($data->ip_addresses) : $account->ip_addresses;
+        $account->firstname = $data->firstname ?? $account->firstname;
+        $account->lastname = $data->lastname ?? $account->lastname;
+        $account->email = $data->email ?? $account->email;
+        $account->role_id = $data->role_id ?? $account->role_id;
+        $account->ip_address = $validated_ip;
+        $account->customer_id = $customer_id;
         
         if($account->update()) {
             sendResponse(200, null, "Account updated successfully");

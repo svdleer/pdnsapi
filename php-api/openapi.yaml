@@ -122,13 +122,8 @@ paths:
                   role:
                     id: 2
                     name: "User"
-              basic_account:
-                summary: Basic local account
-                value:
-                  name: "customer-account"
-                  description: "Customer account description"
-                  contact: "John Doe"
-                  mail: "john@customer.com"
+                  ip_address: "192.168.1.100"
+                  customer_id: 1001
       responses:
         '201':
           description: Account created successfully
@@ -481,40 +476,43 @@ components:
           type: integer
           description: Account ID
           example: 1
-        name:
+        username:
           type: string
-          description: Account name (unique)
-          example: "customer-account"
-        description:
+          description: Username (unique)
+          example: "testuser"
+        firstname:
           type: string
-          description: Account description
-          example: "Customer account description"
-        contact:
+          description: First name
+          example: "John"
+        lastname:
           type: string
-          description: Contact person
-          example: "John Doe"
-        mail:
+          description: Last name
+          example: "Doe"
+        email:
           type: string
           format: email
           description: Email address
-          example: "john@customer.com"
+          example: "john@example.com"
+        role_id:
+          type: integer
+          description: Role ID (2 = User, 1 = Admin)
+          example: 2
         ip_addresses:
           type: array
           items:
             type: string
             format: ipv4 | ipv6
-          description: List of IP addresses (IPv4/IPv6)
+          description: List of IP addresses (IPv4/IPv6, local storage only)
           example: ["192.168.1.100", "2001:db8::1"]
+        klant_id:
+          type: integer
+          description: Customer ID for business relationships
+          example: 1001
         pdns_account_id:
           type: integer
           nullable: true
           description: PowerDNS Admin account ID (synced from PowerDNS Admin)
           example: 12
-        klant_id:
-          type: integer
-          nullable: true
-          description: Customer ID for business relationships
-          example: 1001
         created_at:
           type: string
           format: date-time
@@ -531,7 +529,6 @@ components:
         - plain_text_password
         - firstname  
         - email
-        - role
       properties:
         username:
           type: string
@@ -569,51 +566,42 @@ components:
           required:
             - id
             - name
-        # Legacy fields for backward compatibility
-        name:
+        ip_address:
           type: string
-          description: Account name (legacy, maps to username)
-          example: "customer-account"
-        description:
-          type: string
-          description: Account description (legacy)
-          example: "Customer account description"
-        contact:
-          type: string
-          description: Contact person (legacy, maps to firstname)
-          example: "John Doe"
-        mail:
-          type: string
-          format: email
-          description: Email address (legacy, same as email)
-          example: "john@customer.com"
-        ip_addresses:
-          type: array
-          items:
-            type: string
-            format: ipv4 | ipv6
-          description: List of IP addresses (IPv4/IPv6, local storage only)
-          example: ["192.168.1.100", "2001:db8::1"]
+          format: ipv4 | ipv6
+          nullable: true
+          description: IP address (IPv4/IPv6, local storage only)
+          example: "192.168.1.100"
+        customer_id:
+          type: integer
+          description: Customer ID for business relationships
+          example: 1001
 
     AccountUpdate:
       type: object
       properties:
-        description:
+        firstname:
           type: string
-          description: Account description
-        contact:
+          description: First name
+        lastname:
           type: string
-          description: Contact person
-        mail:
+          description: Last name
+        email:
           type: string
           format: email
           description: Email address
-        ip_addresses:
-          type: array
-          items:
-            type: string
-            format: ipv4 | ipv6
-          description: List of IP addresses (IPv4/IPv6)
+        role_id:
+          type: integer
+          description: Role ID
+        ip_address:
+          type: string
+          format: ipv4 | ipv6
+          nullable: true
+          description: IP address (IPv4/IPv6)
+        customer_id:
+          type: integer
+          nullable: true
+          description: Customer ID
 
     Domain:
       type: object

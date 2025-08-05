@@ -9,16 +9,18 @@ require_once $base_path . '/includes/database-compat.php';
  */
 class Account {
     private $conn;
-    private $table_name = "accounts"; // Updated table name
+    private $table_name = "accounts";
 
     public $id;
-    public $name;
-    public $description;
-    public $contact;
-    public $mail;
-    public $ip_addresses;
-    public $pdns_account_id; // PowerDNS Admin user ID
-    public $klant_id;        // Customer ID field
+    public $username;
+    public $password;
+    public $firstname;
+    public $lastname;
+    public $email;
+    public $role_id;
+    public $ip_address;
+    public $customer_id;
+    public $pdns_account_id;
     public $created_at;
     public $updated_at;
 
@@ -28,19 +30,22 @@ class Account {
 
     public function create() {
         $query = "INSERT INTO " . $this->table_name . "
-                SET name=:name, description=:description, contact=:contact, 
-                    mail=:mail, ip_addresses=:ip_addresses, pdns_user_id=:pdns_user_id, 
-                    klant_id=:klant_id, created_at=NOW()";
+                SET username=:username, password=:password, firstname=:firstname, 
+                    lastname=:lastname, email=:email, role_id=:role_id, 
+                    ip_address=:ip_address, customer_id=:customer_id, 
+                    pdns_account_id=:pdns_account_id, created_at=NOW()";
 
         $stmt = $this->conn->prepare($query);
 
-        $stmt->bindParam(":name", $this->name);
-        $stmt->bindParam(":description", $this->description);
-        $stmt->bindParam(":contact", $this->contact);
-        $stmt->bindParam(":mail", $this->mail);
-        $stmt->bindParam(":ip_addresses", $this->ip_addresses);
-        $stmt->bindParam(":pdns_user_id", $this->pdns_user_id);
-        $stmt->bindParam(":klant_id", $this->klant_id);
+        $stmt->bindParam(":username", $this->username);
+        $stmt->bindParam(":password", $this->password);
+        $stmt->bindParam(":firstname", $this->firstname);
+        $stmt->bindParam(":lastname", $this->lastname);
+        $stmt->bindParam(":email", $this->email);
+        $stmt->bindParam(":role_id", $this->role_id);
+        $stmt->bindParam(":ip_address", $this->ip_address);
+        $stmt->bindParam(":customer_id", $this->customer_id);
+        $stmt->bindParam(":pdns_account_id", $this->pdns_account_id);
 
         return $stmt->execute();
     }
@@ -61,13 +66,15 @@ class Account {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
-            $this->name = $row['name'];
-            $this->description = $row['description'];
-            $this->contact = $row['contact'];
-            $this->mail = $row['mail'];
-            $this->ip_addresses = $row['ip_addresses'];
-            $this->pdns_account_id = $row['pdns_account_id'] ?? null;
-            $this->pdns_user_id = $row['pdns_user_id'] ?? null;
+            $this->username = $row['username'];
+            $this->password = $row['password'];
+            $this->firstname = $row['firstname'];
+            $this->lastname = $row['lastname'];
+            $this->email = $row['email'];
+            $this->role_id = $row['role_id'];
+            $this->ip_address = $row['ip_address'];
+            $this->customer_id = $row['customer_id'];
+            $this->pdns_account_id = $row['pdns_account_id'];
             $this->created_at = $row['created_at'];
             $this->updated_at = $row['updated_at'];
             return true;
@@ -75,24 +82,26 @@ class Account {
         return false;
     }
 
-    public function readByName() {
-        $query = "SELECT * FROM " . $this->table_name . " WHERE name = ? LIMIT 0,1";
+    public function readByName($name = null) {
+        $query = "SELECT * FROM " . $this->table_name . " WHERE username = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $this->name);
+        $search_name = $name ?? $this->username;
+        $stmt->bindParam(1, $search_name);
         $stmt->execute();
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
             $this->id = $row['id'];
-            $this->name = $row['name'];
-            $this->description = $row['description'];
-            $this->contact = $row['contact'];
-            $this->mail = $row['mail'];
-            $this->ip_addresses = $row['ip_addresses'];
-            $this->pdns_account_id = $row['pdns_account_id'] ?? null;
-            $this->pdns_user_id = $row['pdns_user_id'] ?? null;
-            $this->klant_id = $row['klant_id'] ?? null;
+            $this->username = $row['username'];
+            $this->password = $row['password'];
+            $this->firstname = $row['firstname'];
+            $this->lastname = $row['lastname'];
+            $this->email = $row['email'];
+            $this->role_id = $row['role_id'];
+            $this->ip_address = $row['ip_address'];
+            $this->customer_id = $row['customer_id'];
+            $this->pdns_account_id = $row['pdns_account_id'];
             $this->created_at = $row['created_at'];
             $this->updated_at = $row['updated_at'];
             return true;
@@ -102,19 +111,22 @@ class Account {
 
     public function update() {
         $query = "UPDATE " . $this->table_name . "
-                SET description=:description, contact=:contact, mail=:mail, 
-                    ip_addresses=:ip_addresses, pdns_user_id=:pdns_user_id, 
-                    klant_id=:klant_id, updated_at=NOW()
+                SET password=:password, firstname=:firstname, lastname=:lastname, 
+                    email=:email, role_id=:role_id, ip_address=:ip_address, 
+                    customer_id=:customer_id, pdns_account_id=:pdns_account_id, 
+                    updated_at=NOW()
                 WHERE id=:id";
 
         $stmt = $this->conn->prepare($query);
 
-        $stmt->bindParam(':description', $this->description);
-        $stmt->bindParam(':contact', $this->contact);
-        $stmt->bindParam(':mail', $this->mail);
-        $stmt->bindParam(':ip_addresses', $this->ip_addresses);
-        $stmt->bindParam(':pdns_user_id', $this->pdns_user_id);
-        $stmt->bindParam(':klant_id', $this->klant_id);
+        $stmt->bindParam(':password', $this->password);
+        $stmt->bindParam(':firstname', $this->firstname);
+        $stmt->bindParam(':lastname', $this->lastname);
+        $stmt->bindParam(':email', $this->email);
+        $stmt->bindParam(':role_id', $this->role_id);
+        $stmt->bindParam(':ip_address', $this->ip_address);
+        $stmt->bindParam(':customer_id', $this->customer_id);
+        $stmt->bindParam(':pdns_account_id', $this->pdns_account_id);
         $stmt->bindParam(':id', $this->id);
 
         return $stmt->execute();
@@ -129,7 +141,7 @@ class Account {
 
     public function search($keywords) {
         $query = "SELECT * FROM " . $this->table_name . " 
-                WHERE name LIKE ? OR description LIKE ? OR contact LIKE ? OR mail LIKE ? OR ip_addresses LIKE ?
+                WHERE username LIKE ? OR firstname LIKE ? OR lastname LIKE ? OR email LIKE ? OR ip_address LIKE ?
                 ORDER BY created_at DESC";
 
         $stmt = $this->conn->prepare($query);
