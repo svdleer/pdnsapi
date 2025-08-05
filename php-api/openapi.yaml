@@ -253,18 +253,23 @@ paths:
 
   /domains:
     get:
-      summary: Get all domains (synced from PowerDNS Admin)
+      summary: Get all domains (synced from PowerDNS Admin database)
       description: |
-        Retrieve a list of all domains with automatic synchronization from PowerDNS Admin.
+        Retrieve a list of all domains with direct synchronization from PowerDNS Admin database.
+        
+        **Returns simplified domain objects with essential fields only:**
+        - `id`: Internal domain ID
+        - `name`: Domain name (without trailing dot)
+        - `pdns_zone_id`: PowerDNS Admin domain ID (numeric)
+        - `account_id`: Associated account ID (if assigned)
         
         **Important:** Domain creation is not supported through this API. 
-        Domains must be created in PowerDNS Admin directly, then synced using the ?action=sync parameter.
+        Domains must be created in PowerDNS Admin directly, then synced using ?sync=true parameter.
         
         **Functionality:**
-        - Automatically fetches latest domains from PowerDNS Admin API
-        - Syncs domain data to local database for caching
-        - Returns domains with account relationships
-        - Use ?action=sync to force refresh from PowerDNS Admin
+        - Direct database sync from PowerDNS Admin for optimal performance
+        - Clean, simplified response format
+        - Use ?sync=true to force refresh from PowerDNS Admin database
       tags:
         - Domains
       parameters:
@@ -272,7 +277,7 @@ paths:
           in: query
           schema:
             type: boolean
-          description: Set to true to sync domains from PDNSAdmin before returning results
+          description: Set to true to sync domains from PowerDNS Admin database before returning results
         - name: account_id
           in: query
           schema:
@@ -578,46 +583,22 @@ components:
           example: 1
         name:
           type: string
-          description: Domain name
-          example: "example.com."
-        type:
-          type: string
-          description: Domain type
-          example: "Zone"
+          description: Domain name (without trailing dot)
+          example: "example.com"
+        pdns_zone_id:
+          type: integer
+          description: PowerDNS Admin domain ID (numeric)
+          example: 123
         account_id:
           type: integer
           nullable: true
           description: Associated account ID
           example: 1
-        account_name:
-          type: string
-          nullable: true
-          description: Associated account name
-          example: "customer-account"
-        pdns_zone_id:
-          type: string
-          description: PDNSAdmin zone ID
-          example: "example.com."
-        kind:
-          type: string
-          enum: [Native, Master, Slave]
-          description: Zone kind
-          example: "Master"
-        masters:
-          type: string
-          description: Comma-separated list of master servers
-          example: "192.168.1.100,192.168.1.101"
-        dnssec:
-          type: boolean
-          description: DNSSEC enabled
-          example: false
-        account:
-          type: string
-          description: Account name from PDNSAdmin
-          example: "customer-account"
-        created_at:
-          type: string
-          format: date-time
+      required:
+        - id
+        - name
+        - pdns_zone_id
+      description: Simplified domain response with essential fields only
           description: Creation timestamp
         updated_at:
           type: string
