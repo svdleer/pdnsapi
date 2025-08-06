@@ -61,8 +61,11 @@ if ($accounts_index !== false && isset($path_parts[$accounts_index + 1])) {
 // For GET, POST, PUT, DELETE - check for JSON payload
 $json_data = null;
 $input = file_get_contents("php://input");
+error_log("DEBUG: Raw input: " . var_export($input, true));
 if (!empty($input)) {
     $json_data = json_decode($input, true);
+    error_log("DEBUG: Parsed JSON: " . var_export($json_data, true));
+    error_log("DEBUG: JSON error: " . json_last_error_msg());
 }
 
 switch($request_method) {
