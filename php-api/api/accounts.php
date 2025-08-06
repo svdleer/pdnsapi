@@ -535,9 +535,22 @@ function deleteAccount($account, $account_identifier) {
         }
     }
     
-    // Delete from PowerDNS Admin API using username
+    // Check if this is a protected user (admin users cannot be deleted)
+    $protected_users = ['admin', 'administrator', 'apiadmin'];
+    if (in_array(strtolower($username_for_pdns), $protected_users)) {
+        sendError(403, "Cannot delete protected administrator account: {$username_for_pdns}");
+        return;
+    }
+    
+    // Check if we have PowerDNS Admin user ID
+    if (!$account->pdns_account_id) {
+        sendError(400, "Account does not have a PowerDNS Admin ID - cannot delete from PowerDNS Admin");
+        return;
+    }
+    
+    // Delete from PowerDNS Admin API using PowerDNS Admin user ID
     $client = new PDNSAdminClient($pdns_config);
-    $response = $client->deleteUser($username_for_pdns);
+    $response = $client->deleteUser($account->pdns_account_id);
     
     if ($response['status_code'] >= 200 && $response['status_code'] < 300) {
         // Auto-sync after account deletion (silent mode is default)
@@ -545,8 +558,20 @@ function deleteAccount($account, $account_identifier) {
         syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
         
         sendResponse(200, null, "Account deleted from PowerDNS Admin and local database synced automatically");
+    } elseif ($response['status_code'] == 405) {
+        // Handle Method Not Allowed - likely trying to delete a protected user
+        sendError(403, "Cannot delete account '{$username_for_pdns}' - this account is protected by PowerDNS Admin");
     } else {
-        sendError(503, "Unable to delete account from PowerDNS Admin. HTTP Code: " . $response['status_code'] . ". Response: " . $response['raw_response']);
+        $error_msg = "Unable to delete account from PowerDNS Admin. HTTP Code: " . $response['status_code'];
+        if (isset($response['raw_response']) && !empty($response['raw_response'])) {
+            // Extract meaningful error from HTML response if possible
+            if (strpos($response['raw_response'], '405 Method Not Allowed') !== false) {
+                $error_msg = "Account deletion not allowed - this may be a protected administrator account";
+            } else {
+                $error_msg .= ". Response: " . substr(strip_tags($response['raw_response']), 0, 200);
+            }
+        }
+        sendError(503, $error_msg);
     }
 }
 ?>
