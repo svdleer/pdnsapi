@@ -8,6 +8,17 @@ require_once 'includes/autoloader.php';
 require_once 'config/config.php';
 require_once 'models/Account.php';
 
+ensureClassesLoaded();
+
+// Initialize database connection
+$database = new Database();
+$db = $database->getConnection();
+
+if (!$db) {
+    echo "❌ Database connection failed!\n";
+    exit(1);
+}
+
 echo "=== Debug Account Search ===\n\n";
 
 $account = new Account($db);
