@@ -72,14 +72,14 @@ switch($request_method) {
     case 'GET':
         if ($sync === 'true') {
             syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn, false); // Explicit sync should be verbose
-        } elseif ($json_data && isset($json_data['id'])) {
-            getAccount($account, $json_data['id']);
-        } elseif ($json_data && isset($json_data['username'])) {
-            getAccountByName($account, $json_data['username']);
         } elseif ($account_id) {
             getAccount($account, $account_id);
         } elseif ($account_username) {
             getAccountByName($account, $account_username);
+        } elseif ($json_data && isset($json_data['id'])) {
+            getAccount($account, $json_data['id']);
+        } elseif ($json_data && isset($json_data['username'])) {
+            getAccountByName($account, $json_data['username']);
         } else {
             getAllAccounts($account);
         }
