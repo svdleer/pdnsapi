@@ -63,6 +63,13 @@ paths:
       description: |
         Retrieve a list of all accounts with automatic synchronization from PowerDNS Admin.
         
+        **RESTful Access:**
+        - `GET /accounts` - Get all accounts
+        - `GET /accounts/123` - Get account by ID (RESTful path parameter)
+        - `GET /accounts/username` - Get account by username (RESTful path parameter)
+        - `GET /accounts?id=123` - Get account by ID (query parameter, legacy)
+        - `GET /accounts?username=name` - Get account by username (query parameter, legacy)
+        
         **Functionality:**
         - Automatically fetches latest accounts from PowerDNS Admin API
         - Syncs account data to local database for caching and extended metadata
@@ -214,7 +221,11 @@ paths:
 
     delete:
       summary: Delete account
-      description: Delete an account from both PDNSAdmin and local database
+      description: |
+        Delete an account from PowerDNS Admin only. The local database is automatically synced after deletion.
+        
+        **Important:** This operation only deletes from PowerDNS Admin. The local database is updated through 
+        automatic synchronization, ensuring the API remains the authoritative source for account management.
       tags:
         - Accounts
       parameters:
@@ -235,6 +246,38 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
+
+  /accounts/{username}:
+    get:
+      summary: Get account by username
+      description: |
+        Retrieve a specific account by its username. Supports RESTful path parameter access.
+        
+        **Note:** This endpoint supports both numeric IDs and usernames in the path.
+        - Use `/accounts/123` for account ID lookup
+        - Use `/accounts/johndoe` for username lookup
+      tags:
+        - Accounts
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Account username
+          example: "johndoe"
+      responses:
+        '200':
+          description: Account details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Account'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /domains:
     get:
@@ -483,7 +526,7 @@ components:
             format: ipv4 | ipv6
           description: List of IP addresses (IPv4/IPv6, local storage only)
           example: ["192.168.1.100", "2001:db8::1"]
-        klant_id:
+        customer_id:
           type: integer
           description: Customer ID for business relationships
           example: 1001
