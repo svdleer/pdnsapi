@@ -343,6 +343,10 @@ function createAccount($account) {
     $account->pdns_account_id = $pdns_user['id'];
     
     if($account->create()) {
+        // Auto-sync after account creation
+        global $pdns_admin_conn;
+        syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+        
         sendResponse(201, [
             'id' => $db->lastInsertId(),
             'username' => $account->username,
@@ -422,6 +426,10 @@ function updateAccount($account, $account_id) {
         $account->customer_id = $customer_id;
         
         if($account->update()) {
+            // Auto-sync after account update
+            global $pdns_admin_conn;
+            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+            
             sendResponse(200, null, "Account updated successfully");
         } else {
             sendError(503, "Unable to update account");
@@ -442,7 +450,11 @@ function deleteAccount($account, $account_id) {
         $response = $pdns_client->deleteUser($account->pdns_account_id);
         
         if ($response['status_code'] >= 200 && $response['status_code'] < 300) {
-            sendResponse(200, null, "Account deleted from PowerDNS Admin successfully. Use sync to update local database.");
+            // Auto-sync after account deletion
+            global $pdns_admin_conn;
+            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+            
+            sendResponse(200, null, "Account deleted from PowerDNS Admin and local database synced automatically");
         } else {
             sendError(503, "Unable to delete account from PowerDNS Admin. HTTP Code: " . $response['status_code'] . ". Response: " . $response['raw_response']);
         }
