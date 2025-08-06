@@ -372,7 +372,7 @@ function createAccount($account) {
         syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
         
         sendResponse(201, [
-            'id' => $db->lastInsertId(),
+            'id' => $account->id,
             'username' => $account->username,
             'firstname' => $account->firstname,
             'lastname' => $account->lastname,

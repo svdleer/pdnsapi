@@ -47,7 +47,11 @@ class Account {
         $stmt->bindParam(":customer_id", $this->customer_id);
         $stmt->bindParam(":pdns_account_id", $this->pdns_account_id);
 
-        return $stmt->execute();
+        if($stmt->execute()) {
+            $this->id = $this->conn->lastInsertId();
+            return true;
+        }
+        return false;
     }
 
     public function read() {
