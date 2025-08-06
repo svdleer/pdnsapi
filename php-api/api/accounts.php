@@ -480,40 +480,40 @@ function updateAccount($account, $account_id) {
     }
 }
 
-function deleteAccount($account, $account_id) {
+function deleteAccount($account, $account_identifier) {
     global $pdns_config;
     
-    $account->id = $account_id;
-    
-    if($account->readOne()) {
-        // Delete from PowerDNS Admin API only
-        $delete_url = rtrim($pdns_config['base_url'], '/') . "/pdnsadmin/users/" . $account->username;
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $delete_url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Content-Type: application/json',
-            'Authorization: Basic ' . $pdns_config['api_key']
-        ));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($http_code >= 200 && $http_code < 300) {
-            // Auto-sync after account deletion (silent mode is default)
-            global $pdns_admin_conn;
-            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
-            
-            sendResponse(200, null, "Account deleted from PowerDNS Admin and local database synced automatically");
-        } else {
-            sendError(503, "Unable to delete account from PowerDNS Admin. HTTP Code: " . $http_code . ". Response: " . $response);
+    // Determine if the identifier is numeric (ID) or string (username)
+    if (is_numeric($account_identifier)) {
+        // It's an ID, so we need to look up the account first
+        $account->id = $account_identifier;
+        if (!$account->readOne()) {
+            sendError(404, "Account not found");
+            return;
         }
+        $username_for_pdns = $account->username;
     } else {
-        sendError(404, "Account not found");
+        // It's a username, so we can use it directly for PowerDNS Admin API
+        $username_for_pdns = $account_identifier;
+        // Also load the account data for the response
+        if (!$account->readByName($account_identifier)) {
+            sendError(404, "Account not found");
+            return;
+        }
+    }
+    
+    // Delete from PowerDNS Admin API using username
+    $client = new PDNSAdminClient($pdns_config);
+    $response = $client->deleteUser($username_for_pdns);
+    
+    if ($response['status_code'] >= 200 && $response['status_code'] < 300) {
+        // Auto-sync after account deletion (silent mode is default)
+        global $pdns_admin_conn;
+        syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+        
+        sendResponse(200, null, "Account deleted from PowerDNS Admin and local database synced automatically");
+    } else {
+        sendError(503, "Unable to delete account from PowerDNS Admin. HTTP Code: " . $response['status_code'] . ". Response: " . $response['raw_response']);
     }
 }
 ?>
