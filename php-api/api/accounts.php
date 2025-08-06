@@ -437,9 +437,9 @@ function deleteAccount($account, $account_id) {
     $account->id = $account_id;
     
     if($account->readOne()) {
-        // Use PDNSAdminClient to delete user
+        // Use PDNSAdminClient to delete user by PowerDNS Admin user ID
         $pdns_client = new PDNSAdminClient($pdns_config);
-        $response = $pdns_client->deleteUser($account->username);
+        $response = $pdns_client->deleteUser($account->pdns_account_id);
         
         if ($response['status_code'] >= 200 && $response['status_code'] < 300) {
             sendResponse(200, null, "Account deleted from PowerDNS Admin successfully. Use sync to update local database.");

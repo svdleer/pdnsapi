@@ -114,8 +114,8 @@ class PDNSAdminClient {
         return $this->makeRequest("/pdnsadmin/users/{$username}", 'PUT', $user_data);
     }
 
-    public function deleteUser($username) {
-        return $this->makeRequest("/pdnsadmin/users", 'DELETE', ['username' => $username]);
+    public function deleteUser($user_id) {
+        return $this->makeRequest("/pdnsadmin/users/{$user_id}", 'DELETE');
     }
 
     // API Key operations
