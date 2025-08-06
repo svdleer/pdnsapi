@@ -36,10 +36,27 @@ $account = new Account($db);
 // Get the HTTP method
 $request_method = $_SERVER["REQUEST_METHOD"];
 
-// Get parameters from URL
+// Parse URL path to support RESTful endpoints like /accounts/123
+$request_uri = $_SERVER['REQUEST_URI'];
+$path_parts = explode('/', trim(parse_url($request_uri, PHP_URL_PATH), '/'));
+
+// Get parameters from URL (query parameters)
 $account_id = isset($_GET['id']) ? $_GET['id'] : null;
 $account_username = isset($_GET['username']) ? $_GET['username'] : null;
 $sync = isset($_GET['sync']) ? $_GET['sync'] : null;
+
+// Check for RESTful path parameter (e.g., /accounts/123)
+// Find 'accounts' in the path and get the next segment as ID if it's numeric
+$accounts_index = array_search('accounts', $path_parts);
+if ($accounts_index !== false && isset($path_parts[$accounts_index + 1])) {
+    $path_id = $path_parts[$accounts_index + 1];
+    if (is_numeric($path_id)) {
+        $account_id = $path_id; // RESTful path parameter takes precedence
+    } elseif (!empty($path_id) && !is_numeric($path_id)) {
+        // If it's not numeric, treat it as username
+        $account_username = $path_id;
+    }
+}
 
 switch($request_method) {
     case 'GET':
