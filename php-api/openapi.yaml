@@ -64,12 +64,19 @@ paths:
       description: |
         Retrieve a list of all accounts with automatic synchronization from PowerDNS Admin.
         
-        **RESTful Access:**
+        **Recommended Access Patterns:**
         - `GET /accounts` - Get all accounts
-        - `GET /accounts/123` - Get account by ID (RESTful path parameter)
-        - `GET /accounts/username` - Get account by username (RESTful path parameter)
+        - `POST /accounts/get` - Get specific account by ID/username (JSON input preferred)
         - `GET /accounts?id=123` - Get account by ID (query parameter, legacy)
         - `GET /accounts?username=name` - Get account by username (query parameter, legacy)
+        
+        **JSON Input Preference:**
+        For single account retrieval, use the `POST /accounts/get` endpoint with JSON input for better consistency:
+        ```json
+        {"id": 94}
+        // or
+        {"username": "johndoe"}
+        ```
         
         **Functionality:**
         - Automatically fetches latest accounts from PowerDNS Admin API
@@ -177,19 +184,33 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /accounts/{id}:
-    get:
-      summary: Get account by ID
-      description: Retrieve a specific account by its ID
+  /accounts/get:
+    post:
+      summary: Get specific account by ID or username
+      description: |
+        Retrieve a specific account using JSON input parameters.
+        
+        **JSON Input:**
+        - Use `{"id": 94}` to get account by ID
+        - Use `{"username": "johndoe"}` to get account by username
+        - Only one identifier should be provided per request
       tags:
         - Accounts
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Account ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountIdentifier'
+            examples:
+              get_by_id:
+                summary: Get account by ID
+                value:
+                  id: 94
+              get_by_username:
+                summary: Get account by username
+                value:
+                  username: "johndoe"
       responses:
         '200':
           description: Account details
@@ -200,38 +221,44 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Account'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
 
-    put:
+  /accounts/update:
+    post:
       summary: Update account
-      description: Update an existing account. Changes are synced with PDNSAdmin (except IP addresses).
+      description: |
+        Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).
+        
+        **JSON Input:**
+        - Include account identifier (`id` or `username`)
+        - Include fields to update
+        - IP addresses are stored locally only
       tags:
         - Accounts
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Account ID
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AccountUpdate'
+              $ref: '#/components/schemas/AccountUpdateRequest'
             examples:
-              update_details:
-                summary: Update account details
+              update_by_id:
+                summary: Update account by ID
                 value:
-                  description: "Updated account description"
-                  contact: "Jane Doe"
-                  mail: "jane@customer.com"
-              update_ips:
-                summary: Update IP addresses
+                  id: 94
+                  firstname: "Updated First Name"
+                  lastname: "Updated Last Name"
+                  email: "updated@example.com"
+                  ip_addresses: ["192.168.1.101", "192.168.1.102"]
+              update_by_username:
+                summary: Update account by username
                 value:
-                  ip_addresses: ["192.168.1.101", "192.168.1.102", "2001:db8::2"]
+                  username: "johndoe"
+                  customer_id: 1001
+                  ip_addresses: ["192.168.1.200", "2001:db8::5"]
       responses:
         '200':
           description: Account updated successfully
@@ -246,22 +273,35 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-    delete:
+  /accounts/delete:
+    post:
       summary: Delete account
       description: |
-        Delete an account from PowerDNS Admin only. The local database is automatically synced after deletion.
+        Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.
+        
+        **JSON Input:**
+        - Use `{"id": 94}` to delete account by ID
+        - Use `{"username": "johndoe"}` to delete account by username
         
         **Important:** This operation only deletes from PowerDNS Admin. The local database is updated through 
         automatic synchronization, ensuring the API remains the authoritative source for account management.
       tags:
         - Accounts
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Account ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountIdentifier'
+            examples:
+              delete_by_id:
+                summary: Delete account by ID
+                value:
+                  id: 94
+              delete_by_username:
+                summary: Delete account by username
+                value:
+                  username: "johndoe"
       responses:
         '200':
           description: Account deleted successfully
@@ -269,51 +309,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
-
-  /accounts/{identifier}:
-    get:
-      summary: Get account by ID or username (RESTful)
-      description: |
-        Retrieve a specific account using RESTful path parameters.
-        
-        **Supported formats:**
-        - `/accounts/94` - Get account by ID (numeric)
-        - `/accounts/johndoe` - Get account by username (string)
-        
-        **Path Parameter Detection:**
-        - If the identifier is numeric, it's treated as an account ID
-        - If the identifier is a string, it's treated as a username
-      tags:
-        - Accounts
-      parameters:
-        - name: identifier
-          in: path
-          required: true
-          schema:
-            oneOf:
-              - type: integer
-                description: Account ID
-                example: 94
-              - type: string
-                description: Account username
-                example: "johndoe"
-          description: Account identifier (ID or username)
-      responses:
-        '200':
-          description: Account details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: '#/components/schemas/Account'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /domains:
     get:
@@ -357,19 +358,33 @@ paths:
                   message:
                     type: string
 
-  /domains/{id}:
-    get:
+  /domains/get:
+    post:
       summary: Get domain by ID
-      description: Retrieve a specific domain by its ID
+      description: |
+        Retrieve a specific domain by its ID using JSON input.
+        
+        **JSON Input:**
+        - Use `{"id": 123}` to get domain by ID
       tags:
         - Domains
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Domain ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: integer
+                  description: Domain ID
+                  example: 123
+            examples:
+              get_by_id:
+                summary: Get domain by ID
+                value:
+                  id: 123
       responses:
         '200':
           description: Domain details
@@ -383,38 +398,47 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-    put:
+  /domains/update:
+    post:
       summary: Update domain
       description: |
-        Update an existing domain. If account_id is changed, 
+        Update an existing domain using JSON input. If account_id is changed, 
         the domain assignment is automatically updated in PDNSAdmin.
+        
+        **JSON Input:**
+        - Include domain identifier (`id`)
+        - Include fields to update
       tags:
         - Domains
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Domain ID
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DomainUpdate'
+              allOf:
+                - type: object
+                  required: [id]
+                  properties:
+                    id:
+                      type: integer
+                      description: Domain ID
+                      example: 123
+                - $ref: '#/components/schemas/DomainUpdate'
             examples:
               change_account:
                 summary: Change domain account
                 value:
+                  id: 123
                   account_id: 2
               remove_account:
                 summary: Remove from account
                 value:
+                  id: 123
                   account_id: null
               update_settings:
                 summary: Update domain settings
                 value:
+                  id: 123
                   kind: "Slave"
                   masters: ["192.168.1.100"]
       responses:
@@ -635,6 +659,50 @@ components:
           type: integer
           description: Customer ID for business relationships
           example: 1001
+
+    AccountIdentifier:
+      type: object
+      oneOf:
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              description: Account ID
+              example: 94
+          additionalProperties: false
+        - type: object
+          required: [username]
+          properties:
+            username:
+              type: string
+              description: Account username
+              example: "johndoe"
+          additionalProperties: false
+      description: Account identifier object (either ID or username, not both)
+
+    AccountUpdateRequest:
+      type: object
+      oneOf:
+        - allOf:
+          - type: object
+            required: [id]
+            properties:
+              id:
+                type: integer
+                description: Account ID
+                example: 94
+          - $ref: '#/components/schemas/AccountUpdate'
+        - allOf:
+          - type: object
+            required: [username]
+            properties:
+              username:
+                type: string
+                description: Account username
+                example: "johndoe"
+          - $ref: '#/components/schemas/AccountUpdate'
+      description: Account update request with identifier and update fields
 
     AccountUpdate:
       type: object
