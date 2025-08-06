@@ -404,10 +404,10 @@ function updateAccount($account, $account_id) {
             if (isset($data->email)) $pdns_data['email'] = $data->email;
             
             if (!empty($pdns_data)) {
-                $api_response = $client->makeRequest('/users/' . $account->pdns_account_id, 'PUT', $pdns_data);
+                $api_response = $client->updateUser($account->pdns_account_id, $pdns_data);
                 
-                if (!$api_response || !isset($api_response['success']) || !$api_response['success']) {
-                    error_log("Failed to update account in PowerDNS Admin: " . ($api_response['msg'] ?? 'Unknown error'));
+                if ($api_response['status_code'] < 200 || $api_response['status_code'] >= 300) {
+                    error_log("Failed to update account in PowerDNS Admin: " . $api_response['raw_response']);
                     // Continue with local update even if PowerDNS Admin update fails
                 }
             }
