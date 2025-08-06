@@ -24,6 +24,13 @@ if (!class_exists('Database')) {
 $database = new Database();
 $db = $database->getConnection();
 
+// Get PowerDNS Admin database connection for READ operations
+$pdns_admin_conn = null;
+if (class_exists('PDNSAdminDatabase')) {
+    $pdns_admin_db = new PDNSAdminDatabase();
+    $pdns_admin_conn = $pdns_admin_db->getConnection();
+}
+
 // Initialize PDNSAdmin client
 $pdns_client = new PDNSAdminClient($pdns_config);
 
@@ -189,11 +196,22 @@ function getDomainsByAccount($domain, $account_id) {
 function syncDomainsFromPDNS($domain, $pdns_client) {
     global $db;
     
-    // Get all domains from PowerDNS Admin
-    $pdns_response = $pdns_client->getAllDomains();
+    // Get all domains from PowerDNS Admin API directly
+    $pdns_response = $pdns_client->makeRequest('/pdnsadmin/zones', 'GET');
     
     if($pdns_response['status_code'] == 200) {
         $pdns_domains = $pdns_response['data'];
+        
+        // Handle case where no domains exist in PowerDNS Admin
+        if (empty($pdns_domains) || !is_array($pdns_domains)) {
+            sendResponse(200, array(
+                'synced' => 0,
+                'updated' => 0,
+                'total_processed' => 0
+            ), "Sync completed: No domains found in PowerDNS Admin");
+            return;
+        }
+        
         $synced_count = 0;
         $updated_count = 0;
         
@@ -277,7 +295,7 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
         }
     } else {
         $error_msg = isset($pdns_response['data']['message']) ? $pdns_response['data']['message'] : 'Unknown error';
-        sendError(500, "Failed to fetch domains from PowerDNS Admin: " . $error_msg);
+        sendError(500, "Failed to fetch domains from PowerDNS server: " . $error_msg);
     }
 }
                 

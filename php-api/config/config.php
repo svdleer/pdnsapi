@@ -10,8 +10,8 @@ $pdns_config = [
     
     // PowerDNS Admin API settings for user management
     'pdns_admin_url' => 'https://dnsadmin.avant.nl',
-    'pdns_admin_user' => 'apiadmin', // PowerDNS Admin username for API access
-    'pdns_admin_password' => 'VevelgIcs^om2' // PowerDNS Admin password for API access
+    'pdns_admin_user' => 'admin', // PowerDNS Admin username for API access
+    'pdns_admin_password' => 'dnVeku8Jeku' // PowerDNS Admin password for API access
 ];
 
 // API settings
