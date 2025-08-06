@@ -49,12 +49,13 @@ if (!empty($input)) {
 
 switch($request_method) {
     case 'GET':
-        if ($json_data && isset($json_data['sync']) && $json_data['sync'] === true) {
+        // GET requests use query parameters, not JSON payload
+        if (isset($_GET['sync']) && $_GET['sync'] === 'true') {
             syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn, false); // Explicit sync should be verbose
-        } elseif ($json_data && isset($json_data['id'])) {
-            getAccount($account, $json_data['id']);
-        } elseif ($json_data && isset($json_data['username'])) {
-            getAccountByName($account, $json_data['username']);
+        } elseif (isset($_GET['id'])) {
+            getAccount($account, $_GET['id']);
+        } elseif (isset($_GET['username'])) {
+            getAccountByName($account, $_GET['username']);
         } else {
             getAllAccounts($account);
         }

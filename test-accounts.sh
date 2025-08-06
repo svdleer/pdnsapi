@@ -104,15 +104,11 @@ echo "  }' | jq"
 echo ""
 
 echo "# Test GET account by ID"
-echo "curl -X GET \"$BASE_URL/accounts\" \\"
-echo "  -H \"Content-Type: application/json\" \\"
-echo "  -d '{\"id\": 1}' | jq"
+echo "curl -X GET \"$BASE_URL/accounts?id=1\" | jq"
 echo ""
 
 echo "# Test GET account by username"
-echo "curl -X GET \"$BASE_URL/accounts\" \\"
-echo "  -H \"Content-Type: application/json\" \\"
-echo "  -d '{\"username\": \"testuser\"}' | jq"
+echo "curl -X GET \"$BASE_URL/accounts?username=testuser\" | jq"
 echo ""
 
 echo "# Test PUT update account by ID"

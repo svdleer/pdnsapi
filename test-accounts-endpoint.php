@@ -91,6 +91,13 @@ class AccountsEndpointTester {
     
     private function makeRequest($endpoint, $method = 'GET', $data = null, $headers = []) {
         $url = $this->base_url . '/' . ltrim($endpoint, '/');
+        
+        // For GET requests, append data as query parameters
+        if ($method === 'GET' && $data) {
+            $query_string = http_build_query($data);
+            $url .= '?' . $query_string;
+        }
+        
         $ch = curl_init();
         
         curl_setopt_array($ch, [
@@ -107,7 +114,8 @@ class AccountsEndpointTester {
             CURLOPT_SSL_VERIFYHOST => false
         ]);
         
-        if ($data && in_array($method, ['POST', 'PUT', 'PATCH'])) {
+        // Only send JSON payload for non-GET requests
+        if ($data && in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
         
@@ -159,7 +167,7 @@ class AccountsEndpointTester {
     }
     
     private function testGetAccountSync() {
-        echo "Testing GET /accounts with sync JSON payload...\n";
+        echo "Testing GET /accounts?sync=true...\n";
         $result = $this->makeRequest('accounts', 'GET', ['sync' => true]);
         
         $success = $result['success'] && isset($result['data']);
@@ -219,7 +227,7 @@ class AccountsEndpointTester {
             return;
         }
         
-        echo "Testing GET /accounts with JSON payload {id}...\n";
+        echo "Testing GET /accounts?id={id}...\n";
         $account = $this->created_accounts[0];
         $result = $this->makeRequest('accounts', 'GET', ['id' => $account['id']]);
         
@@ -235,7 +243,7 @@ class AccountsEndpointTester {
             return;
         }
         
-        echo "Testing GET /accounts with JSON payload {username}...\n";
+        echo "Testing GET /accounts?username={username}...\n";
         $account = $this->created_accounts[0];
         $result = $this->makeRequest('accounts', 'GET', ['username' => $account['username']]);
         
@@ -246,16 +254,14 @@ class AccountsEndpointTester {
     }
     
     private function testGetAccountByIdRestful() {
-        // Remove this test - no longer using RESTful paths
-        $this->recordTest('GET Account by ID (RESTful)', true, "Test removed - only using JSON payloads now");
+        // Remove this test - now using query parameters instead
+        $this->recordTest('GET Account by ID (RESTful)', true, "Test removed - now using query parameters");
     }
     
     private function testGetAccountByUsernameRestful() {
-        // Remove this test - no longer using RESTful paths  
-        $this->recordTest('GET Account by Username (RESTful)', true, "Test removed - only using JSON payloads now");
-    }
-    
-    private function testGetAccountByJsonPayload() {
+        // Remove this test - now using query parameters instead
+        $this->recordTest('GET Account by Username (RESTful)', true, "Test removed - now using query parameters");
+    }    private function testGetAccountByJsonPayload() {
         if (empty($this->created_accounts)) {
             $this->recordTest('GET Account by JSON payload', false, "No created account to test with");
             return;
@@ -448,7 +454,7 @@ class AccountsEndpointTester {
     }
     
     private function testNonExistentAccount() {
-        echo "Testing non-existent account retrieval with JSON payload...\n";
+        echo "Testing non-existent account retrieval with query parameter...\n";
         
         $result = $this->makeRequest('accounts', 'GET', ['id' => 999999]);
         

@@ -134,8 +134,8 @@ Test Files:
 2. Review any failing tests and fix issues
 3. Integrate tests into CI/CD pipeline
 4. Add tests for other endpoints (domains, users)
-5. **Updated OpenAPI/Swagger documentation** reflects JSON-only approach
+5. **Updated OpenAPI/Swagger documentation** reflects HTTP standards compliance
 
 The `/accounts` endpoint is now fully tested with comprehensive coverage! 🎉
 
-**Documentation Updated:** ✅ OpenAPI YAML and JSON files now accurately reflect the JSON-only API interface.
+**Documentation Updated:** ✅ OpenAPI YAML and JSON files now accurately reflect HTTP standards (GET uses query params, POST/PUT/DELETE use JSON).

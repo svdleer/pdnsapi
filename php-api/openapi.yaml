@@ -14,20 +14,20 @@ info:
     - **Domain management** with PDNSAdmin synchronization
     - **Real-time sync** from PowerDNS Admin API
     - **Local database caching** for performance and extended metadata
-    - **JSON-only API interface** for consistent and clean access patterns
+    - **HTTP standards compliant** interface (GET uses query params, POST/PUT/DELETE use JSON)
     
     ## Key Functionality
     - Accounts are automatically synced from PowerDNS Admin after create, update, and delete operations
     - IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)
     - Domain management maintains compatibility with PowerDNS Admin
     - Local database provides caching and additional account metadata storage
-    - All operations use JSON payloads for parameters (no query params or RESTful paths)
+    - GET requests use query parameters, POST/PUT/DELETE operations use JSON payloads
     
     ## Important Notes
     - Account data is synced FROM PowerDNS Admin (read-only sync)
     - Auto-sync only happens on write operations (POST/PUT/DELETE), not on GET requests for performance
     - IP addresses are stored locally and NOT sent to PowerDNS Admin
-    - Use JSON payload `{"sync": true}` with GET requests to force sync when needed
+    - Use query parameters with GET `/accounts?sync=true` to force sync when needed
     - Local database maintains PowerDNS Admin account ID relationships
   version: 1.0.1
   contact:
@@ -66,52 +66,35 @@ paths:
       description: |
         Retrieve accounts with automatic synchronization from PowerDNS Admin.
         
-        **Access Patterns (JSON-only):**
+        **Access Patterns:**
         - `GET /accounts` - Get all accounts
-        - `GET /accounts` with JSON payload `{"id": 94}` - Get account by ID
-        - `GET /accounts` with JSON payload `{"username": "johndoe"}` - Get account by username  
-        - `GET /accounts` with JSON payload `{"sync": true}` - Force sync from PowerDNS Admin
+        - `GET /accounts?id=94` - Get account by ID
+        - `GET /accounts?username=johndoe` - Get account by username  
+        - `GET /accounts?sync=true` - Force sync from PowerDNS Admin and return all accounts
         
-        **JSON Payload (Optional):**
-        Send JSON in request body to filter results or trigger sync:
-        ```json
-        {"id": 94}
-        // or
-        {"username": "johndoe"}
-        // or
-        {"sync": true}
-        ```
+        **Query Parameters:**
+        Use query parameters to filter results or trigger sync operations.
       tags:
         - Accounts
-      requestBody:
-        required: false
-        description: Optional JSON payload to filter results or trigger sync
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - $ref: '#/components/schemas/AccountIdentifier'
-                - type: object
-                  properties:
-                    sync:
-                      type: boolean
-                      description: Set to true to sync accounts from PowerDNS Admin before returning results
-                      example: true
-                  required: [sync]
-                  additionalProperties: false
-            examples:
-              get_by_id:
-                summary: Get account by ID
-                value:
-                  id: 94
-              get_by_username:
-                summary: Get account by username
-                value:
-                  username: "johndoe"
-              sync_accounts:
-                summary: Force sync from PowerDNS Admin
-                value:
-                  sync: true
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: integer
+          description: Get account by ID
+          example: 94
+        - name: username
+          in: query
+          schema:
+            type: string
+          description: Get account by username
+          example: "johndoe"
+        - name: sync
+          in: query
+          schema:
+            type: boolean
+          description: Set to true to sync accounts from PowerDNS Admin before returning results
+          example: true
       responses:
         '200':
           description: List of accounts or single account
