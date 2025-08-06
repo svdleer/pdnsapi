@@ -58,10 +58,21 @@ if ($accounts_index !== false && isset($path_parts[$accounts_index + 1])) {
     }
 }
 
+// For GET, POST, PUT, DELETE - check for JSON payload
+$json_data = null;
+$input = file_get_contents("php://input");
+if (!empty($input)) {
+    $json_data = json_decode($input, true);
+}
+
 switch($request_method) {
     case 'GET':
         if ($sync === 'true') {
             syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn, false); // Explicit sync should be verbose
+        } elseif ($json_data && isset($json_data['id'])) {
+            getAccount($account, $json_data['id']);
+        } elseif ($json_data && isset($json_data['username'])) {
+            getAccountByName($account, $json_data['username']);
         } elseif ($account_id) {
             getAccount($account, $account_id);
         } elseif ($account_username) {
@@ -76,18 +87,64 @@ switch($request_method) {
         break;
         
     case 'PUT':
+        if ($json_data && isset($json_data['id'])) {
+            updateAccount($account, $json_data['id']);
+        } elseif ($json_data && isset($json_data['username'])) {
+            updateAccount($account, $json_data['username']);
+        } elseif ($account_id) {
+            updateAccount($account, $account_id);
+        } elseif ($account_username) {
+            updateAccount($account, $account_username);
+        } else {
+            sendError(400, "Account ID or username required for update (via JSON, path, or query parameter)");
+        }
+        break;
+        
+    case 'DELETE':
+        if ($json_data && isset($json_data['id'])) {
+            deleteAccount($account, $json_data['id']);
+        } elseif ($json_data && isset($json_data['username'])) {
+            deleteAccount($account, $json_data['username']);
+        } elseif ($account_id) {
+            deleteAccount($account, $account_id);
+        } elseif ($account_username) {
+            deleteAccount($account, $account_username);
+        } else {
+            sendError(400, "Account ID or username required for deletion (via JSON, path, or query parameter)");
+        }
+        break;
+        
+    case 'PUT':
         if ($account_id) {
             updateAccount($account, $account_id);
+        } elseif ($account_username) {
+            updateAccount($account, $account_username);
         } else {
-            sendError(400, "Account ID required for update");
+            // Try to get identifier from JSON input
+            $data = json_decode(file_get_contents("php://input"));
+            if ($data && (isset($data->id) || isset($data->username))) {
+                $identifier = isset($data->id) ? $data->id : $data->username;
+                updateAccount($account, $identifier);
+            } else {
+                sendError(400, "Account ID or username required for update (via path or JSON)");
+            }
         }
         break;
         
     case 'DELETE':
         if ($account_id) {
             deleteAccount($account, $account_id);
+        } elseif ($account_username) {
+            deleteAccount($account, $account_username);
         } else {
-            sendError(400, "Account ID required for deletion");
+            // Try to get identifier from JSON input
+            $data = json_decode(file_get_contents("php://input"));
+            if ($data && (isset($data->id) || isset($data->username))) {
+                $identifier = isset($data->id) ? $data->id : $data->username;
+                deleteAccount($account, $identifier);
+            } else {
+                sendError(400, "Account ID or username required for deletion (via path or JSON)");
+            }
         }
         break;
         
@@ -404,79 +461,89 @@ function createAccount($account) {
     }
 }
 
-function updateAccount($account, $account_id) {
+function updateAccount($account, $account_identifier) {
     global $pdns_config;
     
     $data = json_decode(file_get_contents("php://input"));
     
-    $account->id = $account_id;
-    
-    if($account->readOne()) {
-        // Validate IP addresses if provided
-        $validated_ips = $account->ip_addresses ? json_decode($account->ip_addresses, true) : []; // Keep existing if not provided
-        if (isset($data->ip_addresses)) {
-            if (!is_array($data->ip_addresses)) {
-                sendError(400, "ip_addresses must be an array");
-                return;
-            }
-            $validated_ips = [];
-            foreach ($data->ip_addresses as $ip) {
-                if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-                    sendError(400, "Invalid IP address format: " . $ip);
-                    return;
-                }
-                $validated_ips[] = $ip;
-            }
-        }
-        
-        // Validate customer_id if provided
-        $customer_id = $account->customer_id; // Keep existing if not provided
-        if (isset($data->customer_id)) {
-            if ($data->customer_id !== null && (!is_numeric($data->customer_id) || $data->customer_id <= 0)) {
-                sendError(400, "customer_id must be a positive integer or null");
-                return;
-            }
-            $customer_id = $data->customer_id;
-        }
-        
-        // Update in PowerDNS Admin via API if we have a PowerDNS Admin ID and relevant fields are being updated
-        if ($account->pdns_account_id && (isset($data->firstname) || isset($data->lastname) || isset($data->email))) {
-            $client = new PDNSAdminClient($pdns_config);
-            
-            $pdns_data = [];
-            if (isset($data->firstname)) $pdns_data['firstname'] = $data->firstname;
-            if (isset($data->lastname)) $pdns_data['lastname'] = $data->lastname;
-            if (isset($data->email)) $pdns_data['email'] = $data->email;
-            
-            if (!empty($pdns_data)) {
-                $api_response = $client->makeRequest('/users/' . $account->pdns_account_id, 'PUT', $pdns_data);
-                
-                if (!$api_response || !isset($api_response['success']) || !$api_response['success']) {
-                    error_log("Failed to update account in PowerDNS Admin: " . ($api_response['msg'] ?? 'Unknown error'));
-                    // Continue with local update even if PowerDNS Admin update fails
-                }
-            }
-        }
-        
-        // Update in local database
-        $account->firstname = $data->firstname ?? $account->firstname;
-        $account->lastname = $data->lastname ?? $account->lastname;
-        $account->email = $data->email ?? $account->email;
-        $account->role_id = $data->role_id ?? $account->role_id;
-        $account->ip_addresses = json_encode($validated_ips);
-        $account->customer_id = $customer_id;
-        
-        if($account->update()) {
-            // Auto-sync after account update (silent mode is default)
-            global $pdns_admin_conn;
-            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
-            
-            sendResponse(200, null, "Account updated successfully");
-        } else {
-            sendError(503, "Unable to update account");
+    // Determine if the identifier is numeric (ID) or string (username)
+    if (is_numeric($account_identifier)) {
+        // It's an ID
+        $account->id = $account_identifier;
+        if (!$account->readOne()) {
+            sendError(404, "Account not found");
+            return;
         }
     } else {
-        sendError(404, "Account not found");
+        // It's a username
+        if (!$account->readByName($account_identifier)) {
+            sendError(404, "Account not found");
+            return;
+        }
+    }
+    
+    // Validate IP addresses if provided
+    $validated_ips = $account->ip_addresses ? json_decode($account->ip_addresses, true) : []; // Keep existing if not provided
+    if (isset($data->ip_addresses)) {
+        if (!is_array($data->ip_addresses)) {
+            sendError(400, "ip_addresses must be an array");
+            return;
+        }
+        $validated_ips = [];
+        foreach ($data->ip_addresses as $ip) {
+            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                sendError(400, "Invalid IP address format: " . $ip);
+                return;
+            }
+            $validated_ips[] = $ip;
+        }
+    }
+    
+    // Validate customer_id if provided
+    $customer_id = $account->customer_id; // Keep existing if not provided
+    if (isset($data->customer_id)) {
+        if ($data->customer_id !== null && (!is_numeric($data->customer_id) || $data->customer_id <= 0)) {
+            sendError(400, "customer_id must be a positive integer or null");
+            return;
+        }
+        $customer_id = $data->customer_id;
+    }
+    
+    // Update in PowerDNS Admin via API if we have a PowerDNS Admin ID and relevant fields are being updated
+    if ($account->pdns_account_id && (isset($data->firstname) || isset($data->lastname) || isset($data->email))) {
+        $client = new PDNSAdminClient($pdns_config);
+        
+        $pdns_data = [];
+        if (isset($data->firstname)) $pdns_data['firstname'] = $data->firstname;
+        if (isset($data->lastname)) $pdns_data['lastname'] = $data->lastname;
+        if (isset($data->email)) $pdns_data['email'] = $data->email;
+        
+        if (!empty($pdns_data)) {
+            $api_response = $client->makeRequest('/users/' . $account->pdns_account_id, 'PUT', $pdns_data);
+            
+            if (!$api_response || !isset($api_response['success']) || !$api_response['success']) {
+                error_log("Failed to update account in PowerDNS Admin: " . ($api_response['msg'] ?? 'Unknown error'));
+                // Continue with local update even if PowerDNS Admin update fails
+            }
+        }
+    }
+    
+    // Update in local database
+    $account->firstname = $data->firstname ?? $account->firstname;
+    $account->lastname = $data->lastname ?? $account->lastname;
+    $account->email = $data->email ?? $account->email;
+    $account->role_id = $data->role_id ?? $account->role_id;
+    $account->ip_addresses = json_encode($validated_ips);
+    $account->customer_id = $customer_id;
+    
+    if($account->update()) {
+        // Auto-sync after account update (silent mode is default)
+        global $pdns_admin_conn;
+        syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+        
+        sendResponse(200, null, "Account updated successfully");
+    } else {
+        sendError(503, "Unable to update account");
     }
 }
 

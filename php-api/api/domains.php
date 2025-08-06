@@ -39,10 +39,21 @@ $domain_id = isset($_GET['id']) ? $_GET['id'] : null;
 $account_id = isset($_GET['account_id']) ? $_GET['account_id'] : null;
 $sync = isset($_GET['sync']) ? $_GET['sync'] : null;
 
+// For GET, POST, PUT, DELETE - check for JSON payload
+$json_data = null;
+$input = file_get_contents("php://input");
+if (!empty($input)) {
+    $json_data = json_decode($input, true);
+}
+
 switch($request_method) {
     case 'GET':
         if ($sync === 'true') {
             syncDomainsFromPDNS($domain, $pdns_client);
+        } elseif ($json_data && isset($json_data['id'])) {
+            getDomain($domain, $json_data['id']);
+        } elseif ($json_data && isset($json_data['account_id'])) {
+            getDomainsByAccount($domain, $json_data['account_id']);
         } elseif ($domain_id) {
             getDomain($domain, $domain_id);
         } elseif ($account_id) {
@@ -57,6 +68,16 @@ switch($request_method) {
             addDomainToAccount($domain, $_POST);
         } else {
             sendError(405, "Domain creation is not supported. Use sync action to import domains from PowerDNS Admin.");
+        }
+        break;
+        
+    case 'PUT':
+        if ($json_data && isset($json_data['id'])) {
+            updateDomain($domain, $json_data['id']);
+        } elseif ($domain_id) {
+            updateDomain($domain, $domain_id);
+        } else {
+            sendError(400, "Domain ID required for update (via JSON or query parameter)");
         }
         break;
         

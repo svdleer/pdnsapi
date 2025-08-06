@@ -17,15 +17,16 @@ info:
     - **RESTful and legacy API support** for flexible access patterns
     
     ## Key Functionality
-    - Accounts are automatically synced from PowerDNS Admin on each API call
+    - Accounts are automatically synced from PowerDNS Admin after create, update, and delete operations
     - IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)
     - Domain management maintains compatibility with PowerDNS Admin
     - Local database provides caching and additional account metadata storage
     
     ## Important Notes
     - Account data is synced FROM PowerDNS Admin (read-only sync)
+    - Auto-sync only happens on write operations (POST/PUT/DELETE), not on GET requests for performance
     - IP addresses are stored locally and NOT sent to PowerDNS Admin
-    - Accounts endpoint automatically refreshes data from PowerDNS Admin
+    - Use `?sync=true` parameter to force sync on GET requests when needed
     - Local database maintains PowerDNS Admin account ID relationships
   version: 1.0.1
   contact:
@@ -60,34 +61,24 @@ paths:
 
   /accounts:
     get:
-      summary: Get all accounts (synced from PowerDNS Admin)
+      summary: Get all accounts or specific account (synced from PowerDNS Admin)
       description: |
-        Retrieve a list of all accounts with automatic synchronization from PowerDNS Admin.
+        Retrieve accounts with automatic synchronization from PowerDNS Admin.
         
-        **Recommended Access Patterns:**
+        **Access Patterns:**
         - `GET /accounts` - Get all accounts
-        - `POST /accounts/get` - Get specific account by ID/username (JSON input preferred)
+        - `GET /accounts` with JSON payload `{"id": 94}` - Get account by ID
+        - `GET /accounts` with JSON payload `{"username": "johndoe"}` - Get account by username
         - `GET /accounts?id=123` - Get account by ID (query parameter, legacy)
         - `GET /accounts?username=name` - Get account by username (query parameter, legacy)
         
-        **JSON Input Preference:**
-        For single account retrieval, use the `POST /accounts/get` endpoint with JSON input for better consistency:
+        **JSON Payload (Optional):**
+        Send JSON in request body to filter results:
         ```json
         {"id": 94}
         // or
         {"username": "johndoe"}
         ```
-        
-        **Functionality:**
-        - Automatically fetches latest accounts from PowerDNS Admin API
-        - Syncs account data to local database for caching and extended metadata
-        - Returns accounts with IP addresses (if assigned locally)
-        - Maintains PowerDNS Admin account ID relationships
-        
-        **Data Sources:**
-        - Account data: PowerDNS Admin (synchronized on each request)
-        - IP addresses: Local database only (not stored in PowerDNS Admin)
-        - Additional metadata: Local database for extended functionality
       tags:
         - Accounts
       parameters:
@@ -100,17 +91,33 @@ paths:
           in: query
           schema:
             type: integer
-          description: Filter by specific account ID to retrieve a single account
+          description: Filter by specific account ID (legacy, prefer JSON payload)
           example: 94
         - name: username
           in: query
           schema:
             type: string
-          description: Filter by specific username to retrieve a single account
+          description: Filter by specific username (legacy, prefer JSON payload)
           example: "johndoe"
+      requestBody:
+        required: false
+        description: Optional JSON payload to filter results
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountIdentifier'
+            examples:
+              get_by_id:
+                summary: Get account by ID
+                value:
+                  id: 94
+              get_by_username:
+                summary: Get account by username
+                value:
+                  username: "johndoe"
       responses:
         '200':
-          description: List of accounts or single account (depending on parameters)
+          description: List of accounts or single account
           content:
             application/json:
               schema:
@@ -121,25 +128,6 @@ paths:
                     items:
                       $ref: '#/components/schemas/Account'
                   message:
-                    type: string
-                    example: "Accounts retrieved successfully"
-              examples:
-                all_accounts:
-                  summary: All accounts
-                  description: GET /accounts (returns all accounts)
-                  value:
-                    data: []
-                    message: "Accounts retrieved successfully"
-                account_by_id:
-                  summary: Single account by ID
-                  description: GET /accounts?id=94 (returns specific account)
-                  value:
-                    data: [{"id": 94, "username": "testuser", "firstname": "Test"}]
-                account_by_username:
-                  summary: Single account by username
-                  description: GET /accounts?username=johndoe (returns specific account)
-                  value:
-                    data: [{"id": 1, "username": "johndoe", "firstname": "John"}]
                     type: string
                     example: "Accounts retrieved successfully"
         '500':
@@ -184,55 +172,12 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /accounts/get:
-    post:
-      summary: Get specific account by ID or username
-      description: |
-        Retrieve a specific account using JSON input parameters.
-        
-        **JSON Input:**
-        - Use `{"id": 94}` to get account by ID
-        - Use `{"username": "johndoe"}` to get account by username
-        - Only one identifier should be provided per request
-      tags:
-        - Accounts
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AccountIdentifier'
-            examples:
-              get_by_id:
-                summary: Get account by ID
-                value:
-                  id: 94
-              get_by_username:
-                summary: Get account by username
-                value:
-                  username: "johndoe"
-      responses:
-        '200':
-          description: Account details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: '#/components/schemas/Account'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /accounts/update:
-    post:
+    put:
       summary: Update account
       description: |
         Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).
         
-        **JSON Input:**
+        **JSON Payload:**
         - Include account identifier (`id` or `username`)
         - Include fields to update
         - IP addresses are stored locally only
@@ -273,13 +218,12 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /accounts/delete:
-    post:
+    delete:
       summary: Delete account
       description: |
         Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.
         
-        **JSON Input:**
+        **JSON Payload:**
         - Use `{"id": 94}` to delete account by ID
         - Use `{"username": "johndoe"}` to delete account by username
         
@@ -318,18 +262,23 @@ paths:
 
   /domains:
     get:
-      summary: Get all domains (synced from PowerDNS Admin)
+      summary: Get all domains or specific domain (synced from PowerDNS Admin)
       description: |
-        Retrieve a list of all domains with automatic synchronization from PowerDNS Admin.
+        Retrieve domains with automatic synchronization from PowerDNS Admin.
         
-        **Important:** Domain creation is not supported through this API. 
-        Domains must be created in PowerDNS Admin directly, then synced using the ?action=sync parameter.
+        **Access Patterns:**
+        - `GET /domains` - Get all domains
+        - `GET /domains` with JSON payload `{"id": 123}` - Get domain by ID
+        - `GET /domains` with JSON payload `{"account_id": 1}` - Get domains by account
+        - `GET /domains?account_id=1` - Get domains by account (query parameter, legacy)
         
-        **Functionality:**
-        - Automatically fetches latest domains from PowerDNS Admin API
-        - Syncs domain data to local database for caching
-        - Returns domains with account relationships
-        - Use ?action=sync to force refresh from PowerDNS Admin
+        **JSON Payload (Optional):**
+        Send JSON in request body to filter results:
+        ```json
+        {"id": 123}
+        // or
+        {"account_id": 1}
+        ```
       tags:
         - Domains
       parameters:
@@ -342,7 +291,39 @@ paths:
           in: query
           schema:
             type: integer
-          description: Filter domains by account ID
+          description: Filter domains by account ID (legacy, prefer JSON payload)
+      requestBody:
+        required: false
+        description: Optional JSON payload to filter results
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [id]
+                  properties:
+                    id:
+                      type: integer
+                      description: Domain ID
+                      example: 123
+                  additionalProperties: false
+                - type: object
+                  required: [account_id]
+                  properties:
+                    account_id:
+                      type: integer
+                      description: Account ID
+                      example: 1
+                  additionalProperties: false
+            examples:
+              get_by_id:
+                summary: Get domain by ID
+                value:
+                  id: 123
+              get_by_account:
+                summary: Get domains by account
+                value:
+                  account_id: 1
       responses:
         '200':
           description: List of domains
@@ -358,54 +339,13 @@ paths:
                   message:
                     type: string
 
-  /domains/get:
-    post:
-      summary: Get domain by ID
-      description: |
-        Retrieve a specific domain by its ID using JSON input.
-        
-        **JSON Input:**
-        - Use `{"id": 123}` to get domain by ID
-      tags:
-        - Domains
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [id]
-              properties:
-                id:
-                  type: integer
-                  description: Domain ID
-                  example: 123
-            examples:
-              get_by_id:
-                summary: Get domain by ID
-                value:
-                  id: 123
-      responses:
-        '200':
-          description: Domain details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: '#/components/schemas/Domain'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /domains/update:
-    post:
+    put:
       summary: Update domain
       description: |
         Update an existing domain using JSON input. If account_id is changed, 
         the domain assignment is automatically updated in PDNSAdmin.
         
-        **JSON Input:**
+        **JSON Payload:**
         - Include domain identifier (`id`)
         - Include fields to update
       tags:
