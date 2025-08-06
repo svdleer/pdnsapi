@@ -1,0 +1,272 @@
+<?php
+// Determine the correct base path
+$base_path = realpath(__DIR__ . '/..');
+
+require_once $base_path . '/config/config.php';
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/includes/database-compat.php';
+
+// API key is already validated in index.php, log the request
+logApiRequest('templates', $_SERVER['REQUEST_METHOD'], 200);
+
+// Get PowerDNS Admin database connection for READ operations
+$pdns_admin_conn = null;
+if (class_exists('PDNSAdminDatabase')) {
+    $pdns_admin_db = new PDNSAdminDatabase();
+    $pdns_admin_conn = $pdns_admin_db->getConnection();
+}
+
+if (!$pdns_admin_conn) {
+    sendError(500, "PowerDNS Admin database connection failed");
+}
+
+// Get the HTTP method
+$request_method = $_SERVER["REQUEST_METHOD"];
+
+// Get parameters from URL
+$template_id = isset($_GET['id']) ? $_GET['id'] : null;
+$template_name = isset($_GET['name']) ? $_GET['name'] : null;
+$domain_name = isset($_GET['domain']) ? $_GET['domain'] : null;
+
+// For POST - check for JSON payload
+$json_data = null;
+$input = file_get_contents("php://input");
+if (!empty($input)) {
+    $json_data = json_decode($input, true);
+}
+
+switch($request_method) {
+    case 'GET':
+        if ($template_id && $domain_name) {
+            // Get template as rrsets for a specific domain
+            getTemplateAsRrsets($template_id, $domain_name);
+        } elseif ($template_name && $domain_name) {
+            // Get template by name as rrsets for a specific domain
+            getTemplateAsRrsetsByName($template_name, $domain_name);
+        } elseif ($template_id) {
+            // Get specific template details
+            getTemplateById($template_id);
+        } else {
+            // Get all available templates
+            getAvailableTemplates();
+        }
+        break;
+        
+    case 'POST':
+        // Future: Create new template
+        sendError(405, "Template creation not yet implemented");
+        break;
+        
+    default:
+        sendError(405, "Method not allowed");
+        break;
+}
+
+/**
+ * Get all available templates
+ */
+function getAvailableTemplates() {
+    global $pdns_admin_conn;
+    
+    try {
+        $stmt = $pdns_admin_conn->prepare("SELECT id, name, description FROM domain_template ORDER BY name");
+        $stmt->execute();
+        $templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        sendResponse(200, $templates, "Available templates retrieved successfully");
+    } catch (PDOException $e) {
+        error_log("Error getting available templates: " . $e->getMessage());
+        sendError(500, "Failed to retrieve templates");
+    }
+}
+
+/**
+ * Get specific template by ID
+ */
+function getTemplateById($template_id) {
+    global $pdns_admin_conn;
+    
+    try {
+        // Get template info
+        $stmt = $pdns_admin_conn->prepare("SELECT id, name, description FROM domain_template WHERE id = ?");
+        $stmt->execute([$template_id]);
+        $template = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$template) {
+            sendError(404, "Template not found");
+        }
+        
+        // Get template records
+        $stmt = $pdns_admin_conn->prepare("
+            SELECT name, type, data, ttl, comment 
+            FROM domain_template_record 
+            WHERE template_id = ? AND status = 1
+            ORDER BY name, type
+        ");
+        $stmt->execute([$template_id]);
+        $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $template['records'] = $records;
+        
+        sendResponse(200, $template, "Template retrieved successfully");
+    } catch (PDOException $e) {
+        error_log("Error getting template by ID: " . $e->getMessage());
+        sendError(500, "Failed to retrieve template");
+    }
+}
+
+/**
+ * Get template as rrsets for domain creation
+ */
+function getTemplateAsRrsets($template_id, $domain_name) {
+    global $pdns_admin_conn;
+    
+    try {
+        // First check if template exists
+        $stmt = $pdns_admin_conn->prepare("SELECT id, name FROM domain_template WHERE id = ?");
+        $stmt->execute([$template_id]);
+        $template = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$template) {
+            sendError(404, "Template not found");
+        }
+        
+        // Get template records
+        $stmt = $pdns_admin_conn->prepare("
+            SELECT name as record_name, type, data as content, ttl 
+            FROM domain_template_record 
+            WHERE template_id = ? AND status = 1
+            ORDER BY name, type
+        ");
+        $stmt->execute([$template_id]);
+        $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $rrsets = convertTemplateRecordsToRrsets($records, $domain_name);
+        
+        $response = [
+            'template' => $template,
+            'domain_name' => $domain_name,
+            'rrsets' => $rrsets
+        ];
+        
+        sendResponse(200, $response, "Template converted to rrsets successfully");
+    } catch (PDOException $e) {
+        error_log("Error getting template as rrsets: " . $e->getMessage());
+        sendError(500, "Failed to convert template to rrsets");
+    }
+}
+
+/**
+ * Get template by name as rrsets for domain creation
+ */
+function getTemplateAsRrsetsByName($template_name, $domain_name) {
+    global $pdns_admin_conn;
+    
+    try {
+        // First get template by name
+        $stmt = $pdns_admin_conn->prepare("SELECT id, name FROM domain_template WHERE name = ?");
+        $stmt->execute([$template_name]);
+        $template = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$template) {
+            sendError(404, "Template '$template_name' not found");
+        }
+        
+        // Get template records
+        $stmt = $pdns_admin_conn->prepare("
+            SELECT name as record_name, type, data as content, ttl 
+            FROM domain_template_record 
+            WHERE template_id = ? AND status = 1
+            ORDER BY name, type
+        ");
+        $stmt->execute([$template['id']]);
+        $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $rrsets = convertTemplateRecordsToRrsets($records, $domain_name);
+        
+        $response = [
+            'template' => $template,
+            'domain_name' => $domain_name,
+            'rrsets' => $rrsets
+        ];
+        
+        sendResponse(200, $response, "Template converted to rrsets successfully");
+    } catch (PDOException $e) {
+        error_log("Error getting template by name: " . $e->getMessage());
+        sendError(500, "Failed to convert template to rrsets");
+    }
+}
+
+/**
+ * Convert template records to PowerDNS rrsets format
+ */
+function convertTemplateRecordsToRrsets($records, $domain_name) {
+    $rrsets = [];
+    $grouped_records = [];
+    
+    // Group records by name and type
+    foreach ($records as $record) {
+        $name = str_replace('@', $domain_name, $record['record_name']);
+        if ($name !== $domain_name && !str_ends_with($name, '.' . $domain_name) && !str_ends_with($name, '.')) {
+            $name = $name . '.' . $domain_name;
+        }
+        
+        $key = $name . '|' . $record['type'];
+        if (!isset($grouped_records[$key])) {
+            $grouped_records[$key] = [
+                'name' => $name,
+                'type' => $record['type'],
+                'records' => [],
+                'ttl' => $record['ttl'] ?: 3600
+            ];
+        }
+        
+        $grouped_records[$key]['records'][] = [
+            'content' => $record['content'],
+            'disabled' => false
+        ];
+    }
+    
+    // Convert to rrsets format
+    foreach ($grouped_records as $rrset) {
+        $rrsets[] = $rrset;
+    }
+    
+    return $rrsets;
+}
+
+/**
+ * Send JSON response
+ */
+function sendResponse($status_code, $data = null, $message = null) {
+    http_response_code($status_code);
+    header('Content-Type: application/json');
+    
+    $response = [];
+    if ($message) {
+        $response['message'] = $message;
+    }
+    if ($data !== null) {
+        $response['data'] = $data;
+    }
+    
+    echo json_encode($response, JSON_PRETTY_PRINT);
+    exit;
+}
+
+/**
+ * Send JSON error response
+ */
+function sendError($status_code, $message) {
+    http_response_code($status_code);
+    header('Content-Type: application/json');
+    
+    $response = [
+        'error' => $message,
+        'status' => $status_code
+    ];
+    
+    echo json_encode($response, JSON_PRETTY_PRINT);
+    exit;
+}
+?>
