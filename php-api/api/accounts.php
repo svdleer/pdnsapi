@@ -114,40 +114,6 @@ switch($request_method) {
         }
         break;
         
-    case 'PUT':
-        if ($account_id) {
-            updateAccount($account, $account_id);
-        } elseif ($account_username) {
-            updateAccount($account, $account_username);
-        } else {
-            // Try to get identifier from JSON input
-            $data = json_decode(file_get_contents("php://input"));
-            if ($data && (isset($data->id) || isset($data->username))) {
-                $identifier = isset($data->id) ? $data->id : $data->username;
-                updateAccount($account, $identifier);
-            } else {
-                sendError(400, "Account ID or username required for update (via path or JSON)");
-            }
-        }
-        break;
-        
-    case 'DELETE':
-        if ($account_id) {
-            deleteAccount($account, $account_id);
-        } elseif ($account_username) {
-            deleteAccount($account, $account_username);
-        } else {
-            // Try to get identifier from JSON input
-            $data = json_decode(file_get_contents("php://input"));
-            if ($data && (isset($data->id) || isset($data->username))) {
-                $identifier = isset($data->id) ? $data->id : $data->username;
-                deleteAccount($account, $identifier);
-            } else {
-                sendError(400, "Account ID or username required for deletion (via path or JSON)");
-            }
-        }
-        break;
-        
     default:
         sendError(405, "Method not allowed");
         break;
