@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "PDNSAdmin PHP API",
-    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Authentication\nThis API uses **Basic Authentication** with base64 encoded credentials.\nUse the `Authorization: Basic <base64-credentials>` header for all authenticated requests.\n\n## Features\n- **Account management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n- **RESTful and legacy API support** for flexible access patterns\n\n## Key Functionality\n- Accounts are automatically synced from PowerDNS Admin on each API call\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin (read-only sync)\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Accounts endpoint automatically refreshes data from PowerDNS Admin\n- Local database maintains PowerDNS Admin account ID relationships\n",
+    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Authentication\nThis API uses **Basic Authentication** with base64 encoded credentials.\nUse the `Authorization: Basic <base64-credentials>` header for all authenticated requests.\n\n## Features\n- **Account management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n- **JSON-only API interface** for consistent and clean access patterns\n\n## Key Functionality\n- Accounts are automatically synced from PowerDNS Admin after create, update, and delete operations\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n- All operations use JSON payloads for parameters (no query params or RESTful paths)\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin (read-only sync)\n- Auto-sync only happens on write operations (POST/PUT/DELETE), not on GET requests for performance\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Use JSON payload `{\"sync\": true}` with GET requests to force sync when needed\n- Local database maintains PowerDNS Admin account ID relationships\n",
     "version": "1.0.1",
     "contact": {
       "name": "API Support",
@@ -50,45 +50,35 @@
     "/accounts": {
       "get": {
         "summary": "Get all accounts or specific account (synced from PowerDNS Admin)",
-        "description": "Retrieve accounts with automatic synchronization from PowerDNS Admin.\n\n**Access Patterns:**\n- `GET /accounts` - Get all accounts\n- `GET /accounts` with JSON payload `{\"id\": 94}` - Get account by ID\n- `GET /accounts` with JSON payload `{\"username\": \"johndoe\"}` - Get account by username\n- `GET /accounts?id=123` - Get account by ID (query parameter, legacy)\n- `GET /accounts?username=name` - Get account by username (query parameter, legacy)\n\n**JSON Payload (Optional):**\nSend JSON in request body to filter results:\n```json\n{\"id\": 94}\n// or\n{\"username\": \"johndoe\"}\n```\n",
+        "description": "Retrieve accounts with automatic synchronization from PowerDNS Admin.\n\n**Access Patterns (JSON-only):**\n- `GET /accounts` - Get all accounts\n- `GET /accounts` with JSON payload `{\"id\": 94}` - Get account by ID\n- `GET /accounts` with JSON payload `{\"username\": \"johndoe\"}` - Get account by username  \n- `GET /accounts` with JSON payload `{\"sync\": true}` - Force sync from PowerDNS Admin\n\n**JSON Payload (Optional):**\nSend JSON in request body to filter results or trigger sync:\n```json\n{\"id\": 94}\n// or\n{\"username\": \"johndoe\"}\n// or\n{\"sync\": true}\n```\n",
         "tags": [
           "Accounts"
         ],
-        "parameters": [
-          {
-            "name": "sync",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            },
-            "description": "Set to true to sync accounts from PowerDNS Admin before returning results"
-          },
-          {
-            "name": "id",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Filter by specific account ID (legacy, prefer JSON payload)",
-            "example": 94
-          },
-          {
-            "name": "username",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Filter by specific username (legacy, prefer JSON payload)",
-            "example": "johndoe"
-          }
-        ],
         "requestBody": {
           "required": false,
-          "description": "Optional JSON payload to filter results",
+          "description": "Optional JSON payload to filter results or trigger sync",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AccountIdentifier"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/AccountIdentifier"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "sync": {
+                        "type": "boolean",
+                        "description": "Set to true to sync accounts from PowerDNS Admin before returning results",
+                        "example": true
+                      }
+                    },
+                    "required": [
+                      "sync"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
               },
               "examples": {
                 "get_by_id": {
@@ -101,6 +91,12 @@
                   "summary": "Get account by username",
                   "value": {
                     "username": "johndoe"
+                  }
+                },
+                "sync_accounts": {
+                  "summary": "Force sync from PowerDNS Admin",
+                  "value": {
+                    "sync": true
                   }
                 }
               }
@@ -197,7 +193,7 @@
       },
       "put": {
         "summary": "Update account",
-        "description": "Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).\n\n**JSON Payload:**\n- Include account identifier (`id` or `username`)\n- Include fields to update\n- IP addresses are stored locally only\n",
+        "description": "Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).\n\n**JSON Payload (Required):**\n- Include account identifier (`id` or `username`)\n- Include fields to update\n- IP addresses are stored locally only\n",
         "tags": [
           "Accounts"
         ],
@@ -261,7 +257,7 @@
       },
       "delete": {
         "summary": "Delete account",
-        "description": "Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.\n\n**JSON Payload:**\n- Use `{\"id\": 94}` to delete account by ID\n- Use `{\"username\": \"johndoe\"}` to delete account by username\n\n**Important:** This operation only deletes from PowerDNS Admin. The local database is updated through \nautomatic synchronization, ensuring the API remains the authoritative source for account management.\n",
+        "description": "Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.\n\n**JSON Payload (Required):**\n- Use `{\"id\": 94}` to delete account by ID\n- Use `{\"username\": \"johndoe\"}` to delete account by username\n\n**Important:** This operation only deletes from PowerDNS Admin. The local database is updated through \nautomatic synchronization, ensuring the API remains the authoritative source for account management.\n",
         "tags": [
           "Accounts"
         ],

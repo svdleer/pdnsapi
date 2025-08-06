@@ -36,43 +36,21 @@ $account = new Account($db);
 // Get the HTTP method
 $request_method = $_SERVER["REQUEST_METHOD"];
 
-// Parse URL path to support RESTful endpoints like /accounts/123
-$request_uri = $_SERVER['REQUEST_URI'];
-$path_parts = explode('/', trim(parse_url($request_uri, PHP_URL_PATH), '/'));
-
-// Get parameters from URL (query parameters)
-$account_id = isset($_GET['id']) ? $_GET['id'] : null;
-$account_username = isset($_GET['username']) ? $_GET['username'] : null;
-$sync = isset($_GET['sync']) ? $_GET['sync'] : null;
-
-// Check for RESTful path parameter (e.g., /accounts/123)
-// Find 'accounts' in the path and get the next segment as ID if it's numeric
-$accounts_index = array_search('accounts', $path_parts);
-if ($accounts_index !== false && isset($path_parts[$accounts_index + 1])) {
-    $path_id = $path_parts[$accounts_index + 1];
-    if (is_numeric($path_id)) {
-        $account_id = $path_id; // RESTful path parameter takes precedence
-    } elseif (!empty($path_id) && !is_numeric($path_id)) {
-        // If it's not numeric, treat it as username
-        $account_username = $path_id;
-    }
-}
-
-// For GET, POST, PUT, DELETE - check for JSON payload
+// Only accept JSON payloads - no query parameters or RESTful paths
 $json_data = null;
 $input = file_get_contents("php://input");
 if (!empty($input)) {
     $json_data = json_decode($input, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        sendError(400, "Invalid JSON payload: " . json_last_error_msg());
+        return;
+    }
 }
 
 switch($request_method) {
     case 'GET':
-        if ($sync === 'true') {
+        if ($json_data && isset($json_data['sync']) && $json_data['sync'] === true) {
             syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn, false); // Explicit sync should be verbose
-        } elseif ($account_id) {
-            getAccount($account, $account_id);
-        } elseif ($account_username) {
-            getAccountByName($account, $account_username);
         } elseif ($json_data && isset($json_data['id'])) {
             getAccount($account, $json_data['id']);
         } elseif ($json_data && isset($json_data['username'])) {
@@ -91,12 +69,8 @@ switch($request_method) {
             updateAccount($account, $json_data['id']);
         } elseif ($json_data && isset($json_data['username'])) {
             updateAccount($account, $json_data['username']);
-        } elseif ($account_id) {
-            updateAccount($account, $account_id);
-        } elseif ($account_username) {
-            updateAccount($account, $account_username);
         } else {
-            sendError(400, "Account ID or username required for update (via JSON, path, or query parameter)");
+            sendError(400, "Account ID or username required for update (via JSON payload)");
         }
         break;
         
@@ -105,12 +79,8 @@ switch($request_method) {
             deleteAccount($account, $json_data['id']);
         } elseif ($json_data && isset($json_data['username'])) {
             deleteAccount($account, $json_data['username']);
-        } elseif ($account_id) {
-            deleteAccount($account, $account_id);
-        } elseif ($account_username) {
-            deleteAccount($account, $account_username);
         } else {
-            sendError(400, "Account ID or username required for deletion (via JSON, path, or query parameter)");
+            sendError(400, "Account ID or username required for deletion (via JSON payload)");
         }
         break;
         
