@@ -80,25 +80,25 @@ class PDNSAdminClient {
         return $this->makeRequest("/pdnsadmin/zones/{$zone_id}", 'DELETE');
     }
 
-    // Account operations
+    // Account operations (PowerDNS Admin accounts/domains)
     public function getAllAccounts() {
         return $this->makeRequest('/pdnsadmin/accounts');
     }
 
-    public function getAccount($account_name) {
-        return $this->makeRequest("/pdnsadmin/accounts/{$account_name}");
+    public function getAccount($account_identifier) {
+        return $this->makeRequest("/pdnsadmin/accounts/{$account_identifier}");
     }
 
     public function createAccount($account_data) {
         return $this->makeRequest('/pdnsadmin/accounts', 'POST', $account_data);
     }
 
-    public function updateAccount($account_name, $account_data) {
-        return $this->makeRequest("/pdnsadmin/accounts/{$account_name}", 'PUT', $account_data);
+    public function updateAccount($account_identifier, $account_data) {
+        return $this->makeRequest("/pdnsadmin/accounts/{$account_identifier}", 'PUT', $account_data);
     }
 
-    public function deleteAccount($account_name) {
-        return $this->makeRequest("/pdnsadmin/accounts/{$account_name}", 'DELETE');
+    public function deleteAccount($account_identifier) {
+        return $this->makeRequest("/pdnsadmin/accounts/{$account_identifier}", 'DELETE');
     }
 
     // User operations
@@ -116,6 +116,17 @@ class PDNSAdminClient {
 
     public function deleteUser($username) {
         return $this->makeRequest("/pdnsadmin/users/{$username}", 'DELETE');
+    }
+
+    // Flexible user/account operations that can work with both identifiers
+    public function updateUserByIdentifier($identifier, $user_data) {
+        // For user operations, we always use the user endpoint with username
+        return $this->updateUser($identifier, $user_data);
+    }
+
+    public function deleteUserByIdentifier($identifier) {
+        // For user operations, we always use the user endpoint with username
+        return $this->deleteUser($identifier);
     }
 
     // API Key operations
