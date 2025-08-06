@@ -44,7 +44,7 @@ $sync = isset($_GET['sync']) ? $_GET['sync'] : null;
 switch($request_method) {
     case 'GET':
         if ($sync === 'true') {
-            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn, false); // Explicit sync should be verbose
         } elseif ($account_id) {
             getAccount($account, $account_id);
         } elseif ($account_username) {
@@ -79,12 +79,16 @@ switch($request_method) {
         break;
 }
 
-function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
+function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn, $silent = true) {
     global $db;
     
     if (!$pdns_admin_conn) {
-        sendError(500, "Failed to connect to PowerDNS Admin database");
-        return;
+        if ($silent) {
+            return ['error' => 'Failed to connect to PowerDNS Admin database'];
+        } else {
+            sendError(500, "Failed to connect to PowerDNS Admin database");
+            return;
+        }
     }
     
     // Get all users from PowerDNS Admin database
@@ -94,8 +98,12 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
     $pdns_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if (empty($pdns_users)) {
-        sendError(500, "No users found in PowerDNS Admin database");
-        return;
+        if ($silent) {
+            return ['error' => 'No users found in PowerDNS Admin database'];
+        } else {
+            sendError(500, "No users found in PowerDNS Admin database");
+            return;
+        }
     }
     
     $synced_count = 0;
@@ -162,18 +170,34 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn) {
         $db->commit();
         
         $message = "Database sync completed: {$synced_count} accounts added, {$updated_count} accounts updated, {$deleted_count} accounts removed from local database";
-        sendResponse(200, array(
-            'synced' => $synced_count,
-            'updated' => $updated_count,
-            'deleted' => $deleted_count,
-            'total_processed' => count($pdns_users)
-        ), $message);
+        
+        if ($silent) {
+            return [
+                'synced' => $synced_count,
+                'updated' => $updated_count,
+                'deleted' => $deleted_count,
+                'total_processed' => count($pdns_users),
+                'message' => $message
+            ];
+        } else {
+            sendResponse(200, array(
+                'synced' => $synced_count,
+                'updated' => $updated_count,
+                'deleted' => $deleted_count,
+                'total_processed' => count($pdns_users)
+            ), $message);
+        }
         
     } catch (Exception $e) {
         // Rollback the transaction
         $db->rollback();
         error_log("Account sync from database failed: " . $e->getMessage());
-        sendError(500, "Account sync from database failed: " . $e->getMessage());
+        
+        if ($silent) {
+            return ['error' => 'Account sync from database failed: ' . $e->getMessage()];
+        } else {
+            sendError(500, "Account sync from database failed: " . $e->getMessage());
+        }
     }
 }
 
@@ -343,6 +367,10 @@ function createAccount($account) {
     $account->pdns_account_id = $pdns_user['id'];
     
     if($account->create()) {
+        // Auto-sync after account creation (silent mode is default)
+        global $pdns_admin_conn;
+        syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+        
         sendResponse(201, [
             'id' => $db->lastInsertId(),
             'username' => $account->username,
@@ -422,6 +450,10 @@ function updateAccount($account, $account_id) {
         $account->customer_id = $customer_id;
         
         if($account->update()) {
+            // Auto-sync after account update (silent mode is default)
+            global $pdns_admin_conn;
+            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+            
             sendResponse(200, null, "Account updated successfully");
         } else {
             sendError(503, "Unable to update account");
@@ -455,7 +487,11 @@ function deleteAccount($account, $account_id) {
         curl_close($ch);
         
         if ($http_code >= 200 && $http_code < 300) {
-            sendResponse(200, null, "Account deleted from PowerDNS Admin successfully. Use sync to update local database.");
+            // Auto-sync after account deletion (silent mode is default)
+            global $pdns_admin_conn;
+            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+            
+            sendResponse(200, null, "Account deleted from PowerDNS Admin and local database synced automatically");
         } else {
             sendError(503, "Unable to delete account from PowerDNS Admin. HTTP Code: " . $http_code . ". Response: " . $response);
         }
