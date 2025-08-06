@@ -30,7 +30,7 @@ try {
         echo "\nTesting template records for ID $template_id:\n";
         
         $stmt = $pdns_admin_conn->prepare("
-            SELECT dtr.name as record_name, dtr.type, dtr.content, dtr.ttl, dtr.prio 
+            SELECT dtr.name as record_name, dtr.type, dtr.data as content, dtr.ttl, 0 as prio 
             FROM domain_template_record dtr 
             WHERE dtr.template_id = ? 
             ORDER BY dtr.name, dtr.type
