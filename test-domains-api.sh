@@ -12,7 +12,7 @@ echo ""
 
 # Test 1: GET all domains
 echo "1. GET /domains (all domains)"
-curl -X GET "http://localhost/php-api/api/domains.php" \
+curl -X GET "https://pdnsapi.avant.nl/domains" \
      -H "Content-Type: application/json" \
      -H "Accept: application/json" \
      -w "\nHTTP Status: %{http_code}\n" \
@@ -21,7 +21,7 @@ echo ""
 
 # Test 2: GET domains with account filter  
 echo "2. GET /domains with account filter"
-curl -X GET "http://localhost/php-api/api/domains.php?account_id=1" \
+curl -X GET "https://pdnsapi.avant.nl/domains?account_id=1" \
      -H "Content-Type: application/json" \
      -H "Accept: application/json" \
      -w "\nHTTP Status: %{http_code}\n" \
@@ -30,7 +30,7 @@ echo ""
 
 # Test 3: POST sync domains
 echo "3. POST /domains (sync)"
-curl -X POST "http://localhost/php-api/api/domains.php" \
+curl -X POST "https://pdnsapi.avant.nl/domains" \
      -H "Content-Type: application/json" \
      -H "Accept: application/json" \
      -d '{"action":"sync","force":false}' \

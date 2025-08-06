@@ -5,11 +5,11 @@
  */
 
 // Configuration
-$base_url = 'http://localhost/php-api/api';
+$base_url = 'https://pdnsapi.avant.nl';
 $api_endpoints = [
-    'GET /domains' => $base_url . '/domains.php',
-    'GET /domains with query' => $base_url . '/domains.php?account_id=1',
-    'POST /domains sync' => $base_url . '/domains.php'
+    'GET /domains' => $base_url . '/domains',
+    'GET /domains with query' => $base_url . '/domains?account_id=1',
+    'POST /domains sync' => $base_url . '/domains'
 ];
 
 echo "=== Testing /domains API Endpoints ===\n\n";

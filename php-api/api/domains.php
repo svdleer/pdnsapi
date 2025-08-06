@@ -55,7 +55,15 @@ if (!empty($input)) {
 
 switch($request_method) {
     case 'GET':
-        if ($sync === 'true') {
+        if (isset($_GET['templates']) && $_GET['templates'] === 'true') {
+            // Get available templates
+            $templates = getAvailableTemplates();
+            if ($templates !== false) {
+                sendResponse(200, $templates, "Available templates retrieved");
+            } else {
+                sendError(500, "Failed to retrieve templates");
+            }
+        } elseif ($sync === 'true') {
             syncDomainsFromPDNS($domain, $pdns_client);
         } elseif ($json_data && isset($json_data['id'])) {
             getDomain($domain, $json_data['id']);
@@ -73,8 +81,13 @@ switch($request_method) {
     case 'POST':
         if (isset($_GET['action']) && $_GET['action'] === 'add_to_account') {
             addDomainToAccount($domain, $_POST);
+        } elseif (isset($_GET['sync']) && $_GET['sync'] === 'true') {
+            syncDomainsFromPDNS($domain, $pdns_client);
+        } elseif ($json_data) {
+            // Create domain via PowerDNS Admin API
+            createDomainViaPDNS($domain, $pdns_client, $json_data);
         } else {
-            sendError(405, "Domain creation is not supported. Use sync action to import domains from PowerDNS Admin.");
+            sendError(400, "Invalid request. Provide JSON payload for domain creation or use ?action=add_to_account or ?sync=true");
         }
         break;
         
@@ -369,6 +382,286 @@ function addDomainToAccount($domain, $post_data) {
         }
     } else {
         sendError(400, "Domain name and account ID are required");
+    }
+}
+
+function createDomainViaPDNS($domain, $pdns_client, $json_data) {
+    global $db;
+    
+    // Validate required fields
+    if (empty($json_data['name'])) {
+        sendError(400, "Domain name is required");
+        return;
+    }
+    
+    // Prepare domain data for PowerDNS Admin API
+    $pdns_data = [
+        'name' => $json_data['name'],
+        'kind' => 'Master',  // Always Master
+        'type' => 'Native'   // Always Native
+    ];
+    
+    // Add optional fields if provided
+    if (isset($json_data['masters']) && !empty($json_data['masters'])) {
+        $pdns_data['masters'] = is_array($json_data['masters']) ? $json_data['masters'] : [$json_data['masters']];
+    }
+    
+    if (isset($json_data['account']) && !empty($json_data['account'])) {
+        $pdns_data['account'] = $json_data['account'];
+    }
+    
+    // Handle template - convert template to rrsets
+    if (isset($json_data['template_id']) && !empty($json_data['template_id'])) {
+        $template_rrsets = getTemplateAsRrsets($json_data['template_id'], $json_data['name']);
+        if ($template_rrsets !== false) {
+            $pdns_data['rrsets'] = $template_rrsets;
+        } else {
+            sendError(400, "Template not found or could not be converted");
+            return;
+        }
+    } elseif (isset($json_data['template_name']) && !empty($json_data['template_name'])) {
+        $template_rrsets = getTemplateAsRrsetsByName($json_data['template_name'], $json_data['name']);
+        if ($template_rrsets !== false) {
+            $pdns_data['rrsets'] = $template_rrsets;
+        } else {
+            sendError(400, "Template '{$json_data['template_name']}' not found or could not be converted");
+            return;
+        }
+    }
+    
+    // Add rrsets if provided (for initial records or override template)
+    if (isset($json_data['rrsets']) && is_array($json_data['rrsets'])) {
+        $pdns_data['rrsets'] = $json_data['rrsets'];
+    }
+    
+    // Create domain in PowerDNS Admin via API
+    $pdns_response = $pdns_client->makeRequest('/pdnsadmin/zones', 'POST', $pdns_data);
+    
+    if ($pdns_response['status_code'] == 201 || $pdns_response['status_code'] == 200) {
+        // Domain created successfully, now sync it to local database
+        
+        // Try to get the created domain info from PowerDNS Admin
+        $get_response = $pdns_client->makeRequest('/pdnsadmin/zones', 'GET');
+        
+        if ($get_response['status_code'] == 200) {
+            $domains = $get_response['data'];
+            
+            // Find our newly created domain
+            $created_domain = null;
+            if (is_array($domains)) {
+                foreach ($domains as $d) {
+                    if ($d['name'] === $json_data['name']) {
+                        $created_domain = $d;
+                        break;
+                    }
+                }
+            }
+            
+            if ($created_domain) {
+                // Create domain in local database
+                $domain_obj = new Domain($db);
+                $domain_obj->name = $created_domain['name'];
+                $domain_obj->type = 'Native';  // Always Native
+                $domain_obj->pdns_zone_id = $created_domain['id'] ?? null;
+                $domain_obj->kind = 'Master';  // Always Master
+                $domain_obj->masters = isset($pdns_data['masters']) ? implode(',', $pdns_data['masters']) : '';
+                $domain_obj->dnssec = false; // Default, can be updated later
+                $domain_obj->account = $pdns_data['account'] ?? '';
+                $domain_obj->account_id = null; // Will be set based on account name if provided
+                
+                // If account name is provided, try to find account_id
+                if (!empty($pdns_data['account'])) {
+                    $account = new Account($db);
+                    $account_info = $account->getByName($pdns_data['account']);
+                    if ($account_info) {
+                        $domain_obj->account_id = $account_info['id'];
+                        $domain_obj->account = $pdns_data['account'] . " ({$account_info['description']})";
+                    }
+                }
+                
+                if ($domain_obj->create()) {
+                    sendResponse(201, [
+                        'id' => $domain_obj->id,
+                        'name' => $domain_obj->name,
+                        'type' => $domain_obj->type,
+                        'pdns_zone_id' => $domain_obj->pdns_zone_id,
+                        'kind' => $domain_obj->kind,
+                        'masters' => $domain_obj->masters,
+                        'dnssec' => $domain_obj->dnssec,
+                        'account' => $domain_obj->account,
+                        'account_id' => $domain_obj->account_id,
+                        'template_applied' => isset($json_data['template_id']) || isset($json_data['template_name']) ? true : false
+                    ], "Domain created successfully");
+                } else {
+                    sendError(500, "Domain created in PowerDNS Admin but failed to save in local database");
+                }
+            } else {
+                sendError(500, "Domain created but could not retrieve details from PowerDNS Admin");
+            }
+        } else {
+            sendError(500, "Domain created but could not sync with local database");
+        }
+    } elseif ($pdns_response['status_code'] == 409) {
+        sendError(409, "Domain already exists");
+    } else {
+        $error_msg = isset($pdns_response['data']['message']) ? $pdns_response['data']['message'] : 'Unknown error';
+        sendError($pdns_response['status_code'], "Failed to create domain in PowerDNS Admin: " . $error_msg);
+    }
+}
+
+function getTemplateAsRrsets($template_id, $domain_name) {
+    global $pdns_admin_conn;
+    
+    if (!$pdns_admin_conn) {
+        $pdns_admin_db = new PDNSAdminDatabase();
+        $pdns_admin_conn = $pdns_admin_db->getConnection();
+    }
+    
+    if (!$pdns_admin_conn) {
+        error_log("Could not connect to PowerDNS Admin database for template conversion");
+        return false;
+    }
+    
+    try {
+        // Get template records
+        $stmt = $pdns_admin_conn->prepare("SELECT * FROM domain_template_record WHERE template_id = ? AND status = 1 ORDER BY name, type");
+        $stmt->execute([$template_id]);
+        $template_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($template_records)) {
+            return false;
+        }
+        
+        return convertTemplateRecordsToRrsets($template_records, $domain_name);
+        
+    } catch (PDOException $e) {
+        error_log("Error getting template as rrsets: " . $e->getMessage());
+        return false;
+    }
+}
+
+function getTemplateAsRrsetsByName($template_name, $domain_name) {
+    global $pdns_admin_conn;
+    
+    if (!$pdns_admin_conn) {
+        $pdns_admin_db = new PDNSAdminDatabase();
+        $pdns_admin_conn = $pdns_admin_db->getConnection();
+    }
+    
+    if (!$pdns_admin_conn) {
+        error_log("Could not connect to PowerDNS Admin database for template conversion");
+        return false;
+    }
+    
+    try {
+        // Get template ID first
+        $stmt = $pdns_admin_conn->prepare("SELECT id FROM domain_template WHERE name = ?");
+        $stmt->execute([$template_name]);
+        $template = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$template) {
+            return false;
+        }
+        
+        return getTemplateAsRrsets($template['id'], $domain_name);
+        
+    } catch (PDOException $e) {
+        error_log("Error getting template by name: " . $e->getMessage());
+        return false;
+    }
+}
+
+function convertTemplateRecordsToRrsets($template_records, $domain_name) {
+    $rrsets = [];
+    $grouped_records = [];
+    
+    // Group records by name and type
+    foreach ($template_records as $record) {
+        $name = $record['name'];
+        $type = $record['type'];
+        
+        // Replace @ with actual domain name
+        if ($name === '@') {
+            $name = $domain_name;
+        } else {
+            // If name doesn't end with domain name, append it
+            if ($name !== $domain_name && !str_ends_with($name, '.' . $domain_name)) {
+                $name = $name . '.' . $domain_name;
+            }
+        }
+        
+        // Ensure name ends with dot for PowerDNS
+        if (!str_ends_with($name, '.')) {
+            $name .= '.';
+        }
+        
+        $key = $name . '|' . $type;
+        
+        if (!isset($grouped_records[$key])) {
+            $grouped_records[$key] = [
+                'name' => $name,
+                'type' => $type,
+                'ttl' => $record['ttl'],
+                'records' => [],
+                'comments' => []
+            ];
+        }
+        
+        // Add record data
+        $grouped_records[$key]['records'][] = [
+            'content' => $record['data'],
+            'disabled' => false
+        ];
+        
+        // Add comment if exists
+        if (!empty($record['comment'])) {
+            $grouped_records[$key]['comments'][] = [
+                'content' => $record['comment'],
+                'account' => '',
+                'modified_at' => time()
+            ];
+        }
+    }
+    
+    // Convert grouped records to PowerDNS rrsets format
+    foreach ($grouped_records as $group) {
+        $rrset = [
+            'name' => $group['name'],
+            'type' => $group['type'],
+            'ttl' => $group['ttl'],
+            'changetype' => 'REPLACE',
+            'records' => $group['records']
+        ];
+        
+        if (!empty($group['comments'])) {
+            $rrset['comments'] = $group['comments'];
+        }
+        
+        $rrsets[] = $rrset;
+    }
+    
+    return $rrsets;
+}
+
+function getAvailableTemplates() {
+    global $pdns_admin_conn;
+    
+    if (!$pdns_admin_conn) {
+        $pdns_admin_db = new PDNSAdminDatabase();
+        $pdns_admin_conn = $pdns_admin_db->getConnection();
+    }
+    
+    if (!$pdns_admin_conn) {
+        return false;
+    }
+    
+    try {
+        $stmt = $pdns_admin_conn->prepare("SELECT id, name, description FROM domain_template ORDER BY name");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Error getting available templates: " . $e->getMessage());
+        return false;
     }
 }
 ?>
