@@ -3,7 +3,7 @@
 echo "=== Testing Delete → Sync Workflow ==="
 echo ""
 
-API_BASE="https://pdnsapi.avant.nl"
+API_BASE="https://pdnsapi.avant.nl/api"
 TEST_USERNAME="test_delete_$(date +%s)"
 
 echo "Step 1: Creating test account '$TEST_USERNAME'..."
@@ -25,7 +25,7 @@ CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/accounts" \
 echo "Create response: $CREATE_RESPONSE"
 
 # Extract account ID
-ACCOUNT_ID=$(echo $CREATE_RESPONSE | grep -o '"id":"[0-9]*"' | cut -d'"' -f4)
+ACCOUNT_ID=$(echo $CREATE_RESPONSE | grep -o '"id":[0-9]*' | cut -d':' -f2)
 
 if [ -z "$ACCOUNT_ID" ]; then
     echo "✗ Failed to create account"
@@ -38,7 +38,7 @@ echo ""
 echo "Step 2: Deleting account via API..."
 
 # Delete account
-DELETE_RESPONSE=$(curl -s -X DELETE "$API_BASE/accounts?id=$ACCOUNT_ID")
+DELETE_RESPONSE=$(curl -s -X DELETE "$API_BASE/accounts/$ACCOUNT_ID")
 echo "Delete response: $DELETE_RESPONSE"
 echo "✓ Account deleted via API"
 echo ""
@@ -46,7 +46,7 @@ echo ""
 echo "Step 3: Running sync to clean up local database..."
 
 # Run sync
-SYNC_RESPONSE=$(curl -s "$API_BASE/accounts?sync=true")
+SYNC_RESPONSE=$(curl -s -X POST "$API_BASE/accounts/sync")
 echo "Sync response: $SYNC_RESPONSE"
 echo ""
 

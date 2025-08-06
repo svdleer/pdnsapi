@@ -9,18 +9,9 @@ require_once 'config/config.php';
 
 echo "=== Testing Delete → Sync Workflow ===\n\n";
 
-// Configuration - CORRECT URLs without extra /api
-$api_base = 'https://pdnsapi.avant.nl';
+// Configuration
+$api_base = 'https://pdnsapi.avant.nl/api';
 $test_username = 'test_delete_' . time();
-
-// Initialize database connection
-$database = new Database();
-$db = $database->getConnection();
-
-if (!$db) {
-    echo "✗ Database connection failed\n";
-    exit(1);
-}
 
 // Step 1: Create a test account via API
 echo "Step 1: Creating test account '$test_username'...\n";
@@ -45,13 +36,12 @@ curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
 $create_response = curl_exec($ch);
 $create_result = json_decode($create_response, true);
-$create_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-if ($create_code == 201) {
+if (curl_getinfo($ch, CURLINFO_HTTP_CODE) == 201) {
     $account_id = $create_result['data']['id'];
     echo "✓ Account created successfully (ID: $account_id)\n\n";
 } else {
-    echo "✗ Failed to create account (HTTP $create_code): " . $create_response . "\n";
+    echo "✗ Failed to create account: " . $create_response . "\n";
     curl_close($ch);
     exit(1);
 }
@@ -74,9 +64,9 @@ try {
     exit(1);
 }
 
-// Step 3: Delete account via API - CORRECT URL FORMAT with query parameter
+// Step 3: Delete account via API
 echo "Step 3: Deleting account via API (should only delete from PowerDNS Admin)...\n";
-curl_setopt($ch, CURLOPT_URL, $api_base . '/accounts?id=' . $account_id);
+curl_setopt($ch, CURLOPT_URL, $api_base . '/accounts/' . $account_id);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
 curl_setopt($ch, CURLOPT_POST, false);
 curl_setopt($ch, CURLOPT_POSTFIELDS, '');
@@ -87,7 +77,7 @@ $delete_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 if ($delete_code == 200) {
     echo "✓ Account deleted via API\n\n";
 } else {
-    echo "✗ Failed to delete account via API (HTTP $delete_code): " . $delete_response . "\n";
+    echo "✗ Failed to delete account via API: " . $delete_response . "\n";
     curl_close($ch);
     exit(1);
 }
@@ -129,7 +119,7 @@ if ($sync_code == 200) {
     echo "  - Deleted: " . ($sync_result['data']['deleted'] ?? 0) . " accounts\n";
     echo "  - Message: " . ($sync_result['message'] ?? 'No message') . "\n\n";
 } else {
-    echo "✗ Sync failed (HTTP $sync_code): " . $sync_response . "\n";
+    echo "✗ Sync failed: " . $sync_response . "\n";
     curl_close($ch);
     exit(1);
 }

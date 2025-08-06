@@ -48,7 +48,7 @@ class PDNSAdminClient {
         
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
-        if ($data && in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'])) {
+        if ($data && in_array($method, ['POST', 'PUT', 'PATCH'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
         
@@ -110,12 +110,12 @@ class PDNSAdminClient {
         return $this->makeRequest('/pdnsadmin/users', 'POST', $user_data);
     }
 
-    public function updateUser($user_id, $user_data) {
-        return $this->makeRequest("/pdnsadmin/users/{$user_id}", 'PUT', $user_data);
+    public function updateUser($username, $user_data) {
+        return $this->makeRequest("/pdnsadmin/users/{$username}", 'PUT', $user_data);
     }
 
-    public function deleteUser($user_id) {
-        return $this->makeRequest("/pdnsadmin/users/{$user_id}", 'DELETE');
+    public function deleteUser($username) {
+        return $this->makeRequest("/pdnsadmin/users/{$username}", 'DELETE');
     }
 
     // API Key operations

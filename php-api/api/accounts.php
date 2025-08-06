@@ -343,10 +343,6 @@ function createAccount($account) {
     $account->pdns_account_id = $pdns_user['id'];
     
     if($account->create()) {
-        // Auto-sync after account creation
-        global $pdns_admin_conn;
-        syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
-        
         sendResponse(201, [
             'id' => $db->lastInsertId(),
             'username' => $account->username,
@@ -408,10 +404,10 @@ function updateAccount($account, $account_id) {
             if (isset($data->email)) $pdns_data['email'] = $data->email;
             
             if (!empty($pdns_data)) {
-                $api_response = $client->updateUser($account->pdns_account_id, $pdns_data);
+                $api_response = $client->makeRequest('/users/' . $account->pdns_account_id, 'PUT', $pdns_data);
                 
-                if ($api_response['status_code'] < 200 || $api_response['status_code'] >= 300) {
-                    error_log("Failed to update account in PowerDNS Admin: " . $api_response['raw_response']);
+                if (!$api_response || !isset($api_response['success']) || !$api_response['success']) {
+                    error_log("Failed to update account in PowerDNS Admin: " . ($api_response['msg'] ?? 'Unknown error'));
                     // Continue with local update even if PowerDNS Admin update fails
                 }
             }
@@ -426,10 +422,6 @@ function updateAccount($account, $account_id) {
         $account->customer_id = $customer_id;
         
         if($account->update()) {
-            // Auto-sync after account update
-            global $pdns_admin_conn;
-            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
-            
             sendResponse(200, null, "Account updated successfully");
         } else {
             sendError(503, "Unable to update account");
@@ -445,18 +437,27 @@ function deleteAccount($account, $account_id) {
     $account->id = $account_id;
     
     if($account->readOne()) {
-        // Use PDNSAdminClient to delete user by PowerDNS Admin user ID
-        $pdns_client = new PDNSAdminClient($pdns_config);
-        $response = $pdns_client->deleteUser($account->pdns_account_id);
+        // Delete from PowerDNS Admin API only
+        $delete_url = rtrim($pdns_config['base_url'], '/') . "/pdnsadmin/users/" . $account->username;
         
-        if ($response['status_code'] >= 200 && $response['status_code'] < 300) {
-            // Auto-sync after account deletion
-            global $pdns_admin_conn;
-            syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
-            
-            sendResponse(200, null, "Account deleted from PowerDNS Admin and local database synced automatically");
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $delete_url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'Authorization: Basic ' . $pdns_config['api_key']
+        ));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($http_code >= 200 && $http_code < 300) {
+            sendResponse(200, null, "Account deleted from PowerDNS Admin successfully. Use sync to update local database.");
         } else {
-            sendError(503, "Unable to delete account from PowerDNS Admin. HTTP Code: " . $response['status_code'] . ". Response: " . $response['raw_response']);
+            sendError(503, "Unable to delete account from PowerDNS Admin. HTTP Code: " . $http_code . ". Response: " . $response);
         }
     } else {
         sendError(404, "Account not found");
