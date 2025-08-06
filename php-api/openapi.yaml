@@ -16,27 +16,6 @@ info:
     - **Local database caching** for performance and extended metadata
     - **RESTful and legacy API support** for flexible access patterns
     
-    ## Quick Start Examples
-    
-    ### 🔍 **Account Access Methods**
-    | Method | Endpoint | Description |
-    |--------|----------|-------------|
-    | `GET` | `/accounts` | Get all accounts |
-    | `GET` | `/accounts/94` | Get account by ID (RESTful) |
-    | `GET` | `/accounts/johndoe` | Get account by username (RESTful) |
-    | `GET` | `/accounts?id=94` | Get account by ID (query parameter) |
-    | `GET` | `/accounts?username=johndoe` | Get account by username (query parameter) |
-    | `GET` | `/accounts?sync=true` | Force sync from PowerDNS Admin |
-    
-    ### ⚙️ **Account Management**
-    | Method | Endpoint | Description |
-    |--------|----------|-------------|
-    | `POST` | `/accounts` | Create new account |
-    | `PUT` | `/accounts/94` | Update account by ID |
-    | `PUT` | `/accounts/johndoe` | Update account by username |
-    | `DELETE` | `/accounts/94` | Delete account by ID |
-    | `DELETE` | `/accounts/johndoe` | Delete account by username |
-    
     ## Key Functionality
     - Accounts are automatically synced from PowerDNS Admin on each API call
     - IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)
