@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "PDNSAdmin PHP API",
-    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Authentication\nThis API uses **Basic Authentication** with base64 encoded credentials.\nUse the `Authorization: Basic <base64-credentials>` header for all authenticated requests.\n\n## Features\n- **Account management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n\n## Key Functionality\n- Accounts are automatically synced from PowerDNS Admin on each API call\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin (read-only sync)\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Accounts endpoint automatically refreshes data from PowerDNS Admin\n- Local database maintains PowerDNS Admin account ID relationships\n",
+    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Authentication\nThis API uses **Basic Authentication** with base64 encoded credentials.\nUse the `Authorization: Basic <base64-credentials>` header for all authenticated requests.\n\n## Features\n- **Account management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n- **RESTful and legacy API support** for flexible access patterns\n\n## API Access Patterns\n\n### Account Access (Multiple Ways)\n```\n# Get all accounts\nGET /accounts\n\n# Get account by ID (RESTful)\nGET /accounts/94\n\n# Get account by username (RESTful)  \nGET /accounts/johndoe\n\n# Get account by ID (query parameter)\nGET /accounts?id=94\n\n# Get account by username (query parameter)\nGET /accounts?username=johndoe\n\n# Manual sync with verbose output\nGET /accounts?sync=true\n```\n\n### Account Management\n```\n# Create account\nPOST /accounts\n\n# Update account by ID\nPUT /accounts/94\n\n# Delete account by ID  \nDELETE /accounts/94\n\n# Delete account by username\nDELETE /accounts/johndoe\n```\n\n## Key Functionality\n- Accounts are automatically synced from PowerDNS Admin on each API call\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin (read-only sync)\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Accounts endpoint automatically refreshes data from PowerDNS Admin\n- Local database maintains PowerDNS Admin account ID relationships\n",
     "version": "1.0.1",
     "contact": {
       "name": "API Support",
@@ -64,17 +64,27 @@
             "description": "Set to true to sync accounts from PowerDNS Admin before returning results"
           },
           {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by specific account ID to retrieve a single account",
+            "example": 94
+          },
+          {
             "name": "username",
             "in": "query",
             "schema": {
               "type": "string"
             },
-            "description": "Filter by specific username to retrieve a single account"
+            "description": "Filter by specific username to retrieve a single account",
+            "example": "johndoe"
           }
         ],
         "responses": {
           "200": {
-            "description": "List of accounts",
+            "description": "List of accounts or single account (depending on parameters)",
             "content": {
               "application/json": {
                 "schema": {
@@ -87,6 +97,44 @@
                       }
                     },
                     "message": {
+                      "type": "string",
+                      "example": "Accounts retrieved successfully"
+                    }
+                  }
+                },
+                "examples": {
+                  "all_accounts": {
+                    "summary": "All accounts",
+                    "description": "GET /accounts (returns all accounts)",
+                    "value": {
+                      "data": [],
+                      "message": "Accounts retrieved successfully"
+                    }
+                  },
+                  "account_by_id": {
+                    "summary": "Single account by ID",
+                    "description": "GET /accounts?id=94 (returns specific account)",
+                    "value": {
+                      "data": [
+                        {
+                          "id": 94,
+                          "username": "testuser",
+                          "firstname": "Test"
+                        }
+                      ]
+                    }
+                  },
+                  "account_by_username": {
+                    "summary": "Single account by username",
+                    "description": "GET /accounts?username=johndoe (returns specific account)",
+                    "value": {
+                      "data": [
+                        {
+                          "id": 1,
+                          "username": "johndoe",
+                          "firstname": "John"
+                        }
+                      ],
                       "type": "string",
                       "example": "Accounts retrieved successfully"
                     }
@@ -306,23 +354,33 @@
         }
       }
     },
-    "/accounts/{username}": {
+    "/accounts/{identifier}": {
       "get": {
-        "summary": "Get account by username",
-        "description": "Retrieve a specific account by its username. Supports RESTful path parameter access.\n\n**Note:** This endpoint supports both numeric IDs and usernames in the path.\n- Use `/accounts/123` for account ID lookup\n- Use `/accounts/johndoe` for username lookup\n",
+        "summary": "Get account by ID or username (RESTful)",
+        "description": "Retrieve a specific account using RESTful path parameters.\n\n**Supported formats:**\n- `/accounts/94` - Get account by ID (numeric)\n- `/accounts/johndoe` - Get account by username (string)\n\n**Path Parameter Detection:**\n- If the identifier is numeric, it's treated as an account ID\n- If the identifier is a string, it's treated as a username\n",
         "tags": [
           "Accounts"
         ],
         "parameters": [
           {
-            "name": "username",
+            "name": "identifier",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "description": "Account ID",
+                  "example": 94
+                },
+                {
+                  "type": "string",
+                  "description": "Account username",
+                  "example": "johndoe"
+                }
+              ]
             },
-            "description": "Account username",
-            "example": "johndoe"
+            "description": "Account identifier (ID or username)"
           }
         ],
         "responses": {
