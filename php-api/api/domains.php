@@ -394,9 +394,15 @@ function createDomainViaPDNS($domain, $pdns_client, $json_data) {
         return;
     }
     
+    // Ensure domain name is canonical (ends with a dot)
+    $domain_name = $json_data['name'];
+    if (!str_ends_with($domain_name, '.')) {
+        $domain_name .= '.';
+    }
+
     // Prepare domain data for PowerDNS Admin API
     $pdns_data = [
-        'name' => $json_data['name'],
+        'name' => $domain_name,
         'kind' => 'Master',  // Always Master
         'type' => 'Native'   // Always Native
     ];
@@ -412,7 +418,7 @@ function createDomainViaPDNS($domain, $pdns_client, $json_data) {
     
     // Handle template - convert template to rrsets
     if (isset($json_data['template_id']) && !empty($json_data['template_id'])) {
-        $template_rrsets = getTemplateAsRrsets($json_data['template_id'], $json_data['name']);
+        $template_rrsets = getTemplateAsRrsets($json_data['template_id'], $domain_name);
         if ($template_rrsets !== false) {
             $pdns_data['rrsets'] = $template_rrsets;
         } else {
@@ -420,7 +426,7 @@ function createDomainViaPDNS($domain, $pdns_client, $json_data) {
             return;
         }
     } elseif (isset($json_data['template_name']) && !empty($json_data['template_name'])) {
-        $template_rrsets = getTemplateAsRrsetsByName($json_data['template_name'], $json_data['name']);
+        $template_rrsets = getTemplateAsRrsetsByName($json_data['template_name'], $domain_name);
         if ($template_rrsets !== false) {
             $pdns_data['rrsets'] = $template_rrsets;
         } else {
