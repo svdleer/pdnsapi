@@ -3,7 +3,7 @@
   "info": {
     "title": "PDNSAdmin PHP API",
     "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Authentication\nThis API uses **Basic Authentication** with base64 encoded credentials.\nUse the `Authorization: Basic <base64-credentials>` header for all authenticated requests.\n\n## Features\n- **User management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Advanced domain management** with name-based operations and PowerDNS Server API access\n- **Domain search and filtering** by name patterns\n- **DNS record management** via PowerDNS Server API integration\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n- **HTTP standards compliant** interface (GET uses query params, POST/PUT/DELETE use JSON)\n\n## Domain Management Layers\nThis API provides **two layers** of domain management:\n1. **PowerDNS Admin Layer** (`/pdnsadmin/zones`) - Basic zone operations (list, create, delete)\n2. **PowerDNS Server Layer** (`/servers/localhost/zones`) - Full DNS management (records, updates, details)\n\n## New Domain-by-Name Operations\n- Search domains by name patterns\n- Get/update/delete domains by name (no ID required)\n- Full DNS record management by domain name\n- Local database optimization for name-to-ID translation\n",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "contact": {
       "name": "API Support - Silvester van der Leer",
       "email": "silvester@avant.nl"
@@ -290,12 +290,22 @@
     },
     "/domains": {
       "get": {
-        "summary": "Get all domains/zones (synced from PowerDNS Admin)",
-        "description": "Retrieve domains/zones with automatic synchronization from PowerDNS Admin.\n**Working Endpoint**: `/api/v1/pdnsadmin/zones` - 621 zones available\n\n**Access Patterns:**\n- `GET /domains` - Get all domains/zones\n- `GET /domains` with JSON payload `{\"id\": 123}` - Get domain by ID\n- `GET /domains` with JSON payload `{\"account_id\": 1}` - Get domains by account\n- `GET /domains?account_id=1` - Get domains by account (query parameter, legacy)\n\n**JSON Payload (Optional):**\nSend JSON in request body to filter results:\n```json\n{\"id\": 123}\n// or\n{\"account_id\": 1}\n```\n",
+        "summary": "Get domains/zones with intelligent ID/name handling",
+        "description": "Retrieve domains/zones with automatic synchronization from PowerDNS Admin.\n**Working Endpoint**: `/api/v1/pdnsadmin/zones` - 621 zones available\n\n**Smart Query Patterns:**\n- `GET /domains` - Get all domains/zones\n- `GET /domains?q=123` - Get domain by ID (if numeric)\n- `GET /domains?q=example.com` - Get domain by name (if string)\n- `GET /domains?q=*avant*` - Search domains by pattern (with wildcards)\n- `GET /domains?account_id=1` - Get domains by account ID\n- `POST /domains` with JSON payload - Advanced filtering\n\n**Query Parameter Logic:**\nThe `q` parameter intelligently determines the search type:\n- **Numeric value** (e.g., `q=123`) → Search by domain ID\n- **Domain name** (e.g., `q=example.com`) → Exact domain name lookup\n- **Pattern with wildcards** (e.g., `q=*avant*`, `q=example*`) → Pattern search\n- **Plain text** (e.g., `q=avant`) → Contains search (equivalent to `*avant*`)\n\n**Examples:**\n- `GET /domains?q=1819` → Find domain with ID 1819\n- `GET /domains?q=example.com` → Find exact domain \"example.com\"\n- `GET /domains?q=avant` → Find all domains containing \"avant\"\n- `GET /domains?q=*.nl` → Find all .nl domains\n",
         "tags": [
-          "Domains"
+          "Domains",
+          "Domain Search"
         ],
         "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Smart query parameter - automatically detects:\n- Numeric: Domain ID lookup\n- Domain name: Exact match\n- Wildcard pattern: Pattern search\n- Text: Contains search\n",
+            "example": "avant"
+          },
           {
             "name": "sync",
             "in": "query",
@@ -310,63 +320,17 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Filter domains by account ID (legacy, prefer JSON payload)"
+            "description": "Filter domains by account ID"
+          },
+          {
+            "name": "details",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Include full DNS records via PowerDNS Server API (requires PowerDNS API key)"
           }
         ],
-        "requestBody": {
-          "required": false,
-          "description": "Optional JSON payload to filter results",
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "required": [
-                      "id"
-                    ],
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "description": "Domain ID",
-                        "example": 123
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "object",
-                    "required": [
-                      "account_id"
-                    ],
-                    "properties": {
-                      "account_id": {
-                        "type": "integer",
-                        "description": "Account ID",
-                        "example": 1
-                      }
-                    },
-                    "additionalProperties": false
-                  }
-                ]
-              },
-              "examples": {
-                "get_by_id": {
-                  "summary": "Get domain by ID",
-                  "value": {
-                    "id": 123
-                  }
-                },
-                "get_by_account": {
-                  "summary": "Get domains by account",
-                  "value": {
-                    "account_id": 1
-                  }
-                }
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "List of domains/zones",
@@ -378,98 +342,37 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Domain"
+                        "oneOf": [
+                          {
+                            "$ref": "#/components/schemas/Domain"
+                          },
+                          {
+                            "$ref": "#/components/schemas/DomainDetails"
+                          }
+                        ]
                       }
                     },
                     "message": {
                       "type": "string",
-                      "example": "Domains retrieved successfully (621 zones available)"
+                      "example": "Found 40 domains matching 'avant'"
+                    },
+                    "query_type": {
+                      "type": "string",
+                      "enum": [
+                        "all",
+                        "id",
+                        "name",
+                        "pattern",
+                        "contains",
+                        "account"
+                      ],
+                      "description": "The type of query that was executed",
+                      "example": "contains"
                     }
                   }
                 }
               }
             }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update domain",
-        "description": "Update an existing domain using JSON input. If account_id is changed, \nthe domain assignment is automatically updated in PDNSAdmin.\n\n**JSON Payload:**\n- Include domain identifier (`id`)\n- Include fields to update\n",
-        "tags": [
-          "Domains"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "allOf": [
-                  {
-                    "type": "object",
-                    "required": [
-                      "id"
-                    ],
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "description": "Domain ID",
-                        "example": 123
-                      }
-                    }
-                  },
-                  {
-                    "$ref": "#/components/schemas/DomainUpdate"
-                  }
-                ]
-              },
-              "examples": {
-                "change_account": {
-                  "summary": "Change domain account",
-                  "value": {
-                    "id": 123,
-                    "account_id": 2
-                  }
-                },
-                "remove_account": {
-                  "summary": "Remove from account",
-                  "value": {
-                    "id": 123,
-                    "account_id": null
-                  }
-                },
-                "update_settings": {
-                  "summary": "Update domain settings",
-                  "value": {
-                    "id": 123,
-                    "kind": "Slave",
-                    "masters": [
-                      "192.168.1.100"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Domain updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessMessage"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
           }
         }
       },
@@ -530,6 +433,193 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update domain by ID or name",
+        "description": "Update an existing domain using JSON input. Supports both ID and name-based updates.\nIf account_id is changed, the domain assignment is automatically updated in PDNSAdmin.\n\n**Update Methods:**\n- `{\"id\": 123, \"kind\": \"Native\"}` - Update by ID\n- `{\"name\": \"example.com\", \"kind\": \"Native\"}` - Update by name\n- DNS record updates via `rrsets` field (uses PowerDNS Server API)\n",
+        "tags": [
+          "Domains",
+          "Domain Management"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Domain ID (use this OR name, not both)",
+                    "example": 123
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Domain name (use this OR id, not both)",
+                    "example": "example.com"
+                  },
+                  "account_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Account ID to assign domain to"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "Native",
+                      "Master",
+                      "Slave"
+                    ],
+                    "description": "Zone kind"
+                  },
+                  "masters": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Master servers (for Slave zones)"
+                  },
+                  "dnssec": {
+                    "type": "boolean",
+                    "description": "Enable DNSSEC"
+                  },
+                  "rrsets": {
+                    "type": "array",
+                    "description": "DNS record updates (PowerDNS Server API)",
+                    "items": {
+                      "$ref": "#/components/schemas/RRSetUpdate"
+                    }
+                  }
+                },
+                "anyOf": [
+                  {
+                    "required": [
+                      "id"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "name"
+                    ]
+                  }
+                ]
+              },
+              "examples": {
+                "update_by_id": {
+                  "summary": "Update domain by ID",
+                  "value": {
+                    "id": 123,
+                    "kind": "Native",
+                    "dnssec": true
+                  }
+                },
+                "update_by_name": {
+                  "summary": "Update domain by name",
+                  "value": {
+                    "name": "example.com",
+                    "account_id": 2
+                  }
+                },
+                "update_dns_records": {
+                  "summary": "Update DNS records by name",
+                  "value": {
+                    "name": "example.com",
+                    "rrsets": [
+                      {
+                        "name": "www.example.com.",
+                        "type": "A",
+                        "changetype": "REPLACE",
+                        "records": [
+                          {
+                            "content": "192.168.1.100"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Domain updated successfully"
+          },
+          "404": {
+            "description": "Domain not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete domain by ID or name",
+        "description": "Delete an existing domain. Supports both ID and name-based deletion.\n\n**Delete Methods:**\n- `{\"id\": 123}` - Delete by ID\n- `{\"name\": \"example.com\"}` - Delete by name\n\n**Warning:** This action cannot be undone.\n",
+        "tags": [
+          "Domains",
+          "Domain Management"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Domain ID (use this OR name, not both)",
+                    "example": 123
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Domain name (use this OR id, not both)",
+                    "example": "example.com"
+                  }
+                },
+                "anyOf": [
+                  {
+                    "required": [
+                      "id"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "name"
+                    ]
+                  }
+                ]
+              },
+              "examples": {
+                "delete_by_id": {
+                  "summary": "Delete domain by ID",
+                  "value": {
+                    "id": 123
+                  }
+                },
+                "delete_by_name": {
+                  "summary": "Delete domain by name",
+                  "value": {
+                    "name": "example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Domain deleted successfully"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
@@ -683,570 +773,6 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      }
-    },
-    "/domains/search": {
-      "get": {
-        "summary": "Search domains by name pattern",
-        "description": "Search for domains using name patterns with efficient local database lookup.\nSupports partial matches and wildcard-style searching.\n\n**Features:**\n- Fast local database search\n- Pattern matching with SQL LIKE syntax\n- Returns domain name, local ID, and PowerDNS zone ID\n- Ordered results by domain name\n\n**Examples:**\n- `GET /domains/search?pattern=example` - Find all domains containing \"example\"\n- `GET /domains/search?pattern=avant` - Find all domains containing \"avant\"\n",
-        "tags": [
-          "Domains",
-          "Domain Search"
-        ],
-        "parameters": [
-          {
-            "name": "pattern",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Name pattern to search for (supports partial matches)",
-            "example": "avant"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of matching domains",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "description": "Local database ID",
-                            "example": 123
-                          },
-                          "name": {
-                            "type": "string",
-                            "description": "Domain name",
-                            "example": "advertorial.avant.nl"
-                          },
-                          "pdns_zone_id": {
-                            "type": "integer",
-                            "description": "PowerDNS zone ID",
-                            "example": 1819
-                          }
-                        }
-                      }
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Found 40 domains matching pattern"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      }
-    },
-    "/domains/by-name/{domain_name}": {
-      "get": {
-        "summary": "Get domain by name",
-        "description": "Retrieve domain information by name using local database lookup and PowerDNS Admin API.\n\n**Process:**\n1. Look up domain in local database to get PowerDNS zone ID\n2. Query PowerDNS Admin API for full domain details\n3. Return combined information or local-only data if PowerDNS Admin unavailable\n\n**Response Sources:**\n- PowerDNS Admin API data (preferred)\n- Local database fallback with note\n",
-        "tags": [
-          "Domains",
-          "Domain Search"
-        ],
-        "parameters": [
-          {
-            "name": "domain_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Full domain name",
-            "example": "example.com"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Domain information",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "oneOf": [
-                        {
-                          "$ref": "#/components/schemas/Domain"
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "pdns_zone_id": {
-                              "type": "integer",
-                              "example": 1819
-                            },
-                            "name": {
-                              "type": "string",
-                              "example": "example.com"
-                            },
-                            "source": {
-                              "type": "string",
-                              "example": "local_database_only"
-                            },
-                            "note": {
-                              "type": "string",
-                              "example": "Domain found in local database but not in PowerDNS Admin API response"
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Domain not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Domain not found in local database"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      },
-      "put": {
-        "summary": "Update domain by name (via PowerDNS Server API)",
-        "description": "Update domain configuration by name using PowerDNS Server API integration.\n\n**API Endpoint Used:** `/servers/localhost/zones/{domain_name}` (PATCH)\n\n**Capabilities:**\n- Update domain settings (kind, masters, etc.)\n- Modify DNS records (rrsets)\n- Change DNSSEC configuration\n- All PowerDNS Server API features\n\n**Authentication:** Uses PowerDNS Server API key for `/servers/*` endpoints\n",
-        "tags": [
-          "Domains",
-          "Domain Management",
-          "PowerDNS Server API"
-        ],
-        "parameters": [
-          {
-            "name": "domain_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Full domain name",
-            "example": "example.com"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "type": "string",
-                    "example": "Native",
-                    "description": "Domain type"
-                  },
-                  "rrsets": {
-                    "type": "array",
-                    "description": "DNS record sets to update",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string",
-                          "example": "www.example.com."
-                        },
-                        "type": {
-                          "type": "string",
-                          "example": "A"
-                        },
-                        "changetype": {
-                          "type": "string",
-                          "enum": [
-                            "REPLACE",
-                            "DELETE"
-                          ],
-                          "example": "REPLACE"
-                        },
-                        "records": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "content": {
-                                "type": "string",
-                                "example": "192.168.1.100"
-                              },
-                              "disabled": {
-                                "type": "boolean",
-                                "example": false
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "examples": {
-                "update_records": {
-                  "summary": "Update DNS records",
-                  "value": {
-                    "rrsets": [
-                      {
-                        "name": "www.example.com.",
-                        "type": "A",
-                        "changetype": "REPLACE",
-                        "records": [
-                          {
-                            "content": "192.168.1.100",
-                            "disabled": false
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "change_kind": {
-                  "summary": "Change domain type",
-                  "value": {
-                    "kind": "Native"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Domain updated successfully"
-          },
-          "401": {
-            "description": "Unauthorized (PowerDNS Server API key required)"
-          },
-          "404": {
-            "description": "Domain not found"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete domain by name",
-        "description": "Delete domain by name using local database lookup for PowerDNS zone ID.\n\n**Process:**\n1. Look up domain name in local database to get PowerDNS zone ID\n2. Call PowerDNS Admin API to delete the zone\n3. Local database is automatically synced after deletion\n\n**Warning:** This action cannot be undone.\n",
-        "tags": [
-          "Domains",
-          "Domain Management"
-        ],
-        "parameters": [
-          {
-            "name": "domain_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Full domain name to delete",
-            "example": "example.com"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Domain deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessMessage"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Domain not found in local database"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      }
-    },
-    "/domains/by-name/{domain_name}/details": {
-      "get": {
-        "summary": "Get full domain details and DNS records by name",
-        "description": "Get comprehensive domain information including all DNS records via PowerDNS Server API.\n\n**API Endpoint Used:** `/servers/localhost/zones/{domain_name}` (GET)\n\n**Returns:**\n- Complete domain configuration\n- All DNS record sets (rrsets)\n- DNSSEC information\n- Zone metadata\n\n**Authentication:** Uses PowerDNS Server API key\n",
-        "tags": [
-          "Domains",
-          "Domain Details",
-          "DNS Records",
-          "PowerDNS Server API"
-        ],
-        "parameters": [
-          {
-            "name": "domain_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Full domain name",
-            "example": "example.com"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Complete domain details with DNS records",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "example": "example.com."
-                    },
-                    "name": {
-                      "type": "string",
-                      "example": "example.com."
-                    },
-                    "type": {
-                      "type": "string",
-                      "example": "Zone"
-                    },
-                    "kind": {
-                      "type": "string",
-                      "example": "Native"
-                    },
-                    "rrsets": {
-                      "type": "array",
-                      "description": "DNS record sets",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "type": "string",
-                            "example": "example.com."
-                          },
-                          "type": {
-                            "type": "string",
-                            "example": "SOA"
-                          },
-                          "ttl": {
-                            "type": "integer",
-                            "example": 3600
-                          },
-                          "records": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "content": {
-                                  "type": "string",
-                                  "example": "ns1.example.com. admin.example.com. 2023010101 3600 1800 604800 86400"
-                                },
-                                "disabled": {
-                                  "type": "boolean",
-                                  "example": false
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized (PowerDNS Server API key required)"
-          },
-          "404": {
-            "description": "Domain not found"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      }
-    },
-    "/domains/by-name/{domain_name}/records": {
-      "get": {
-        "summary": "Get DNS records by domain name",
-        "description": "Retrieve all DNS records for a domain via PowerDNS Server API.\nAlias for `/domains/by-name/{domain_name}/details` with focus on record sets.\n",
-        "tags": [
-          "Domains",
-          "DNS Records",
-          "PowerDNS Server API"
-        ],
-        "parameters": [
-          {
-            "name": "domain_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Full domain name",
-            "example": "example.com"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Domain DNS records"
-          },
-          "401": {
-            "description": "Unauthorized (PowerDNS Server API key required)"
-          },
-          "404": {
-            "description": "Domain not found"
-          }
-        }
-      },
-      "patch": {
-        "summary": "Update DNS records by domain name",
-        "description": "Update specific DNS records for a domain via PowerDNS Server API.\n\n**API Endpoint Used:** `/servers/localhost/zones/{domain_name}` (PATCH)\n\n**Supports:**\n- Adding new records (REPLACE changetype)\n- Deleting records (DELETE changetype)\n- Modifying existing records\n- Bulk record operations\n",
-        "tags": [
-          "Domains",
-          "DNS Records",
-          "PowerDNS Server API"
-        ],
-        "parameters": [
-          {
-            "name": "domain_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Full domain name",
-            "example": "example.com"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "rrsets": {
-                    "type": "array",
-                    "description": "DNS record sets to modify",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string",
-                          "example": "www.example.com."
-                        },
-                        "type": {
-                          "type": "string",
-                          "example": "A"
-                        },
-                        "changetype": {
-                          "type": "string",
-                          "enum": [
-                            "REPLACE",
-                            "DELETE"
-                          ]
-                        },
-                        "records": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "content": {
-                                "type": "string",
-                                "example": "192.168.1.100"
-                              },
-                              "disabled": {
-                                "type": "boolean",
-                                "default": false
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "examples": {
-                "add_a_record": {
-                  "summary": "Add A record",
-                  "value": {
-                    "rrsets": [
-                      {
-                        "name": "www.example.com.",
-                        "type": "A",
-                        "changetype": "REPLACE",
-                        "records": [
-                          {
-                            "content": "192.168.1.100"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "delete_record": {
-                  "summary": "Delete record",
-                  "value": {
-                    "rrsets": [
-                      {
-                        "name": "old.example.com.",
-                        "type": "A",
-                        "changetype": "DELETE"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "DNS records updated successfully"
-          },
-          "401": {
-            "description": "Unauthorized (PowerDNS Server API key required)"
-          },
-          "404": {
-            "description": "Domain not found"
-          },
-          "400": {
-            "description": "Invalid record data"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
@@ -2720,27 +2246,15 @@
     },
     {
       "name": "Domains",
-      "description": "Domain management operations (creation and updates only)"
+      "description": "Smart domain management with ID/name detection, DNS records, and PowerDNS Server API integration"
     },
     {
       "name": "Domain Search",
-      "description": "Search and retrieve domains by name patterns and criteria"
+      "description": "Intelligent domain search by ID, name, pattern, or contains matching"
     },
     {
       "name": "Domain Management",
-      "description": "Advanced domain operations including deletion and DNS record management"
-    },
-    {
-      "name": "Domain Details",
-      "description": "Detailed domain information and comprehensive data retrieval"
-    },
-    {
-      "name": "DNS Records",
-      "description": "DNS record management via PowerDNS Server API integration"
-    },
-    {
-      "name": "PowerDNS Server API",
-      "description": "Direct PowerDNS Server API operations for advanced DNS management"
+      "description": "Advanced domain operations including updates, deletion and DNS record management"
     },
     {
       "name": "Templates",

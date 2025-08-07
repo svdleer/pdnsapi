@@ -28,7 +28,7 @@ info:
     - Get/update/delete domains by name (no ID required)
     - Full DNS record management by domain name
     - Local database optimization for name-to-ID translation
-  version: 1.0.4
+  version: 1.0.5
   contact:
     name: API Support - Silvester van der Leer
     email: silvester@avant.nl
@@ -242,27 +242,46 @@ paths:
 
   /domains:
     get:
-      summary: Get all domains/zones (synced from PowerDNS Admin)
+      summary: Get domains/zones with intelligent ID/name handling
       description: |
         Retrieve domains/zones with automatic synchronization from PowerDNS Admin.
         **Working Endpoint**: `/api/v1/pdnsadmin/zones` - 621 zones available
         
-        **Access Patterns:**
+        **Smart Query Patterns:**
         - `GET /domains` - Get all domains/zones
-        - `GET /domains` with JSON payload `{"id": 123}` - Get domain by ID
-        - `GET /domains` with JSON payload `{"account_id": 1}` - Get domains by account
-        - `GET /domains?account_id=1` - Get domains by account (query parameter, legacy)
+        - `GET /domains?q=123` - Get domain by ID (if numeric)
+        - `GET /domains?q=example.com` - Get domain by name (if string)
+        - `GET /domains?q=*avant*` - Search domains by pattern (with wildcards)
+        - `GET /domains?account_id=1` - Get domains by account ID
+        - `POST /domains` with JSON payload - Advanced filtering
         
-        **JSON Payload (Optional):**
-        Send JSON in request body to filter results:
-        ```json
-        {"id": 123}
-        // or
-        {"account_id": 1}
-        ```
+        **Query Parameter Logic:**
+        The `q` parameter intelligently determines the search type:
+        - **Numeric value** (e.g., `q=123`) → Search by domain ID
+        - **Domain name** (e.g., `q=example.com`) → Exact domain name lookup
+        - **Pattern with wildcards** (e.g., `q=*avant*`, `q=example*`) → Pattern search
+        - **Plain text** (e.g., `q=avant`) → Contains search (equivalent to `*avant*`)
+        
+        **Examples:**
+        - `GET /domains?q=1819` → Find domain with ID 1819
+        - `GET /domains?q=example.com` → Find exact domain "example.com"
+        - `GET /domains?q=avant` → Find all domains containing "avant"
+        - `GET /domains?q=*.nl` → Find all .nl domains
       tags:
         - Domains
+        - Domain Search
       parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: |
+            Smart query parameter - automatically detects:
+            - Numeric: Domain ID lookup
+            - Domain name: Exact match
+            - Wildcard pattern: Pattern search
+            - Text: Contains search
+          example: "avant"
         - name: sync
           in: query
           schema:
@@ -272,39 +291,12 @@ paths:
           in: query
           schema:
             type: integer
-          description: Filter domains by account ID (legacy, prefer JSON payload)
-      requestBody:
-        required: false
-        description: Optional JSON payload to filter results
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - type: object
-                  required: [id]
-                  properties:
-                    id:
-                      type: integer
-                      description: Domain ID
-                      example: 123
-                  additionalProperties: false
-                - type: object
-                  required: [account_id]
-                  properties:
-                    account_id:
-                      type: integer
-                      description: Account ID
-                      example: 1
-                  additionalProperties: false
-            examples:
-              get_by_id:
-                summary: Get domain by ID
-                value:
-                  id: 123
-              get_by_account:
-                summary: Get domains by account
-                value:
-                  account_id: 1
+          description: Filter domains by account ID
+        - name: details
+          in: query
+          schema:
+            type: boolean
+          description: Include full DNS records via PowerDNS Server API (requires PowerDNS API key)
       responses:
         '200':
           description: List of domains/zones
@@ -316,60 +308,233 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Domain'
+                      oneOf:
+                        - $ref: '#/components/schemas/Domain'
+                        - $ref: '#/components/schemas/DomainDetails'
                   message:
                     type: string
-                    example: "Domains retrieved successfully (621 zones available)"
+                    example: "Found 40 domains matching 'avant'"
+                  query_type:
+                    type: string
+                    enum: ["all", "id", "name", "pattern", "contains", "account"]
+                    description: The type of query that was executed
+                    example: "contains"
 
-    put:
-      summary: Update domain
+    post:
+      summary: Advanced domain search and filtering
       description: |
-        Update an existing domain using JSON input. If account_id is changed, 
-        the domain assignment is automatically updated in PDNSAdmin.
+        Advanced domain search with JSON payload for complex queries.
+        Supports all GET query functionality plus additional filters.
         
-        **JSON Payload:**
-        - Include domain identifier (`id`)
-        - Include fields to update
+        **JSON Query Types:**
+        - `{"id": 123}` - Get domain by ID
+        - `{"name": "example.com"}` - Get domain by exact name
+        - `{"pattern": "*avant*"}` - Pattern search
+        - `{"account_id": 1}` - Filter by account
+        - `{"contains": "avant"}` - Contains search
+        - Combined filters supported
       tags:
         - Domains
+        - Domain Search
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              allOf:
-                - type: object
-                  required: [id]
-                  properties:
-                    id:
-                      type: integer
-                      description: Domain ID
-                      example: 123
-                - $ref: '#/components/schemas/DomainUpdate'
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: Domain ID for exact lookup
+                  example: 123
+                name:
+                  type: string
+                  description: Exact domain name
+                  example: "example.com"
+                pattern:
+                  type: string
+                  description: Pattern search (supports * wildcards)
+                  example: "*avant*"
+                contains:
+                  type: string
+                  description: Contains search (case-insensitive)
+                  example: "avant"
+                account_id:
+                  type: integer
+                  description: Filter by account ID
+                  example: 1
+                details:
+                  type: boolean
+                  description: Include full DNS records
+                  example: false
+                sync:
+                  type: boolean
+                  description: Sync from PowerDNS Admin first
+                  example: false
             examples:
-              change_account:
-                summary: Change domain account
+              search_by_id:
+                summary: Get domain by ID
                 value:
                   id: 123
-                  account_id: 2
-              remove_account:
-                summary: Remove from account
+              search_by_name:
+                summary: Get domain by name
                 value:
-                  id: 123
-                  account_id: null
-              update_settings:
-                summary: Update domain settings
+                  name: "example.com"
+              pattern_search:
+                summary: Pattern search
                 value:
-                  id: 123
-                  kind: "Slave"
-                  masters: ["192.168.1.100"]
+                  pattern: "*avant*"
+                  details: true
+              account_domains:
+                summary: Get account domains
+                value:
+                  account_id: 1
       responses:
         '200':
-          description: Domain updated successfully
+          description: Domain search results
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessMessage'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      oneOf:
+                        - $ref: '#/components/schemas/Domain'
+                        - $ref: '#/components/schemas/DomainDetails'
+                  message:
+                    type: string
+                  query_type:
+                    type: string
+                  filters_applied:
+                    type: object
+
+    put:
+      summary: Update domain by ID or name
+      description: |
+        Update an existing domain using JSON input. Supports both ID and name-based updates.
+        If account_id is changed, the domain assignment is automatically updated in PDNSAdmin.
+        
+        **Update Methods:**
+        - `{"id": 123, "kind": "Native"}` - Update by ID
+        - `{"name": "example.com", "kind": "Native"}` - Update by name
+        - DNS record updates via `rrsets` field (uses PowerDNS Server API)
+      tags:
+        - Domains
+        - Domain Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: Domain ID (use this OR name, not both)
+                  example: 123
+                name:
+                  type: string
+                  description: Domain name (use this OR id, not both)
+                  example: "example.com"
+                account_id:
+                  type: integer
+                  nullable: true
+                  description: Account ID to assign domain to
+                kind:
+                  type: string
+                  enum: [Native, Master, Slave]
+                  description: Zone kind
+                masters:
+                  type: array
+                  items:
+                    type: string
+                  description: Master servers (for Slave zones)
+                dnssec:
+                  type: boolean
+                  description: Enable DNSSEC
+                rrsets:
+                  type: array
+                  description: DNS record updates (PowerDNS Server API)
+                  items:
+                    $ref: '#/components/schemas/RRSetUpdate'
+              anyOf:
+                - required: [id]
+                - required: [name]
+            examples:
+              update_by_id:
+                summary: Update domain by ID
+                value:
+                  id: 123
+                  kind: "Native"
+                  dnssec: true
+              update_by_name:
+                summary: Update domain by name
+                value:
+                  name: "example.com"
+                  account_id: 2
+              update_dns_records:
+                summary: Update DNS records by name
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "www.example.com."
+                      type: "A"
+                      changetype: "REPLACE"
+                      records:
+                        - content: "192.168.1.100"
+      responses:
+        '200':
+          description: Domain updated successfully
+        '404':
+          description: Domain not found
+
+    delete:
+      summary: Delete domain by ID or name
+      description: |
+        Delete an existing domain. Supports both ID and name-based deletion.
+        
+        **Delete Methods:**
+        - `{"id": 123}` - Delete by ID
+        - `{"name": "example.com"}` - Delete by name
+        
+        **Warning:** This action cannot be undone.
+      tags:
+        - Domains
+        - Domain Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: Domain ID (use this OR name, not both)
+                  example: 123
+                name:
+                  type: string
+                  description: Domain name (use this OR id, not both)
+                  example: "example.com"
+              anyOf:
+                - required: [id]
+                - required: [name]
+            examples:
+              delete_by_id:
+                summary: Delete domain by ID
+                value:
+                  id: 123
+              delete_by_name:
+                summary: Delete domain by name
+                value:
+                  name: "example.com"
+      responses:
+        '200':
+          description: Domain deleted successfully
+        '404':
+          description: Domain not found
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -527,445 +692,6 @@ paths:
                 $ref: '#/components/schemas/SuccessMessage'
         '404':
           $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  /domains/search:
-    get:
-      summary: Search domains by name pattern
-      description: |
-        Search for domains using name patterns with efficient local database lookup.
-        Supports partial matches and wildcard-style searching.
-        
-        **Features:**
-        - Fast local database search
-        - Pattern matching with SQL LIKE syntax
-        - Returns domain name, local ID, and PowerDNS zone ID
-        - Ordered results by domain name
-        
-        **Examples:**
-        - `GET /domains/search?pattern=example` - Find all domains containing "example"
-        - `GET /domains/search?pattern=avant` - Find all domains containing "avant"
-      tags:
-        - Domains
-        - Domain Search
-      parameters:
-        - name: pattern
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Name pattern to search for (supports partial matches)
-          example: "avant"
-      responses:
-        '200':
-          description: List of matching domains
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          description: Local database ID
-                          example: 123
-                        name:
-                          type: string
-                          description: Domain name
-                          example: "advertorial.avant.nl"
-                        pdns_zone_id:
-                          type: integer
-                          description: PowerDNS zone ID
-                          example: 1819
-                  message:
-                    type: string
-                    example: "Found 40 domains matching pattern"
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  /domains/by-name/{domain_name}:
-    get:
-      summary: Get domain by name
-      description: |
-        Retrieve domain information by name using local database lookup and PowerDNS Admin API.
-        
-        **Process:**
-        1. Look up domain in local database to get PowerDNS zone ID
-        2. Query PowerDNS Admin API for full domain details
-        3. Return combined information or local-only data if PowerDNS Admin unavailable
-        
-        **Response Sources:**
-        - PowerDNS Admin API data (preferred)
-        - Local database fallback with note
-      tags:
-        - Domains
-        - Domain Search
-      parameters:
-        - name: domain_name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Full domain name
-          example: "example.com"
-      responses:
-        '200':
-          description: Domain information
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    oneOf:
-                      - $ref: '#/components/schemas/Domain'
-                      - type: object
-                        properties:
-                          pdns_zone_id:
-                            type: integer
-                            example: 1819
-                          name:
-                            type: string
-                            example: "example.com"
-                          source:
-                            type: string
-                            example: "local_database_only"
-                          note:
-                            type: string
-                            example: "Domain found in local database but not in PowerDNS Admin API response"
-        '404':
-          description: Domain not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Domain not found in local database"
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-    put:
-      summary: Update domain by name (via PowerDNS Server API)
-      description: |
-        Update domain configuration by name using PowerDNS Server API integration.
-        
-        **API Endpoint Used:** `/servers/localhost/zones/{domain_name}` (PATCH)
-        
-        **Capabilities:**
-        - Update domain settings (kind, masters, etc.)
-        - Modify DNS records (rrsets)
-        - Change DNSSEC configuration
-        - All PowerDNS Server API features
-        
-        **Authentication:** Uses PowerDNS Server API key for `/servers/*` endpoints
-      tags:
-        - Domains
-        - Domain Management
-        - PowerDNS Server API
-      parameters:
-        - name: domain_name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Full domain name
-          example: "example.com"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                kind:
-                  type: string
-                  example: "Native"
-                  description: Domain type
-                rrsets:
-                  type: array
-                  description: DNS record sets to update
-                  items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                        example: "www.example.com."
-                      type:
-                        type: string
-                        example: "A"
-                      changetype:
-                        type: string
-                        enum: ["REPLACE", "DELETE"]
-                        example: "REPLACE"
-                      records:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            content:
-                              type: string
-                              example: "192.168.1.100"
-                            disabled:
-                              type: boolean
-                              example: false
-            examples:
-              update_records:
-                summary: Update DNS records
-                value:
-                  rrsets:
-                    - name: "www.example.com."
-                      type: "A"
-                      changetype: "REPLACE"
-                      records:
-                        - content: "192.168.1.100"
-                          disabled: false
-              change_kind:
-                summary: Change domain type
-                value:
-                  kind: "Native"
-      responses:
-        '200':
-          description: Domain updated successfully
-        '401':
-          description: Unauthorized (PowerDNS Server API key required)
-        '404':
-          description: Domain not found
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-    delete:
-      summary: Delete domain by name
-      description: |
-        Delete domain by name using local database lookup for PowerDNS zone ID.
-        
-        **Process:**
-        1. Look up domain name in local database to get PowerDNS zone ID
-        2. Call PowerDNS Admin API to delete the zone
-        3. Local database is automatically synced after deletion
-        
-        **Warning:** This action cannot be undone.
-      tags:
-        - Domains
-        - Domain Management
-      parameters:
-        - name: domain_name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Full domain name to delete
-          example: "example.com"
-      responses:
-        '200':
-          description: Domain deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessMessage'
-        '404':
-          description: Domain not found in local database
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  /domains/by-name/{domain_name}/details:
-    get:
-      summary: Get full domain details and DNS records by name
-      description: |
-        Get comprehensive domain information including all DNS records via PowerDNS Server API.
-        
-        **API Endpoint Used:** `/servers/localhost/zones/{domain_name}` (GET)
-        
-        **Returns:**
-        - Complete domain configuration
-        - All DNS record sets (rrsets)
-        - DNSSEC information
-        - Zone metadata
-        
-        **Authentication:** Uses PowerDNS Server API key
-      tags:
-        - Domains
-        - Domain Details
-        - DNS Records
-        - PowerDNS Server API
-      parameters:
-        - name: domain_name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Full domain name
-          example: "example.com"
-      responses:
-        '200':
-          description: Complete domain details with DNS records
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    example: "example.com."
-                  name:
-                    type: string
-                    example: "example.com."
-                  type:
-                    type: string
-                    example: "Zone"
-                  kind:
-                    type: string
-                    example: "Native"
-                  rrsets:
-                    type: array
-                    description: DNS record sets
-                    items:
-                      type: object
-                      properties:
-                        name:
-                          type: string
-                          example: "example.com."
-                        type:
-                          type: string
-                          example: "SOA"
-                        ttl:
-                          type: integer
-                          example: 3600
-                        records:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              content:
-                                type: string
-                                example: "ns1.example.com. admin.example.com. 2023010101 3600 1800 604800 86400"
-                              disabled:
-                                type: boolean
-                                example: false
-        '401':
-          description: Unauthorized (PowerDNS Server API key required)
-        '404':
-          description: Domain not found
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  /domains/by-name/{domain_name}/records:
-    get:
-      summary: Get DNS records by domain name
-      description: |
-        Retrieve all DNS records for a domain via PowerDNS Server API.
-        Alias for `/domains/by-name/{domain_name}/details` with focus on record sets.
-      tags:
-        - Domains
-        - DNS Records
-        - PowerDNS Server API
-      parameters:
-        - name: domain_name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Full domain name
-          example: "example.com"
-      responses:
-        '200':
-          description: Domain DNS records
-        '401':
-          description: Unauthorized (PowerDNS Server API key required)
-        '404':
-          description: Domain not found
-
-    patch:
-      summary: Update DNS records by domain name
-      description: |
-        Update specific DNS records for a domain via PowerDNS Server API.
-        
-        **API Endpoint Used:** `/servers/localhost/zones/{domain_name}` (PATCH)
-        
-        **Supports:**
-        - Adding new records (REPLACE changetype)
-        - Deleting records (DELETE changetype)
-        - Modifying existing records
-        - Bulk record operations
-      tags:
-        - Domains
-        - DNS Records
-        - PowerDNS Server API
-      parameters:
-        - name: domain_name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Full domain name
-          example: "example.com"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                rrsets:
-                  type: array
-                  description: DNS record sets to modify
-                  items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                        example: "www.example.com."
-                      type:
-                        type: string
-                        example: "A"
-                      changetype:
-                        type: string
-                        enum: ["REPLACE", "DELETE"]
-                      records:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            content:
-                              type: string
-                              example: "192.168.1.100"
-                            disabled:
-                              type: boolean
-                              default: false
-            examples:
-              add_a_record:
-                summary: Add A record
-                value:
-                  rrsets:
-                    - name: "www.example.com."
-                      type: "A"
-                      changetype: "REPLACE"
-                      records:
-                        - content: "192.168.1.100"
-              delete_record:
-                summary: Delete record
-                value:
-                  rrsets:
-                    - name: "old.example.com."
-                      type: "A"
-                      changetype: "DELETE"
-      responses:
-        '200':
-          description: DNS records updated successfully
-        '401':
-          description: Unauthorized (PowerDNS Server API key required)
-        '404':
-          description: Domain not found
-        '400':
-          description: Invalid record data
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -1993,17 +1719,11 @@ tags:
   - name: Accounts
     description: Account management operations with IP address support
   - name: Domains
-    description: Domain management operations (creation and updates only)
+    description: Smart domain management with ID/name detection, DNS records, and PowerDNS Server API integration
   - name: Domain Search
-    description: Search and retrieve domains by name patterns and criteria
+    description: Intelligent domain search by ID, name, pattern, or contains matching
   - name: Domain Management
-    description: Advanced domain operations including deletion and DNS record management
-  - name: Domain Details
-    description: Detailed domain information and comprehensive data retrieval
-  - name: DNS Records
-    description: DNS record management via PowerDNS Server API integration
-  - name: PowerDNS Server API
-    description: Direct PowerDNS Server API operations for advanced DNS management
+    description: Advanced domain operations including updates, deletion and DNS record management
   - name: Templates
     description: Domain template management operations
   - name: Domain-Account
