@@ -537,6 +537,447 @@
         }
       }
     },
+    "/domains/{id}": {
+      "get": {
+        "summary": "Get individual domain by ID",
+        "description": "Retrieve a specific domain by its ID from the local database.\n",
+        "tags": [
+          "Domains"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Domain ID",
+            "example": 123
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Domain details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Domain"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Domain retrieved successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update domain by ID (path parameter)",
+        "description": "Update a specific domain using path parameter for ID.\nAlternative to PUT /domains with JSON payload.\n",
+        "tags": [
+          "Domains"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Domain ID",
+            "example": 123
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainUpdate"
+              },
+              "examples": {
+                "change_account": {
+                  "summary": "Change domain account",
+                  "value": {
+                    "account_id": 2
+                  }
+                },
+                "update_settings": {
+                  "summary": "Update domain settings",
+                  "value": {
+                    "kind": "Slave",
+                    "masters": [
+                      "192.168.1.100"
+                    ],
+                    "dnssec": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Domain updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete domain by ID",
+        "description": "Delete a domain from both local database and PowerDNS Admin.\n**Warning**: This action cannot be undone.\n",
+        "tags": [
+          "Domains"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Domain ID",
+            "example": 123
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Domain deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/templates": {
+      "get": {
+        "summary": "Get all domain templates",
+        "description": "Retrieve all available domain templates from PowerDNS Admin.\nTemplates can be used to create domains with predefined settings.\n",
+        "tags": [
+          "Templates"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of domain templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Template"
+                      }
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Templates retrieved successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create new domain template",
+        "description": "Create a new domain template in PowerDNS Admin.\n",
+        "tags": [
+          "Templates"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Template created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/templates/{id}": {
+      "get": {
+        "summary": "Get template by ID",
+        "description": "Retrieve a specific domain template by its ID.\n",
+        "tags": [
+          "Templates"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Template ID",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Template"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Template retrieved successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update template",
+        "description": "Update an existing domain template.\n",
+        "tags": [
+          "Templates"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Template ID",
+            "example": 1
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Template updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete template",
+        "description": "Delete a domain template from PowerDNS Admin.\n**Warning**: This action cannot be undone.\n",
+        "tags": [
+          "Templates"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Template ID",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/templates/{id}/create-domain": {
+      "post": {
+        "summary": "Create domain from template",
+        "description": "Create a new domain using a predefined template.\nThe template will be applied to set up the domain with default records and settings.\n",
+        "tags": [
+          "Templates",
+          "Domains"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Template ID",
+            "example": 1
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Domain name to create",
+                    "example": "example.com"
+                  },
+                  "account_id": {
+                    "type": "integer",
+                    "description": "Account ID to assign the domain to",
+                    "example": 1
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Optional description for the domain",
+                    "example": "Production domain for example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Domain created from template successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Domain"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Domain created from template successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
     "/domain-account": {
       "post": {
         "summary": "Domain-Account operations",
@@ -1314,6 +1755,168 @@
           }
         }
       },
+      "Template": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Template ID",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Template name",
+            "example": "Standard Web Server"
+          },
+          "description": {
+            "type": "string",
+            "description": "Template description",
+            "example": "Standard template for web server domains"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateRecord"
+            },
+            "description": "Template records"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          }
+        }
+      },
+      "TemplateCreate": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Template name",
+            "example": "Standard Web Server"
+          },
+          "description": {
+            "type": "string",
+            "description": "Template description",
+            "example": "Standard template for web server domains"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateRecordCreate"
+            },
+            "description": "Template records to create"
+          }
+        }
+      },
+      "TemplateUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Template name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Template description"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateRecordCreate"
+            },
+            "description": "Template records"
+          }
+        }
+      },
+      "TemplateRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Record ID",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Record name",
+            "example": "www"
+          },
+          "type": {
+            "type": "string",
+            "description": "Record type",
+            "example": "A"
+          },
+          "content": {
+            "type": "string",
+            "description": "Record content",
+            "example": "192.168.1.100"
+          },
+          "ttl": {
+            "type": "integer",
+            "description": "Time to live",
+            "example": 3600
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Record priority (for MX records)",
+            "example": 10
+          }
+        }
+      },
+      "TemplateRecordCreate": {
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "content"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Record name",
+            "example": "www"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "A",
+              "AAAA",
+              "CNAME",
+              "MX",
+              "TXT",
+              "NS",
+              "PTR",
+              "SRV"
+            ],
+            "description": "Record type",
+            "example": "A"
+          },
+          "content": {
+            "type": "string",
+            "description": "Record content",
+            "example": "192.168.1.100"
+          },
+          "ttl": {
+            "type": "integer",
+            "description": "Time to live, default 3600",
+            "example": 3600
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Record priority (for MX records)",
+            "example": 10
+          }
+        }
+      },
       "Error": {
         "type": "object",
         "properties": {
@@ -1403,6 +2006,10 @@
     {
       "name": "Domains",
       "description": "Domain management operations (creation and updates only)"
+    },
+    {
+      "name": "Templates",
+      "description": "Domain template management operations"
     },
     {
       "name": "Domain-Account",
