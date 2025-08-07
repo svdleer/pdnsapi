@@ -3,7 +3,7 @@
   "info": {
     "title": "PDNSAdmin PHP API",
     "description": "PHP API wrapper for PowerDNS Admin with local database storage.\n\n## Authentication\nUses Basic Authentication with base64 encoded credentials.\nInclude `Authorization: Basic <base64-credentials>` header in requests.\n\n## Core Features\n- Account and user management with PowerDNS Admin sync\n- Domain management with intelligent ID/name detection\n- DNS record management via PowerDNS Server API\n- Template-based domain creation\n- Local database caching and metadata storage\n",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "contact": {
       "name": "API Support - Silvester van der Leer",
       "email": "silvester@avant.nl"
@@ -49,8 +49,8 @@
     },
     "/accounts": {
       "get": {
-        "summary": "Get all users/accounts (synced from PowerDNS Admin)",
-        "description": "Retrieve users/accounts with automatic synchronization from PowerDNS Admin.\n**Working Endpoint**: `/api/v1/pdnsadmin/users` - 47 users available\n\n**Access Patterns:**\n- `GET /accounts` - Get all users/accounts\n- `GET /accounts?id=94` - Get account by ID\n- `GET /accounts?username=johndoe` - Get account by username  \n- `GET /accounts?sync=true` - Force sync from PowerDNS Admin and return all users\n\n**Query Parameters:**\nUse query parameters to filter results or trigger sync operations.\n",
+        "summary": "Get accounts with smart filtering",
+        "description": "Retrieve accounts from local database with PowerDNS Admin synchronization.\n\n**Filter Logic (AND conditions):**\n- Single parameter: Direct lookup\n- Multiple parameters: Must ALL match (validation)\n- `?id=14&username=admin` returns user only if ID 14 has username \"admin\"\n- Returns 404 if parameters don't match the same user\n",
         "tags": [
           "Accounts"
         ],
@@ -61,8 +61,8 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Get account by ID",
-            "example": 94
+            "description": "Filter by account ID (can combine with other filters for validation)",
+            "example": 14
           },
           {
             "name": "username",
@@ -70,8 +70,17 @@
             "schema": {
               "type": "string"
             },
-            "description": "Get account by username",
-            "example": "johndoe"
+            "description": "Filter by username (can combine with ID for validation)",
+            "example": "admin"
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by email address (can combine with other filters)",
+            "example": "admin@example.com"
           },
           {
             "name": "sync",
@@ -79,13 +88,12 @@
             "schema": {
               "type": "boolean"
             },
-            "description": "Set to true to sync accounts from PowerDNS Admin before returning results",
-            "example": true
+            "description": "Sync from PowerDNS Admin before filtering"
           }
         ],
         "responses": {
           "200": {
-            "description": "List of users/accounts or single account",
+            "description": "List of accounts or single account (with AND validation)",
             "content": {
               "application/json": {
                 "schema": {
@@ -99,7 +107,56 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "Users retrieved successfully (47 users available)"
+                      "example": "Found user with ID 14 and username 'admin'"
+                    }
+                  }
+                },
+                "examples": {
+                  "all_accounts": {
+                    "summary": "All accounts",
+                    "value": {
+                      "data": [],
+                      "message": "Users retrieved successfully (47 users available)"
+                    }
+                  },
+                  "single_filter": {
+                    "summary": "Single filter (ID only)",
+                    "value": {
+                      "data": [
+                        {
+                          "id": 14,
+                          "username": "admin"
+                        }
+                      ],
+                      "message": "Found 1 user with ID 14"
+                    }
+                  },
+                  "and_validation_success": {
+                    "summary": "AND validation success",
+                    "value": {
+                      "data": [
+                        {
+                          "id": 14,
+                          "username": "admin"
+                        }
+                      ],
+                      "message": "Found user with ID 14 and username 'admin'"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No accounts found or AND validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "User with ID 14 does not have username 'john'"
                     }
                   }
                 }
@@ -291,7 +348,7 @@
     "/domains": {
       "get": {
         "summary": "Get domains with intelligent search",
-        "description": "Retrieve domains/zones with automatic PowerDNS Admin synchronization.\n\nThe `q` parameter automatically detects search type:\n- Numeric: Domain ID lookup\n- Domain name: Exact match  \n- Wildcards: Pattern search\n- Text: Contains search\n",
+        "description": "Retrieve domains/zones with automatic PowerDNS Admin synchronization.\n\n**Smart Query with AND Filters:**\n- `q` parameter: Auto-detects search type (ID/name/pattern/contains)  \n- Additional filters: Combined as AND conditions\n- `?q=example.com&account_id=5` finds \"example.com\" AND belongs to account 5\n",
         "tags": [
           "Domains",
           "Domain Search"
@@ -303,8 +360,16 @@
             "schema": {
               "type": "string"
             },
-            "description": "Smart query (auto-detects ID, name, pattern, or contains search)",
+            "description": "Smart query (auto-detects ID/name/pattern/contains) - primary filter",
             "example": "avant"
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Additional filter - must match account (AND condition with q)"
           },
           {
             "name": "sync",
@@ -312,7 +377,7 @@
             "schema": {
               "type": "boolean"
             },
-            "description": "Sync from PowerDNS Admin before returning results"
+            "description": "Sync from PowerDNS Admin before filtering"
           },
           {
             "name": "account_id",
