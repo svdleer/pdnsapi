@@ -456,7 +456,7 @@ function createDomainViaPDNS($domain, $pdns_client, $json_data) {
             $created_domain = null;
             if (is_array($domains)) {
                 foreach ($domains as $d) {
-                    if ($d['name'] === $json_data['name']) {
+                    if ($d['name'] === $domain_name) { // Use the canonical domain name
                         $created_domain = $d;
                         break;
                     }
