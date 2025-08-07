@@ -16,6 +16,7 @@ class Domain {
     public $type;
     public $account_id;
     public $pdns_zone_id;
+    public $pdns_account_id;
     public $kind;
     public $masters;
     public $dnssec;
@@ -30,8 +31,9 @@ class Domain {
     public function create() {
         $query = "INSERT INTO " . $this->table_name . "
                 SET name=:name, type=:type, account_id=:account_id, 
-                    pdns_zone_id=:pdns_zone_id, kind=:kind, masters=:masters,
-                    dnssec=:dnssec, account=:account, created_at=NOW()";
+                    pdns_zone_id=:pdns_zone_id, pdns_account_id=:pdns_account_id,
+                    kind=:kind, masters=:masters, dnssec=:dnssec, 
+                    account=:account, created_at=NOW()";
 
         $stmt = $this->conn->prepare($query);
 
@@ -39,12 +41,61 @@ class Domain {
         $stmt->bindParam(":type", $this->type);
         $stmt->bindParam(":account_id", $this->account_id);
         $stmt->bindParam(":pdns_zone_id", $this->pdns_zone_id);
+        $stmt->bindParam(":pdns_account_id", $this->pdns_account_id);
         $stmt->bindParam(":kind", $this->kind);
         $stmt->bindParam(":masters", $this->masters);
         $stmt->bindParam(":dnssec", $this->dnssec);
         $stmt->bindParam(":account", $this->account);
 
         return $stmt->execute();
+    }
+
+    /**
+     * Create domain with data array (for template integration)
+     */
+    public function createDomain($domain_data) {
+        try {
+            // Set properties from data array
+            $this->name = $domain_data['name'];
+            $this->type = $domain_data['type'] ?? 'Zone';
+            $this->account_id = $domain_data['account_id'] ?? null;
+            $this->pdns_zone_id = $domain_data['pdns_zone_id'] ?? null;
+            $this->pdns_account_id = $domain_data['pdns_account_id'] ?? null;
+            $this->kind = $domain_data['kind'] ?? 'Master';
+            $this->masters = $domain_data['masters'] ?? '';
+            $this->dnssec = $domain_data['dnssec'] ?? 0;
+            $this->account = $domain_data['account'] ?? '';
+
+            if ($this->create()) {
+                $this->id = $this->conn->lastInsertId();
+                return $this->getDomainArray();
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            error_log("Failed to create domain: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Return domain as array
+     */
+    public function getDomainArray() {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'type' => $this->type,
+            'account_id' => $this->account_id,
+            'pdns_zone_id' => $this->pdns_zone_id,
+            'pdns_account_id' => $this->pdns_account_id,
+            'kind' => $this->kind,
+            'masters' => $this->masters,
+            'dnssec' => $this->dnssec,
+            'account' => $this->account,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at
+        ];
     }
 
     public function read() {

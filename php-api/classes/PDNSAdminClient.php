@@ -190,54 +190,55 @@ class PDNSAdminClient {
     }
 
     // Template operations - NOT SUPPORTED by PowerDNS Admin API
-    // These methods are kept for compatibility but will always return error responses
-    // Templates should be implemented as local database extensions
+    // PowerDNS Admin API returns HTTP 404 for all template endpoints
+    // Templates must be implemented as local database extensions
+    // Use the local Template class or database queries instead
     
     public function getAllTemplates() {
         return [
-            'status_code' => 404,
+            'status_code' => 501,
             'data' => null,
-            'raw_response' => 'Template endpoints not supported by PowerDNS Admin API'
+            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
         ];
     }
 
     public function getTemplate($template_id) {
         return [
-            'status_code' => 404,
+            'status_code' => 501,
             'data' => null,
-            'raw_response' => 'Template endpoints not supported by PowerDNS Admin API'
+            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
         ];
     }
 
     public function createTemplate($template_data) {
         return [
-            'status_code' => 404,
+            'status_code' => 501,
             'data' => null,
-            'raw_response' => 'Template endpoints not supported by PowerDNS Admin API'
+            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
         ];
     }
 
     public function updateTemplate($template_id, $template_data) {
         return [
-            'status_code' => 404,
+            'status_code' => 501,
             'data' => null,
-            'raw_response' => 'Template endpoints not supported by PowerDNS Admin API'
+            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
         ];
     }
 
     public function deleteTemplate($template_id) {
         return [
-            'status_code' => 404,
+            'status_code' => 501,
             'data' => null,
-            'raw_response' => 'Template endpoints not supported by PowerDNS Admin API'
+            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
         ];
     }
 
     public function createDomainFromTemplate($template_id, $domain_data) {
         return [
-            'status_code' => 404,
+            'status_code' => 501,
             'data' => null,
-            'raw_response' => 'Template endpoints not supported by PowerDNS Admin API'
+            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
         ];
     }
 

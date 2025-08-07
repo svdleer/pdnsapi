@@ -3,19 +3,20 @@
 $base_path = realpath(__DIR__ . '/..');
 
 require_once $base_path . '/config/config.php';
-require_once $base_path . '/classes/PDNSAdminClient.php';
+require_once $base_path . '/models/Template.php';
 
 // API key is already validated in index.php, log the request
 logApiRequest('templates', $_SERVER['REQUEST_METHOD'], 200);
 
-// Initialize PDNSAdmin client
-$pdns_client = new PDNSAdminClient($pdns_config);
+// Initialize Template model (local database implementation)
+// Since PowerDNS Admin API doesn't support templates, we use our local implementation
+$template_model = new Template();
 
 // Get the HTTP method
 $request_method = $_SERVER["REQUEST_METHOD"];
 
 // Get parameters from URL
-$template_id = isset($_GET['id']) ? $_GET['id'] : null;
+$template_id = isset($_GET['id']) ? intval($_GET['id']) : null;
 $action = isset($_GET['action']) ? $_GET['action'] : null;
 
 // For GET, POST, PUT, DELETE - check for JSON payload
@@ -28,23 +29,23 @@ if (!empty($input)) {
 switch($request_method) {
     case 'GET':
         if ($template_id) {
-            getTemplate($pdns_client, $template_id);
+            getTemplate($template_model, $template_id);
         } else {
-            getAllTemplates($pdns_client);
+            getAllTemplates($template_model);
         }
         break;
         
     case 'POST':
         if ($action === 'create-domain' && $template_id) {
-            createDomainFromTemplate($pdns_client, $template_id, $json_data);
+            createDomainFromTemplate($template_model, $template_id, $json_data);
         } else {
-            createTemplate($pdns_client, $json_data);
+            createTemplate($template_model, $json_data);
         }
         break;
         
     case 'PUT':
         if ($template_id) {
-            updateTemplate($pdns_client, $template_id, $json_data);
+            updateTemplate($template_model, $template_id, $json_data);
         } else {
             sendError(400, "Template ID required for update");
         }
@@ -52,7 +53,7 @@ switch($request_method) {
         
     case 'DELETE':
         if ($template_id) {
-            deleteTemplate($pdns_client, $template_id);
+            deleteTemplate($template_model, $template_id);
         } else {
             sendError(400, "Template ID required for deletion");
         }
@@ -63,84 +64,83 @@ switch($request_method) {
         break;
 }
 
-function getAllTemplates($pdns_client) {
-    $response = $pdns_client->getAllTemplates();
+function getAllTemplates($template_model) {
+    $templates = $template_model->getAllTemplates();
     
-    if ($response['status_code'] == 200) {
-        sendResponse(200, $response['data'], "Templates retrieved successfully");
+    if ($templates !== false) {
+        sendResponse(200, $templates, "Templates retrieved successfully");
     } else {
-        $error_msg = isset($response['data']['message']) ? $response['data']['message'] : 'Unknown error';
-        sendError($response['status_code'], "Failed to fetch templates: " . $error_msg);
+        sendError(500, "Failed to fetch templates");
     }
 }
 
-function getTemplate($pdns_client, $template_id) {
-    $response = $pdns_client->getTemplate($template_id);
+function getTemplate($template_model, $template_id) {
+    $template = $template_model->getTemplate($template_id);
     
-    if ($response['status_code'] == 200) {
-        sendResponse(200, $response['data'], "Template retrieved successfully");
+    if ($template !== false) {
+        if ($template) {
+            sendResponse(200, $template, "Template retrieved successfully");
+        } else {
+            sendError(404, "Template not found");
+        }
     } else {
-        $error_msg = isset($response['data']['message']) ? $response['data']['message'] : 'Template not found';
-        sendError($response['status_code'], $error_msg);
+        sendError(500, "Failed to fetch template");
     }
 }
 
-function createTemplate($pdns_client, $data) {
-    if (!$data || !isset($data['name'])) {
-        sendError(400, "Template name is required");
+function createTemplate($template_model, $data) {
+    if (!$data || !isset($data['name']) || !isset($data['records'])) {
+        sendError(400, "Template name and records are required");
         return;
     }
     
-    $response = $pdns_client->createTemplate($data);
+    $template = $template_model->createTemplate($data);
     
-    if ($response['status_code'] == 201 || $response['status_code'] == 200) {
-        sendResponse(201, $response['data'], "Template created successfully");
+    if ($template !== false) {
+        sendResponse(201, $template, "Template created successfully");
     } else {
-        $error_msg = isset($response['data']['message']) ? $response['data']['message'] : 'Failed to create template';
-        sendError($response['status_code'], $error_msg);
+        sendError(500, "Failed to create template");
     }
 }
 
-function updateTemplate($pdns_client, $template_id, $data) {
+function updateTemplate($template_model, $template_id, $data) {
     if (!$data) {
         sendError(400, "Update data is required");
         return;
     }
     
-    $response = $pdns_client->updateTemplate($template_id, $data);
+    $template = $template_model->updateTemplate($template_id, $data);
     
-    if ($response['status_code'] == 200 || $response['status_code'] == 204) {
-        sendResponse(200, null, "Template updated successfully");
+    if ($template !== false) {
+        sendResponse(200, $template, "Template updated successfully");
     } else {
-        $error_msg = isset($response['data']['message']) ? $response['data']['message'] : 'Failed to update template';
-        sendError($response['status_code'], $error_msg);
+        sendError(404, "Template not found or update failed");
     }
 }
 
-function deleteTemplate($pdns_client, $template_id) {
-    $response = $pdns_client->deleteTemplate($template_id);
+function deleteTemplate($template_model, $template_id) {
+    $result = $template_model->deleteTemplate($template_id);
     
-    if ($response['status_code'] == 200 || $response['status_code'] == 204) {
+    if ($result) {
         sendResponse(200, null, "Template deleted successfully");
     } else {
-        $error_msg = isset($response['data']['message']) ? $response['data']['message'] : 'Failed to delete template';
-        sendError($response['status_code'], $error_msg);
+        sendError(404, "Template not found or delete failed");
     }
 }
 
-function createDomainFromTemplate($pdns_client, $template_id, $data) {
+function createDomainFromTemplate($template_model, $template_id, $data) {
     if (!$data || !isset($data['name'])) {
         sendError(400, "Domain name is required");
         return;
     }
     
-    $response = $pdns_client->createDomainFromTemplate($template_id, $data);
+    $result = $template_model->createDomainFromTemplate($template_id, $data);
     
-    if ($response['status_code'] == 201 || $response['status_code'] == 200) {
-        sendResponse(201, $response['data'], "Domain created from template successfully");
+    if ($result && $result['success']) {
+        sendResponse(201, $result['data'], $result['message']);
     } else {
-        $error_msg = isset($response['data']['message']) ? $response['data']['message'] : 'Failed to create domain from template';
-        sendError($response['status_code'], $error_msg);
+        $error_msg = $result['message'] ?? 'Failed to create domain from template';
+        sendError(500, $error_msg);
     }
 }
 ?>
