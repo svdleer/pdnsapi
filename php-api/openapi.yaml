@@ -8,11 +8,6 @@ info:
     This API uses **Basic Authentication** with base64 encoded credentials.
     Use the `Authorization: Basic <base64-credentials>` header for all authenticated requests.
     
-    ## API Endpoints
-    - **Users/Accounts**: `/api/v1/pdnsadmin/users` (47 users available)
-    - **Zones/Domains**: `/api/v1/pdnsadmin/zones` (621 zones available)  
-    - **Base URL**: `https://dnsadmin.avant.nl/api/v1`
-    
     ## Features
     - **User management** with automatic PowerDNS Admin synchronization
     - **IP address storage** for accounts (local database only)
@@ -373,6 +368,53 @@ paths:
       responses:
         '200':
           description: Domain updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      summary: Add domain to account
+      description: |
+        Add a domain to a specific account. This operation uses direct API calls
+        to assign domains to accounts in PowerDNS Admin.
+        
+        **JSON Payload:**
+        - `domain_name`: Domain name to assign (required)
+        - `account_id`: Target account ID (required)
+      tags:
+        - Domains
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain_name, account_id]
+              properties:
+                domain_name:
+                  type: string
+                  description: Domain name to add (include trailing dot)
+                  example: "example.com."
+                account_id:
+                  type: integer
+                  description: Account ID to assign domain to
+                  example: 1
+            examples:
+              add_domain_to_account:
+                summary: Add domain to account
+                value:
+                  domain_name: "example.com."
+                  account_id: 1
+      responses:
+        '200':
+          description: Domain added to account successfully
           content:
             application/json:
               schema:

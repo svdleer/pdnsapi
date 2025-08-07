@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "PDNSAdmin PHP API",
-    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Authentication\nThis API uses **Basic Authentication** with base64 encoded credentials.\nUse the `Authorization: Basic <base64-credentials>` header for all authenticated requests.\n\n## API Endpoints\n- **Users/Accounts**: `/api/v1/pdnsadmin/users` (47 users available)\n- **Zones/Domains**: `/api/v1/pdnsadmin/zones` (621 zones available)  \n- **Base URL**: `https://dnsadmin.avant.nl/api/v1`\n\n## Features\n- **User management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n- **HTTP standards compliant** interface (GET uses query params, POST/PUT/DELETE use JSON)\n\n## Key Functionality\n- Users are automatically synced from PowerDNS Admin after create, update, and delete operations\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n- GET requests use query parameters, POST/PUT/DELETE operations use JSON payloads\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin users endpoint (read-only sync)\n- Auto-sync only happens on write operations (POST/PUT/DELETE), not on GET requests for performance\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Use query parameters with GET `/accounts?sync=true` to force sync when needed\n- Local database maintains PowerDNS Admin user ID relationships\n- **Tested and Working**: 47 users, 621 domains successfully accessed\n",
+    "description": "PHP API wrapper for PDNSAdmin with local database storage and extended functionality.\n\n## Authentication\nThis API uses **Basic Authentication** with base64 encoded credentials.\nUse the `Authorization: Basic <base64-credentials>` header for all authenticated requests.\n\n## Features\n- **User management** with automatic PowerDNS Admin synchronization\n- **IP address storage** for accounts (local database only)\n- **Domain management** with PDNSAdmin synchronization\n- **Real-time sync** from PowerDNS Admin API\n- **Local database caching** for performance and extended metadata\n- **HTTP standards compliant** interface (GET uses query params, POST/PUT/DELETE use JSON)\n\n## Key Functionality\n- Users are automatically synced from PowerDNS Admin after create, update, and delete operations\n- IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)\n- Domain management maintains compatibility with PowerDNS Admin\n- Local database provides caching and additional account metadata storage\n- GET requests use query parameters, POST/PUT/DELETE operations use JSON payloads\n\n## Important Notes\n- Account data is synced FROM PowerDNS Admin users endpoint (read-only sync)\n- Auto-sync only happens on write operations (POST/PUT/DELETE), not on GET requests for performance\n- IP addresses are stored locally and NOT sent to PowerDNS Admin\n- Use query parameters with GET `/accounts?sync=true` to force sync when needed\n- Local database maintains PowerDNS Admin user ID relationships\n- **Tested and Working**: 47 users, 621 domains successfully accessed\n",
     "version": "1.0.2",
     "contact": {
       "name": "API Support",
@@ -454,6 +454,69 @@
         "responses": {
           "200": {
             "description": "Domain updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add domain to account",
+        "description": "Add a domain to a specific account. This operation uses direct API calls\nto assign domains to accounts in PowerDNS Admin.\n\n**JSON Payload:**\n- `domain_name`: Domain name to assign (required)\n- `account_id`: Target account ID (required)\n",
+        "tags": [
+          "Domains"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "domain_name",
+                  "account_id"
+                ],
+                "properties": {
+                  "domain_name": {
+                    "type": "string",
+                    "description": "Domain name to add (include trailing dot)",
+                    "example": "example.com."
+                  },
+                  "account_id": {
+                    "type": "integer",
+                    "description": "Account ID to assign domain to",
+                    "example": 1
+                  }
+                }
+              },
+              "examples": {
+                "add_domain_to_account": {
+                  "summary": "Add domain to account",
+                  "value": {
+                    "domain_name": "example.com.",
+                    "account_id": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Domain added to account successfully",
             "content": {
               "application/json": {
                 "schema": {
