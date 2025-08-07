@@ -45,11 +45,6 @@ switch($path) {
         require_once 'api/domains.php';
         break;
         
-    case 'templates':
-    case 'api/templates':
-        require_once 'api/templates.php';
-        break;
-        
     case 'status':
     case 'api/status':
         require_once 'api/status.php';
@@ -103,7 +98,7 @@ switch($path) {
     default:
         sendError(404, "Endpoint not found", [
             'available_endpoints' => [
-                '/accounts', '/domains', '/templates', '/status', '/openapi', '/docs', '/'
+                '/accounts', '/domains', '/status', '/openapi', '/docs', '/'
             ]
         ]);
         break;

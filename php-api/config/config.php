@@ -2,16 +2,22 @@
 /**
  * API Configuration
  */
+
+// Load environment variables from .env file (if not already loaded by autoloader)
+if (!isset($_ENV['PDNS_API_KEY'])) {
+    require_once __DIR__ . '/../includes/env-loader.php';
+}
+
 $pdns_config = [
-    'base_url' => 'https://dnsadmin.avant.nl/api/v1',
+    'base_url' => $_ENV['PDNS_BASE_URL'] ?? 'https://dnsadmin.avant.nl/api/v1',
     'auth_type' => 'basic',
-    'api_key' => 'YXBpYWRtaW46VmV2ZWxnSWNzXm9tMg==', // PowerDNS Admin API key (base64 encoded for Basic Auth)
-    'pdns_server_key' => 'morWehofCidwiWejishOwko=!b', // PowerDNS server API key for proxied requests
+    'api_key' => $_ENV['PDNS_API_KEY'] ?? 'YXBpYWRtaW46VmV2ZWxnSWNzXm9tMg==', // Fallback for dev
+    'pdns_server_key' => $_ENV['PDNS_SERVER_KEY'] ?? 'morWehofCidwiWejishOwko=!b', // Fallback for dev
     
-    // PowerDNS Admin API settings for user management
-    'pdns_admin_url' => 'https://dnsadmin.avant.nl',
-    'pdns_admin_user' => 'admin', // PowerDNS Admin username for API access
-    'pdns_admin_password' => 'dnVeku8Jeku' // PowerDNS Admin password for API access
+    // PowerDNS Admin API settings for user management  
+    'pdns_admin_url' => $_ENV['PDNS_BASE_URL'] ?? 'https://dnsadmin.avant.nl/api/v1',
+    'pdns_admin_user' => $_ENV['PDNS_ADMIN_USER'] ?? 'apiadmin', 
+    'pdns_admin_password' => $_ENV['PDNS_ADMIN_PASSWORD'] ?? 'VevelgIcs^om2'
 ];
 
 // API settings

@@ -54,3 +54,4 @@ package-lock.json
 
 # Documentation build files
 docs/build/
+/.env

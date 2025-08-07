@@ -37,6 +37,7 @@ function ensureClassesLoaded() {
     
     // Required files
     $required_files = [
+        '/includes/env-loader.php',  // Load environment variables first
         '/config/config.php',
         '/config/database.php'
     ];
@@ -66,4 +67,7 @@ function ensureClassesLoaded() {
     
     return $base_path;
 }
+
+// Actually call the function to ensure classes are loaded
+ensureClassesLoaded();
 ?>

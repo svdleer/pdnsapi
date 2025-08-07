@@ -146,15 +146,14 @@ class PDNSAdminClient {
      * Determine if endpoint requires PowerDNS server API key (for proxied requests)
      */
     private function isServerEndpoint($endpoint) {
-        // Endpoints that use pdns_server_key with X-API-Key header
+        // Endpoints that are proxied to PowerDNS server
         $server_endpoints = [
             '/servers/1/zones',
             '/servers/localhost/zones',
             '/servers/1/config',
             '/servers/localhost/config',
             '/servers/1/statistics',
-            '/servers/localhost/statistics',
-            '/servers/'  // All /servers endpoints use server key
+            '/servers/localhost/statistics'
         ];
         
         // Check if endpoint starts with any server endpoint pattern
