@@ -32,15 +32,16 @@ class PDNSAdminClient {
         
         // Determine which API key to use based on endpoint
         $use_server_key = $this->isServerEndpoint($endpoint);
+        $key_to_use = $use_server_key ? $this->pdns_server_key : $this->api_key;
         
-        if ($use_server_key && $this->pdns_server_key) {
-            // For /pdnsadmin and /servers endpoints: use X-API-Key header with pdns_server_key
-            $headers[] = 'X-API-Key: ' . $this->pdns_server_key;
-        } elseif (!$use_server_key && $this->api_key) {
-            // For other PowerDNS Admin API endpoints: use Basic Auth with api_key
-            $headers[] = 'Authorization: Basic ' . $this->api_key;
-        } elseif ($this->username && $this->password) {
-            // Fallback: use username/password basic auth
+        if ($this->auth_type === 'apikey' && $key_to_use) {
+            // Use X-API-Key header
+            $headers[] = 'X-API-Key: ' . $key_to_use;
+        } elseif ($this->auth_type === 'basic' && $key_to_use) {
+            // Use the already base64 encoded API key for Basic Auth
+            $headers[] = 'Authorization: Basic ' . $key_to_use;
+        } elseif ($this->auth_type === 'basic' && $this->username && $this->password) {
+            // Encode username:password to base64 for basic auth
             $credentials = base64_encode($this->username . ':' . $this->password);
             $headers[] = 'Authorization: Basic ' . $credentials;
         }
