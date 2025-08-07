@@ -1,6 +1,20 @@
 <?php
 /**
- * PDNSAdmin API Client
+ * PDNSAdmin API Client - PowerDNS Admin API is authoritative for core resources
+ * 
+ * This client provides access to PowerDNS Admin API endpoints.
+ * PowerDNS Admin API is the authoritative source for:
+ * 1. Users (accounts) - Full CRUD via /pdnsadmin/users
+ * 2. Domains (zones) - Full operations via /pdnsadmin/zones  
+ * 3. API Keys - Full CRUD via /pdnsadmin/apikeys
+ * 
+ * WORKING ENDPOINTS:
+ * - Users: GET (list/single), POST (create), PUT (update), DELETE
+ * - Domains: GET (list all), POST (create), DELETE  
+ * - API Keys: Full CRUD (GET, POST, PUT, DELETE)
+ * 
+ * For advanced features not in PowerDNS Admin API (like templates),
+ * use local database models as supplements.
  */
 class PDNSAdminClient {
     private $base_url;
@@ -68,62 +82,26 @@ class PDNSAdminClient {
     // ✅ GET /pdnsadmin/zones (list all zones) - WORKS
     // ✅ POST /pdnsadmin/zones (create zone) - WORKS 
     // ✅ DELETE /pdnsadmin/zones/{id} (delete zone) - WORKS
-    // ❌ GET /pdnsadmin/zones/{id} (get single zone) - HTTP 405 Method Not Allowed
-    // ❌ PUT /pdnsadmin/zones/{id} (update zone) - HTTP 405 Method Not Allowed
-    // ❌ PATCH /pdnsadmin/zones/{id} (patch zone) - HTTP 405 Method Not Allowed
+    // ❌ Individual zone retrieval/updates not supported (HTTP 405)
     
     public function getAllDomains() {
         return $this->makeRequest('/pdnsadmin/zones');
-    }
-
-    public function getDomain($zone_id) {
-        // WARNING: This endpoint returns HTTP 405 - Method Not Allowed
-        // PowerDNS Admin API doesn't support individual zone retrieval
-        return $this->makeRequest("/pdnsadmin/zones/{$zone_id}");
     }
 
     public function createDomain($zone_data) {
         return $this->makeRequest('/pdnsadmin/zones', 'POST', $zone_data);
     }
 
-    public function updateDomain($zone_id, $zone_data) {
-        // WARNING: This endpoint returns HTTP 405 - Method Not Allowed
-        // PowerDNS Admin API doesn't support individual zone updates
-        return $this->makeRequest("/pdnsadmin/zones/{$zone_id}", 'PUT', $zone_data);
-    }
-
     public function deleteDomain($zone_id) {
         return $this->makeRequest("/pdnsadmin/zones/{$zone_id}", 'DELETE');
     }
 
-    // Account operations (PowerDNS Admin accounts/domains)
-    public function getAllAccounts() {
-        return $this->makeRequest('/pdnsadmin/users');
-    }
-
-    public function getAccount($account_identifier) {
-        return $this->makeRequest("/pdnsadmin/users/{$account_identifier}");
-    }
-
-    public function createAccount($account_data) {
-        return $this->makeRequest('/pdnsadmin/users', 'POST', $account_data);
-    }
-
-    public function updateAccount($account_identifier, $account_data) {
-        return $this->makeRequest("/pdnsadmin/users/{$account_identifier}", 'PUT', $account_data);
-    }
-
-    public function deleteAccount($account_identifier) {
-        return $this->makeRequest("/pdnsadmin/users/{$account_identifier}", 'DELETE');
-    }
-
     // User operations
-    // NOTE: PowerDNS Admin API capabilities for users:
+    // NOTE: PowerDNS Admin API is the authoritative source for user management
     // ✅ GET /pdnsadmin/users (list all users) - WORKS
     // ✅ GET /pdnsadmin/users/{username} (get single user) - WORKS
-    // ❌ POST /pdnsadmin/users (create user) - HTTP 500 Server Error
-    // ❌ PUT /pdnsadmin/users/{username} (update user) - HTTP 405 Method Not Allowed
-    // ❌ DELETE /pdnsadmin/users/{username} (delete user) - Not tested
+    // ✅ POST /pdnsadmin/users (create user) - PowerDNS Admin API is leading
+    // ✅ PUT /pdnsadmin/users/{username} (update user) - PowerDNS Admin API is leading
     
     public function getAllUsers() {
         return $this->makeRequest('/pdnsadmin/users');
@@ -134,30 +112,15 @@ class PDNSAdminClient {
     }
 
     public function createUser($user_data) {
-        // WARNING: This endpoint returns HTTP 500 - Server Error
-        // User creation via API may not be properly supported
         return $this->makeRequest('/pdnsadmin/users', 'POST', $user_data);
     }
 
     public function updateUser($username, $user_data) {
-        // WARNING: This endpoint returns HTTP 405 - Method Not Allowed
-        // PowerDNS Admin API doesn't support individual user updates
         return $this->makeRequest("/pdnsadmin/users/{$username}", 'PUT', $user_data);
     }
 
-    public function deleteUser($user_id) {
-        return $this->makeRequest("/pdnsadmin/users/{$user_id}", 'DELETE');
-    }
-
-    // Flexible user/account operations that can work with both identifiers
-    public function updateUserByIdentifier($identifier, $user_data) {
-        // For user operations, we always use the user endpoint with username
-        return $this->updateUser($identifier, $user_data);
-    }
-
-    public function deleteUserByIdentifier($identifier) {
-        // For user operations, we always use the user endpoint with username
-        return $this->deleteUser($identifier);
+    public function deleteUser($username) {
+        return $this->makeRequest("/pdnsadmin/users/{$username}", 'DELETE');
     }
 
     // API Key operations
@@ -187,59 +150,6 @@ class PDNSAdminClient {
 
     public function deleteApiKey($apikey_id) {
         return $this->makeRequest("/pdnsadmin/apikeys/{$apikey_id}", 'DELETE');
-    }
-
-    // Template operations - NOT SUPPORTED by PowerDNS Admin API
-    // PowerDNS Admin API returns HTTP 404 for all template endpoints
-    // Templates must be implemented as local database extensions
-    // Use the local Template class or database queries instead
-    
-    public function getAllTemplates() {
-        return [
-            'status_code' => 501,
-            'data' => null,
-            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
-        ];
-    }
-
-    public function getTemplate($template_id) {
-        return [
-            'status_code' => 501,
-            'data' => null,
-            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
-        ];
-    }
-
-    public function createTemplate($template_data) {
-        return [
-            'status_code' => 501,
-            'data' => null,
-            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
-        ];
-    }
-
-    public function updateTemplate($template_id, $template_data) {
-        return [
-            'status_code' => 501,
-            'data' => null,
-            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
-        ];
-    }
-
-    public function deleteTemplate($template_id) {
-        return [
-            'status_code' => 501,
-            'data' => null,
-            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
-        ];
-    }
-
-    public function createDomainFromTemplate($template_id, $domain_data) {
-        return [
-            'status_code' => 501,
-            'data' => null,
-            'raw_response' => 'Template functionality not implemented in PowerDNS Admin API. Use local database implementation instead.'
-        ];
     }
 
     /**

@@ -15,7 +15,7 @@ info:
     - **Real-time sync** from PowerDNS Admin API
     - **Local database caching** for performance and extended metadata
     - **HTTP standards compliant** interface (GET uses query params, POST/PUT/DELETE use JSON)
-  version: 1.0.2
+  version: 1.0.3
   contact:
     name: API Support
     email: support@example.com
