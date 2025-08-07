@@ -82,23 +82,23 @@ class PDNSAdminClient {
 
     // Account operations (PowerDNS Admin accounts/domains)
     public function getAllAccounts() {
-        return $this->makeRequest('/pdnsadmin/accounts');
+        return $this->makeRequest('/pdnsadmin/users');
     }
 
     public function getAccount($account_identifier) {
-        return $this->makeRequest("/pdnsadmin/accounts/{$account_identifier}");
+        return $this->makeRequest("/pdnsadmin/users/{$account_identifier}");
     }
 
     public function createAccount($account_data) {
-        return $this->makeRequest('/pdnsadmin/accounts', 'POST', $account_data);
+        return $this->makeRequest('/pdnsadmin/users', 'POST', $account_data);
     }
 
     public function updateAccount($account_identifier, $account_data) {
-        return $this->makeRequest("/pdnsadmin/accounts/{$account_identifier}", 'PUT', $account_data);
+        return $this->makeRequest("/pdnsadmin/users/{$account_identifier}", 'PUT', $account_data);
     }
 
     public function deleteAccount($account_identifier) {
-        return $this->makeRequest("/pdnsadmin/accounts/{$account_identifier}", 'DELETE');
+        return $this->makeRequest("/pdnsadmin/users/{$account_identifier}", 'DELETE');
     }
 
     // User operations
