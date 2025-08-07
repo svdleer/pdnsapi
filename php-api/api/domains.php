@@ -209,27 +209,34 @@ function getDomainsByAccount($domain, $account_id) {
 function syncDomainsFromPDNS($domain, $pdns_client) {
     global $db;
     
-    // Get all domains from PowerDNS Admin API directly
-    $pdns_response = $pdns_client->makeRequest('/pdnsadmin/zones', 'GET');
+    // NOTE: PowerDNS Admin /pdnsadmin/zones endpoint returns massive data (480KB+) 
+    // which causes server crashes. We cannot reliably sync from PowerDNS Admin.
     
-    if($pdns_response['status_code'] == 200) {
-        $pdns_domains = $pdns_response['data'];
+    // Attempt to get domains from PowerDNS Admin API with timeout protection
+    try {
+        // Set a very short timeout to prevent server crashes
+        $pdns_response = $pdns_client->makeRequest('/pdnsadmin/zones', 'GET', null, 5); // 5 second timeout
         
-        // Handle case where no domains exist in PowerDNS Admin
-        if (empty($pdns_domains) || !is_array($pdns_domains)) {
-            sendResponse(200, array(
-                'synced' => 0,
-                'updated' => 0,
-                'total_processed' => 0
-            ), "Sync completed: No domains found in PowerDNS Admin");
-            return;
-        }
-        
-        $synced_count = 0;
-        $updated_count = 0;
-        
-        // Start a transaction to prevent race conditions
-        $db->beginTransaction();
+        if($pdns_response['status_code'] == 200) {
+            $pdns_domains = $pdns_response['data'];
+            
+            // Handle case where no domains exist in PowerDNS Admin
+            if (empty($pdns_domains) || !is_array($pdns_domains)) {
+                sendResponse(200, array(
+                    'synced' => 0,
+                    'updated' => 0,
+                    'total_processed' => 0,
+                    'warning' => 'PowerDNS Admin returned empty zones list'
+                ), "Sync completed: No domains found in PowerDNS Admin");
+                return;
+            }
+            
+            // If we get here, we have data - proceed with normal sync
+            $synced_count = 0;
+            $updated_count = 0;
+            
+            // Start a transaction to prevent race conditions
+            $db->beginTransaction();
         
         try {
             foreach($pdns_domains as $pdns_domain) {
@@ -308,7 +315,20 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
         }
     } else {
         $error_msg = isset($pdns_response['data']['message']) ? $pdns_response['data']['message'] : 'Unknown error';
-        sendError(500, "Failed to fetch domains from PowerDNS server: " . $error_msg);
+        sendError(500, "Failed to fetch domains from PowerDNS Admin: " . $error_msg);
+    }
+    
+    } catch (Exception $e) {
+        // Handle timeout or server crash scenarios
+        error_log("PowerDNS Admin sync failed due to server issues: " . $e->getMessage());
+        
+        sendResponse(200, array(
+            'synced' => 0,
+            'updated' => 0,
+            'total_processed' => 0,
+            'error' => 'PowerDNS Admin API timeout/crash',
+            'message' => 'The PowerDNS Admin server cannot handle the zones query due to large data size (480KB+). Manual sync may be required.'
+        ), "Sync failed: PowerDNS Admin API timeout due to large dataset");
     }
 }
                 
