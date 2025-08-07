@@ -446,8 +446,8 @@ function createDomainViaPDNS($domain, $pdns_client, $json_data) {
     if ($pdns_response['status_code'] == 201 || $pdns_response['status_code'] == 200) {
         // Domain created successfully, now sync it to local database
         
-        // Try to get the created domain info from PowerDNS Admin - query specific zone to avoid server crash
-        $get_response = $pdns_client->makeRequest('/pdnsadmin/zones/' . urlencode($domain_name), 'GET');
+        // Try to get the created domain info from PowerDNS Admin - use servers endpoint for specific zone
+        $get_response = $pdns_client->makeRequest('/servers/localhost/zones/' . urlencode($domain_name), 'GET');
         
         if ($get_response['status_code'] == 200) {
             $created_domain = $get_response['data']; // Direct domain data, not an array
