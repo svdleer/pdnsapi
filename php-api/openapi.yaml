@@ -2,33 +2,19 @@ openapi: 3.0.3
 info:
   title: PDNSAdmin PHP API
   description: |
-    PHP API wrapper for PDNSAdmin with local database storage and extended functionality.
+    PHP API wrapper for PowerDNS Admin with local database storage.
     
     ## Authentication
-    This API uses **Basic Authentication** with base64 encoded credentials.
-    Use the `Authorization: Basic <base64-credentials>` header for all authenticated requests.
+    Uses Basic Authentication with base64 encoded credentials.
+    Include `Authorization: Basic <base64-credentials>` header in requests.
     
-    ## Features
-    - **User management** with automatic PowerDNS Admin synchronization
-    - **IP address storage** for accounts (local database only)
-    - **Advanced domain management** with name-based operations and PowerDNS Server API access
-    - **Domain search and filtering** by name patterns
-    - **DNS record management** via PowerDNS Server API integration
-    - **Real-time sync** from PowerDNS Admin API
-    - **Local database caching** for performance and extended metadata
-    - **HTTP standards compliant** interface (GET uses query params, POST/PUT/DELETE use JSON)
-    
-    ## Domain Management Layers
-    This API provides **two layers** of domain management:
-    1. **PowerDNS Admin Layer** (`/pdnsadmin/zones`) - Basic zone operations (list, create, delete)
-    2. **PowerDNS Server Layer** (`/servers/localhost/zones`) - Full DNS management (records, updates, details)
-    
-    ## New Domain-by-Name Operations
-    - Search domains by name patterns
-    - Get/update/delete domains by name (no ID required)
-    - Full DNS record management by domain name
-    - Local database optimization for name-to-ID translation
-  version: 1.0.5
+    ## Core Features
+    - Account and user management with PowerDNS Admin sync
+    - Domain management with intelligent ID/name detection
+    - DNS record management via PowerDNS Server API
+    - Template-based domain creation
+    - Local database caching and metadata storage
+  version: 1.0.6
   contact:
     name: API Support - Silvester van der Leer
     email: silvester@avant.nl
@@ -242,31 +228,15 @@ paths:
 
   /domains:
     get:
-      summary: Get domains/zones with intelligent ID/name handling
+      summary: Get domains with intelligent search
       description: |
-        Retrieve domains/zones with automatic synchronization from PowerDNS Admin.
-        **Working Endpoint**: `/api/v1/pdnsadmin/zones` - 621 zones available
+        Retrieve domains/zones with automatic PowerDNS Admin synchronization.
         
-        **Smart Query Patterns:**
-        - `GET /domains` - Get all domains/zones
-        - `GET /domains?q=123` - Get domain by ID (if numeric)
-        - `GET /domains?q=example.com` - Get domain by name (if string)
-        - `GET /domains?q=*avant*` - Search domains by pattern (with wildcards)
-        - `GET /domains?account_id=1` - Get domains by account ID
-        - `POST /domains` with JSON payload - Advanced filtering
-        
-        **Query Parameter Logic:**
-        The `q` parameter intelligently determines the search type:
-        - **Numeric value** (e.g., `q=123`) → Search by domain ID
-        - **Domain name** (e.g., `q=example.com`) → Exact domain name lookup
-        - **Pattern with wildcards** (e.g., `q=*avant*`, `q=example*`) → Pattern search
-        - **Plain text** (e.g., `q=avant`) → Contains search (equivalent to `*avant*`)
-        
-        **Examples:**
-        - `GET /domains?q=1819` → Find domain with ID 1819
-        - `GET /domains?q=example.com` → Find exact domain "example.com"
-        - `GET /domains?q=avant` → Find all domains containing "avant"
-        - `GET /domains?q=*.nl` → Find all .nl domains
+        The `q` parameter automatically detects search type:
+        - Numeric: Domain ID lookup
+        - Domain name: Exact match  
+        - Wildcards: Pattern search
+        - Text: Contains search
       tags:
         - Domains
         - Domain Search
@@ -275,18 +245,13 @@ paths:
           in: query
           schema:
             type: string
-          description: |
-            Smart query parameter - automatically detects:
-            - Numeric: Domain ID lookup
-            - Domain name: Exact match
-            - Wildcard pattern: Pattern search
-            - Text: Contains search
+          description: Smart query (auto-detects ID, name, pattern, or contains search)
           example: "avant"
         - name: sync
           in: query
           schema:
             type: boolean
-          description: Set to true to sync domains from PDNSAdmin before returning results
+          description: Sync from PowerDNS Admin before returning results
         - name: account_id
           in: query
           schema:
@@ -321,18 +286,10 @@ paths:
                     example: "contains"
 
     post:
-      summary: Advanced domain search and filtering
+      summary: Advanced domain search
       description: |
-        Advanced domain search with JSON payload for complex queries.
-        Supports all GET query functionality plus additional filters.
-        
-        **JSON Query Types:**
-        - `{"id": 123}` - Get domain by ID
-        - `{"name": "example.com"}` - Get domain by exact name
-        - `{"pattern": "*avant*"}` - Pattern search
-        - `{"account_id": 1}` - Filter by account
-        - `{"contains": "avant"}` - Contains search
-        - Combined filters supported
+        Search domains with JSON payload for complex queries and filters.
+        Supports combined filters and advanced options.
       tags:
         - Domains
         - Domain Search
@@ -411,15 +368,10 @@ paths:
                     type: object
 
     put:
-      summary: Update domain by ID or name
+      summary: Update domain by ID or name  
       description: |
-        Update an existing domain using JSON input. Supports both ID and name-based updates.
-        If account_id is changed, the domain assignment is automatically updated in PDNSAdmin.
-        
-        **Update Methods:**
-        - `{"id": 123, "kind": "Native"}` - Update by ID
-        - `{"name": "example.com", "kind": "Native"}` - Update by name
-        - DNS record updates via `rrsets` field (uses PowerDNS Server API)
+        Update domain settings and DNS records.
+        Supports both ID and name-based updates with PowerDNS Admin and Server API integration.
       tags:
         - Domains
         - Domain Management
@@ -493,13 +445,8 @@ paths:
     delete:
       summary: Delete domain by ID or name
       description: |
-        Delete an existing domain. Supports both ID and name-based deletion.
-        
-        **Delete Methods:**
-        - `{"id": 123}` - Delete by ID
-        - `{"name": "example.com"}` - Delete by name
-        
-        **Warning:** This action cannot be undone.
+        Delete domain permanently. Supports both ID and name-based deletion.
+        Warning: This action cannot be undone.
       tags:
         - Domains
         - Domain Management
