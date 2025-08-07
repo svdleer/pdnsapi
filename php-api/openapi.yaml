@@ -30,14 +30,14 @@ info:
     - Local database optimization for name-to-ID translation
   version: 1.0.4
   contact:
-    name: API Support
-    email: support@example.com
+    name: API Support - Silvester van der Leer
+    email: silvester@avant.nl
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: https://dnsadmin.avant.nl/api/v1
+  - url: https://pdnsapi.avant.nl/
     description: Production server (PowerDNS Admin API)
 
 security:
