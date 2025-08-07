@@ -15,21 +15,6 @@ info:
     - **Real-time sync** from PowerDNS Admin API
     - **Local database caching** for performance and extended metadata
     - **HTTP standards compliant** interface (GET uses query params, POST/PUT/DELETE use JSON)
-    
-    ## Key Functionality
-    - Users are automatically synced from PowerDNS Admin after create, update, and delete operations
-    - IP addresses can be assigned to accounts (stored locally, not in PowerDNS Admin)
-    - Domain management maintains compatibility with PowerDNS Admin
-    - Local database provides caching and additional account metadata storage
-    - GET requests use query parameters, POST/PUT/DELETE operations use JSON payloads
-    
-    ## Important Notes
-    - Account data is synced FROM PowerDNS Admin users endpoint (read-only sync)
-    - Auto-sync only happens on write operations (POST/PUT/DELETE), not on GET requests for performance
-    - IP addresses are stored locally and NOT sent to PowerDNS Admin
-    - Use query parameters with GET `/accounts?sync=true` to force sync when needed
-    - Local database maintains PowerDNS Admin user ID relationships
-    - **Tested and Working**: 47 users, 621 domains successfully accessed
   version: 1.0.2
   contact:
     name: API Support
