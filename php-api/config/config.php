@@ -35,9 +35,14 @@ $api_settings = [
         // Generate secure keys using: openssl rand -hex 32
     ],
     'exempt_endpoints' => [
-        // All endpoints now require API key authentication
-        // Only keep basic health check exempt
-        'health'      // Basic health check endpoint (no sensitive data)
+        // Allow access to documentation without API key for easier development
+        '',           // Root endpoint 
+        'index',      // Documentation endpoint
+        'docs',       // Swagger UI
+        'swagger',    // Swagger UI alternate
+        'openapi',    // OpenAPI spec
+        'health'      // Basic health check endpoint
+        // Note: All actual API endpoints (/accounts, /domains, etc.) still require authentication
     ]
 ];
 

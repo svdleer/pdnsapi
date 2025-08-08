@@ -1304,11 +1304,11 @@ components:
         1. **Valid Admin API Key** - Single key for all administrative access  
         2. **Global IP Allowlist** - Same allowlist applies to ALL endpoints uniformly
         
-        **⚠️ REQUIRED FOR ALL ACCESS:**
-        - **API endpoints** require authentication
-        - **Swagger UI access** requires authentication  
-        - **OpenAPI documentation** requires authentication
-        - **No anonymous access** to any API resources
+        **📋 AUTHENTICATION REQUIREMENTS:**
+        - **Swagger UI access** - No authentication required (for easy development)
+        - **OpenAPI documentation** - No authentication required (for easy access)  
+        - **ALL API endpoints** - Full authentication required (API key + IP allowlist)
+        - **Health check** - No authentication required (monitoring)
         
         **API Key Format:** `Authorization: Basic <base64-encoded-api-key>`
         
