@@ -4,7 +4,7 @@ Complete curl examples for all API endpoints using the Admin API Key authenticat
 
 ## Authentication
 
-All API endpoints (except documentation) require the Admin API Key in the Authorization header:
+All API endpoints (except documentation) require the Admin API Key in the X-API-Key header:
 
 ```bash
 # API Key (replace with your actual key)
@@ -13,6 +13,18 @@ API_KEY="46b3d78c557cd66a047a38897914d203ab5c359719161e836ecce5508e57b1a9"
 # Base URL
 BASE_URL="https://pdnsapi.avant.nl"
 ```
+
+### Swagger UI Authentication
+
+When using Swagger UI to test endpoints:
+
+1. Visit `https://pdnsapi.avant.nl/docs`
+2. Click the **"Authorize"** button (🔒) at the top right
+3. Enter your API key: `46b3d78c557cd66a047a38897914d203ab5c359719161e836ecce5508e57b1a9`
+4. Click **"Authorize"** to save credentials
+5. All endpoint tests will now include proper authentication
+
+**Note:** Swagger UI enforces authentication - you cannot test endpoints without providing the API key first.
 
 ## 1. Documentation Endpoints (No Auth Required)
 

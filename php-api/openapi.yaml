@@ -1295,8 +1295,9 @@ paths:
 components:
   securitySchemes:
     AdminApiKey:
-      type: http
-      scheme: basic
+      type: apiKey
+      in: header
+      name: X-API-Key
       description: |
         **ADMIN API KEY + GLOBAL IP ALLOWLIST AUTHENTICATION**
         
@@ -1310,7 +1311,7 @@ components:
         - **ALL API endpoints** - Full authentication required (API key + IP allowlist)
         - **Health check** - No authentication required (monitoring)
         
-        **API Key Format:** `Authorization: Basic <base64-encoded-api-key>`
+        **API Key Format:** `X-API-Key: <your-api-key>`
         
         **Example:** 
         ```
