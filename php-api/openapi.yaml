@@ -307,11 +307,6 @@ paths:
           schema:
             type: boolean
           description: Sync from PowerDNS Admin before filtering
-        - name: account_id
-          in: query
-          schema:
-            type: integer
-          description: Filter domains by account ID
         - name: details
           in: query
           schema:
@@ -427,6 +422,20 @@ paths:
       description: |
         Update domain settings and DNS records.
         Supports both ID and name-based updates with PowerDNS Admin and Server API integration.
+        
+        **🔑 Requires Admin API Key**
+        
+        **⚠️ SECURITY WARNINGS:**
+        - **Domain Ownership:** Only domains owned by authenticated account can be modified
+        - **DNS Record Validation:** All DNS records are validated before application
+        - **Account Transfer:** Changing account_id requires ownership verification
+        - **Zone Type Changes:** Changing kind/masters affects DNS resolution - use with caution
+        
+        **🛡️ VALIDATION ENFORCED:**
+        - DNS record content validated (A/AAAA/CNAME/MX formats)
+        - Master server IPs validated for Slave zones
+        - Account ownership verified before transfers
+        - DNSSEC changes require additional validation
       tags:
         - Domains
         - Domain Management
@@ -494,14 +503,84 @@ paths:
       responses:
         '200':
           description: Domain updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Domain example.com updated successfully"
+                  validation_warnings:
+                    type: array
+                    items:
+                      type: string
+                    example: ["DNSSEC validation pending", "DNS propagation may take up to 24 hours"]
+        '400':
+          description: Bad Request - Invalid DNS records or validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid DNS record content for A record: '999.999.999.999'"
+                  field:
+                    type: string
+                    example: "rrsets[0].records[0].content"
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Domain ownership verification failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Access denied: Domain 'example.com' is not owned by your account"
         '404':
           description: Domain not found
+        '422':
+          description: Validation Error - DNS record validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "DNS record name 'malicious.other-domain.com.' is outside zone 'example.com'"
+                  validation_errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        error:
+                          type: string
 
     delete:
       summary: Delete domain by ID or name
       description: |
-        Delete domain permanently. Supports both ID and name-based deletion.
-        Warning: This action cannot be undone.
+        **🚨 DESTRUCTIVE OPERATION** - Delete domain permanently.
+        
+        **🔑 Requires Admin API Key**
+        
+        **⚠️ CRITICAL SECURITY WARNINGS:**
+        - **Irreversible Action:** Domain deletion cannot be undone
+        - **Ownership Verification:** Only domains owned by authenticated account can be deleted  
+        - **DNS Resolution Impact:** Domain will immediately stop resolving
+        - **Cascade Effects:** All DNS records will be permanently lost
+        - **Zone Dependencies:** Check for dependent subdomains before deletion
+        
+        **🛡️ SAFETY MEASURES:**
+        - Domain ownership verified before deletion
+        - Audit logging with administrator details
+        - PowerDNS Admin and local database automatically synced
       tags:
         - Domains
         - Domain Management
@@ -535,12 +614,55 @@ paths:
       responses:
         '200':
           description: Domain deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Domain 'example.com' deleted successfully"
+                  audit_log:
+                    type: object
+                    properties:
+                      deleted_at:
+                        type: string
+                        format: date-time
+                      records_count:
+                        type: integer
+                        example: 15
+                        description: "Number of DNS records that were deleted"
+        '400':
+          description: Bad Request - Invalid domain identifier
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Domain ownership verification failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Access denied: Cannot delete domain 'example.com' - not owned by your account"
         '404':
           description: Domain not found
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - Domain has active dependencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Cannot delete domain: 5 active subdomains depend on this zone"
+                  dependencies:
+                    type: array
+                    items:
+                      type: string
+                    example: ["sub1.example.com", "sub2.example.com"]
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -629,6 +751,12 @@ paths:
       description: |
         Update a specific domain using path parameter for ID.
         Alternative to PUT /domains with JSON payload.
+        
+        **🔐 SECURITY REQUIREMENTS:**
+        - Admin API key required for ALL modifications
+        - Ownership validation enforced (can only modify domains you own)
+        - Input validation prevents DNS record injection attacks
+        - All changes logged for audit trails
       tags:
         - Domains
       parameters:
@@ -664,9 +792,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: |
+            Bad request - invalid input data
+            - Invalid domain configuration
+            - Malformed JSON payload
+            - Invalid DNS record format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '403':
+          description: |
+            Forbidden - security violation
+            - Domain not owned by authenticated user
+            - Insufficient permissions for operation
+            - API key lacks required privileges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          description: |
+            Validation failed
+            - DNS record validation errors
+            - Domain name format violations
+            - Invalid record type combinations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -674,7 +830,17 @@ paths:
       summary: Delete domain by ID
       description: |
         Delete a domain from both local database and PowerDNS Admin.
-        **Warning**: This action cannot be undone.
+        
+        **⚠️ DANGER: IRREVERSIBLE OPERATION**
+        - Permanently deletes domain and ALL DNS records
+        - Cannot be undone - ensure you have backups
+        - Requires admin API key with full privileges
+        
+        **🔐 SECURITY REQUIREMENTS:**
+        - Admin API key required for ALL deletions
+        - Ownership validation enforced (can only delete domains you own)
+        - Domain must be in "inactive" state before deletion
+        - All operations logged for audit trails
       tags:
         - Domains
       parameters:
@@ -685,6 +851,13 @@ paths:
             type: integer
           description: Domain ID
           example: 123
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Force deletion even if domain has active records (dangerous)
       responses:
         '200':
           description: Domain deleted successfully
@@ -692,8 +865,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
+        '403':
+          description: |
+            Forbidden - security violation
+            - Domain not owned by authenticated user
+            - Domain has active DNS records (use force=true to override)
+            - API key lacks deletion privileges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            Conflict - cannot delete
+            - Domain has active DNS records
+            - Domain is referenced by other resources
+            - Concurrent modification detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -703,6 +896,8 @@ paths:
       description: |
         Retrieve all available domain templates from PowerDNS Admin.
         Templates can be used to create domains with predefined settings.
+        
+        **🔑 Requires Admin API Key**
       tags:
         - Templates
       responses:
@@ -720,6 +915,12 @@ paths:
                   message:
                     type: string
                     example: "Templates retrieved successfully"
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -727,6 +928,14 @@ paths:
       summary: Create new domain template
       description: |
         Create a new domain template in PowerDNS Admin.
+        
+        **🔑 Requires Admin API Key**
+        
+        **🔐 SECURITY CONSIDERATIONS:**
+        - Template content validated for DNS record injection
+        - Template names must be unique and follow naming conventions
+        - All template creation logged for audit trails
+        - Input sanitization prevents malicious template content
       tags:
         - Templates
       requestBody:
@@ -743,7 +952,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: |
+            Bad request - invalid template data
+            - Invalid DNS record format in template
+            - Malformed JSON payload
+            - Template name validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '409':
+          description: |
+            Conflict - template already exists
+            - Template name already in use
+            - Duplicate template content detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '422':
+          description: |
+            Validation failed
+            - DNS record validation errors in template
+            - Invalid template structure
+            - Template content security violations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -901,7 +1143,22 @@ paths:
   /domain-account:
     post:
       summary: Domain-Account operations
-      description: Perform operations to manage domain-account relationships
+      description: |
+        Perform operations to manage domain-account relationships.
+        
+        **🔑 Requires Admin API Key**
+        
+        **⚠️ CRITICAL SECURITY WARNINGS:**
+        - **DOMAIN HIJACKING RISK:** Can reassign domains between accounts
+        - **OWNERSHIP VALIDATION:** Must verify current account owns domain before changes
+        - **AUDIT TRAIL:** All domain reassignments logged with timestamps and user info
+        - **IRREVERSIBLE:** Domain reassignments cannot be easily undone
+        
+        **🔐 SECURITY REQUIREMENTS:**
+        - Admin API key required for ALL operations
+        - Domain ownership verified before any modifications
+        - Account permissions checked before assignments
+        - Rate limiting enforced to prevent abuse
       tags:
         - Domain-Account
       parameters:
@@ -945,16 +1202,67 @@ paths:
                   - $ref: '#/components/schemas/SuccessMessage'
                   - $ref: '#/components/schemas/AccountDomainsList'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: |
+            Bad request - invalid operation parameters
+            - Invalid domain name format
+            - Missing required fields
+            - Invalid account ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '403':
+          description: |
+            Forbidden - security violation
+            - Domain not owned by source account
+            - Insufficient permissions for domain reassignment
+            - Account lacks required privileges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: |
+            Not found
+            - Domain does not exist
+            - Account not found
+            - Domain-account relationship not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '409':
+          description: |
+            Conflict - operation cannot be completed
+            - Domain already assigned to target account
+            - Concurrent modification detected
+            - Domain in locked state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '500':
           $ref: '#/components/responses/ServerError'
 
   /status:
     get:
-      summary: API status
-      description: Get API status and health information
+      summary: API status and health check
+      description: |
+        Get API status and health information.
+        
+        **🔑 Requires Admin API Key**
+        
+        **ℹ️ INFORMATION SECURITY:**
+        - System status information restricted to admins only
+        - Health checks reveal internal system state
+        - Connection tests may expose backend configuration
+        - All status requests logged for security monitoring
       tags:
         - Status
       parameters:
@@ -975,6 +1283,14 @@ paths:
                   - $ref: '#/components/schemas/ConnectionTest'
                   - $ref: '#/components/schemas/SyncResult'
                   - $ref: '#/components/schemas/HealthCheck'
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
 components:
   securitySchemes:
@@ -982,21 +1298,52 @@ components:
       type: http
       scheme: basic
       description: |
-        **ADMIN API KEY AUTHENTICATION**
+        **ADMIN API KEY + GLOBAL IP ALLOWLIST AUTHENTICATION**
         
-        Single API key provides full administrative access to all endpoints.
+        **DUAL AUTHENTICATION - SIMPLE & SECURE:**
+        1. **Valid Admin API Key** - Single key for all administrative access  
+        2. **Global IP Allowlist** - Same allowlist applies to ALL endpoints uniformly
         
-        **Format:** `Authorization: Basic <base64-encoded-api-key>`
+        **API Key Format:** `Authorization: Basic <base64-encoded-api-key>`
         
         **Example:** 
         ```
         Authorization: Basic YWRtaW5fa2V5OmFkbWluX3Bhc3M=
         ```
         
+        **🛡️ GLOBAL IP ALLOWLIST - KEEP IT SIMPLE:**
+        - Single allowlist applies to ALL API endpoints uniformly
+        - No per-endpoint complexity - either you're allowed or you're not
+        - Both IPv4 and IPv6 addresses supported with CIDR notation
+        - Easy to manage and audit
+        
+        **Simple Configuration:**
+        ```php
+        // In config/config.php  
+        $config['security'] = [
+            'ip_validation_enabled' => true,
+            'allowed_ips' => [
+                '127.0.0.1',              // localhost
+                '192.168.1.0/24',         // office network
+                '203.0.113.25',           // admin's home IP
+                '10.0.0.100'              // backup admin IP
+            ]
+        ];
+        ```
+        
+        **Security Benefits:**
+        - **Defense in depth:** Both API key AND IP must be valid
+        - **Zero complexity:** Same rules apply everywhere
+        - **Easy maintenance:** One list to manage
+        - **Complete protection:** API inaccessible from non-allowed IPs
+        
         **Security Notes:**
-        - One API key for all administrative operations
+        - **Dual authentication:** API key AND IP allowlist required
+        - One API key for all administrative operations  
         - Full access to accounts, domains, templates, and DNS records
+        - IP allowlist prevents unauthorized access even with valid key
         - Should be rotated regularly and kept secure
+        - Update IP allowlist when network infrastructure changes
       
   responses:
     BadRequest:
@@ -1011,7 +1358,7 @@ components:
                 example: "Invalid input data provided"
     
     Unauthorized:
-      description: Unauthorized - Authentication required
+      description: Unauthorized - Authentication required  
       content:
         application/json:
           schema:
@@ -1019,10 +1366,14 @@ components:
             properties:
               error:
                 type: string
-                example: "Authentication credentials are required"
+                example: "Valid Admin API Key required"
     
     Forbidden:
-      description: Forbidden - Insufficient privileges
+      description: |
+        Forbidden - Access denied due to security restrictions
+        - Invalid or missing API key
+        - IP address not in allowlist  
+        - Insufficient privileges for operation
       content:
         application/json:
           schema:
@@ -1030,6 +1381,21 @@ components:
             properties:
               error:
                 type: string
+                enum:
+                  - "IP address not authorized for API access"
+                  - "Invalid Admin API Key"
+                  - "Insufficient privileges for this operation"
+                  - "Domain not owned by authenticated user"
+              client_ip:
+                type: string
+                description: "Client IP address (for IP blocking errors)"
+                example: "203.0.113.45"
+              allowed_ips:
+                type: array
+                items:
+                  type: string
+                description: "List of allowed IP ranges (for debugging)"
+                example: ["192.168.1.0/24", "10.0.0.100"]
                 example: "Access denied. Administrator privileges required."
     
     NotFound:
@@ -1428,7 +1794,14 @@ components:
 
     RRSetUpdate:
       type: object
-      description: DNS record set update operation
+      description: |
+        DNS record set update operation with security validation.
+        
+        **🛡️ SECURITY VALIDATION:**
+        - Record names must belong to the domain being updated
+        - DNS record content validated for proper format
+        - Dangerous record types (NS, SOA) require additional verification
+        - Maximum 100 records per update to prevent abuse
       required:
         - name
         - type
@@ -1436,12 +1809,14 @@ components:
       properties:
         name:
           type: string
-          description: Record name (FQDN with trailing dot)
+          description: Record name (FQDN with trailing dot) - must be subdomain of zone
           example: "www.example.com."
+          pattern: "^[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*\\.$"
         type:
           type: string
-          description: DNS record type (A, AAAA, CNAME, MX, etc.)
+          description: DNS record type (A, AAAA, CNAME, MX, TXT, SRV)
           example: "A"
+          enum: ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS"]
         changetype:
           type: string
           enum: ["REPLACE", "DELETE"]
@@ -1450,6 +1825,7 @@ components:
         records:
           type: array
           description: Records for REPLACE operations (omit for DELETE)
+          maxItems: 100
           items:
             $ref: '#/components/schemas/DNSRecord'
 

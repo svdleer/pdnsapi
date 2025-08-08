@@ -26,7 +26,7 @@ $api_settings = [
     'cors_origins' => ['*'], // For production, specify allowed origins
     'debug_mode' => false,
     'log_level' => 'INFO', // DEBUG, INFO, WARNING, ERROR
-    'require_api_key' => false, // Set to true when you want API key authentication
+    'require_api_key' => true, // API key authentication required
     'force_https' => true, // Redirect HTTP to HTTPS
     'hsts_max_age' => 31536000, // HSTS max age in seconds (1 year)
     'api_keys' => [
@@ -41,9 +41,33 @@ $api_settings = [
         'docs',       // Swagger UI
         'swagger',    // Swagger UI alternate
         'openapi',    // OpenAPI spec
-        'status',     // Status endpoint
-        'php-test.php' // Test endpoint
+        'php-test.php' // Test endpoint (remove in production)
     ]
+];
+
+// IP Security Configuration - GLOBAL ALLOWLIST
+$config['security'] = [
+    'ip_validation_enabled' => true,
+    
+    // Global IP allowlist - applies to ALL API endpoints
+    // Simple and secure: if your IP isn't here, no API access
+    'allowed_ips' => [
+        '127.0.0.1',           // localhost
+        '::1',                 // localhost IPv6
+        '149.210.167.40',      // server primary IP
+        '149.210.166.5',       // server secondary IP
+        '2a01:7c8:aab3:5d8:149:210:166:5', // server IPv6
+        '192.168.1.0/24',      // local network example
+        '10.0.0.0/8',          // private network example
+        // Add your admin IPs here:
+        // '203.0.113.10',     // office IP
+        // '198.51.100.50',    // backup admin IP
+    ],
+    
+    // Security logging and response
+    'log_ip_violations' => true,
+    'block_duration' => 3600, // 1 hour block for repeated violations
+    'violation_threshold' => 5, // Block after 5 failed attempts
 ];
 
 // API Response helper functions
@@ -130,8 +154,217 @@ function requireApiKey() {
         return true;
     }
     
-    // For now, just return true (API key validation disabled)
+    // Check IP allowlist first
+    if (!isIpAllowed()) {
+        $client_ip = getClientIpAddress();
+        logSecurityEvent("IP_BLOCKED", $client_ip, $path);
+        sendError(403, "IP address not authorized for API access", [
+            'client_ip' => $client_ip,
+            'message' => 'Your IP address is not in the allowlist for API access'
+        ]);
+    }
+    
+    // Validate API key
+    $api_key = getApiKeyFromRequest();
+    if (!$api_key || !isValidApiKey($api_key)) {
+        logSecurityEvent("INVALID_API_KEY", getClientIpAddress(), $path);
+        sendError(401, "Valid Admin API Key required");
+    }
+    
     return true;
+}
+
+/**
+ * Get the real client IP address, considering proxy headers
+ */
+function getClientIpAddress() {
+    global $api_security;
+    
+    // If not trusting proxy headers, use REMOTE_ADDR
+    if (!$api_security['trust_proxy_headers']) {
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+    
+    // Check proxy headers in order of priority
+    foreach ($api_security['proxy_header_priority'] as $header) {
+        if (!empty($_SERVER[$header])) {
+            $ips = explode(',', $_SERVER[$header]);
+            $ip = trim($ips[0]); // Take the first IP (original client)
+            
+            // Validate IP format
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return $ip;
+            }
+        }
+    }
+    
+    // Fallback to REMOTE_ADDR
+    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+}
+
+/**
+ * Check if the client IP is in the allowlist
+ */
+function isIpAllowed() {
+    global $api_security;
+    
+    // Skip IP validation if disabled
+    if (!$api_security['require_ip_allowlist']) {
+        return true;
+    }
+    
+    $client_ip = getClientIpAddress();
+    
+    foreach ($api_security['allowed_ips'] as $allowed_ip) {
+        if (ipInRange($client_ip, $allowed_ip)) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Check if an IP address is within a given IP/CIDR range
+ */
+function ipInRange($ip, $range) {
+    // Handle single IP addresses
+    if (strpos($range, '/') === false) {
+        return $ip === $range;
+    }
+    
+    // Handle CIDR notation
+    list($subnet, $mask) = explode('/', $range);
+    
+    // IPv6 support
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+        return ipv6InRange($ip, $subnet, $mask);
+    }
+    
+    // IPv4 support
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        return ipv4InRange($ip, $subnet, $mask);
+    }
+    
+    return false;
+}
+
+/**
+ * Check if IPv4 address is in CIDR range
+ */
+function ipv4InRange($ip, $subnet, $mask) {
+    $ip_long = ip2long($ip);
+    $subnet_long = ip2long($subnet);
+    $mask_long = -1 << (32 - $mask);
+    
+    return ($ip_long & $mask_long) === ($subnet_long & $mask_long);
+}
+
+/**
+ * Check if IPv6 address is in CIDR range
+ */
+function ipv6InRange($ip, $subnet, $mask) {
+    $ip_bin = inet_pton($ip);
+    $subnet_bin = inet_pton($subnet);
+    
+    if (!$ip_bin || !$subnet_bin) return false;
+    
+    $mask_bytes = intval($mask / 8);
+    $mask_bits = $mask % 8;
+    
+    // Compare full bytes
+    if ($mask_bytes > 0) {
+        if (substr($ip_bin, 0, $mask_bytes) !== substr($subnet_bin, 0, $mask_bytes)) {
+            return false;
+        }
+    }
+    
+    // Compare remaining bits
+    if ($mask_bits > 0 && $mask_bytes < 16) {
+        $byte_mask = 0xFF << (8 - $mask_bits);
+        $ip_byte = ord($ip_bin[$mask_bytes]) & $byte_mask;
+        $subnet_byte = ord($subnet_bin[$mask_bytes]) & $byte_mask;
+        
+        if ($ip_byte !== $subnet_byte) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * Extract API key from Authorization header
+ */
+function getApiKeyFromRequest() {
+    $headers = getallheaders();
+    
+    // Check Authorization header
+    if (isset($headers['Authorization'])) {
+        $auth_header = $headers['Authorization'];
+        
+        // Basic auth format: "Basic base64(username:password)"
+        if (strpos($auth_header, 'Basic ') === 0) {
+            $encoded = substr($auth_header, 6);
+            $decoded = base64_decode($encoded);
+            
+            // For API key auth, we treat the entire decoded string as the key
+            // or split on ':' and use the first part as the key
+            return explode(':', $decoded)[0];
+        }
+        
+        // Bearer token format: "Bearer token"
+        if (strpos($auth_header, 'Bearer ') === 0) {
+            return substr($auth_header, 7);
+        }
+    }
+    
+    // Check X-API-Key header
+    if (isset($headers['X-API-Key'])) {
+        return $headers['X-API-Key'];
+    }
+    
+    // Check query parameter (less secure, not recommended)
+    if (isset($_GET['api_key'])) {
+        return $_GET['api_key'];
+    }
+    
+    return null;
+}
+
+/**
+ * Validate API key against configured keys
+ */
+function isValidApiKey($provided_key) {
+    global $api_settings;
+    
+    return array_key_exists($provided_key, $api_settings['api_keys']);
+}
+
+/**
+ * Log security events for monitoring and alerting
+ */
+function logSecurityEvent($event_type, $ip_address, $endpoint = null, $details = null) {
+    global $api_security;
+    
+    if (!$api_security['log_blocked_attempts']) {
+        return;
+    }
+    
+    $log_entry = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'event_type' => $event_type,
+        'ip_address' => $ip_address,
+        'endpoint' => $endpoint,
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+        'details' => $details
+    ];
+    
+    // Log to system error log
+    error_log('SECURITY EVENT: ' . json_encode($log_entry));
+    
+    // TODO: Consider sending to external security monitoring system
+    // e.g., Splunk, ELK stack, or security incident response system
 }
 
 function logApiRequest($endpoint, $method, $status_code) {
@@ -148,6 +381,54 @@ function logApiRequest($endpoint, $method, $status_code) {
         
         // Log to error_log
         error_log('API Request: ' . json_encode($log_entry));
+    }
+}
+
+/**
+ * Global IP Validation - Simple and Clear
+ * Checks if the client IP is in the global allowlist
+ */
+function validateClientIP() {
+    global $config;
+    
+    if (!$config['security']['ip_validation_enabled']) {
+        return true; // IP validation disabled
+    }
+    
+    $clientIP = getClientIP();
+    $allowedIPs = $config['security']['allowed_ips'];
+    
+    // Check if client IP is in the global allowlist
+    foreach ($allowedIPs as $allowedIP) {
+        if (ipInRange($clientIP, $allowedIP)) {
+            return true; // IP is allowed
+        }
+    }
+    
+    // IP not allowed - log violation and block
+    if ($config['security']['log_ip_violations']) {
+        logSecurityEvent('IP_BLOCKED', $clientIP, $_SERVER['REQUEST_URI'] ?? '/', 
+                        'Client IP not in global allowlist');
+    }
+    
+    return false;
+}
+
+/**
+ * Get the real client IP address
+ */
+function getClientIP() {
+    // Check for IP from shared internet
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    }
+    // Check for IP passed from proxy
+    elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return $_SERVER['HTTP_X_FORWARDED_FOR'];
+    }
+    // Return remote address
+    else {
+        return $_SERVER['REMOTE_ADDR'];
     }
 }
 ?>
