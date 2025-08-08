@@ -9,7 +9,12 @@ require_once $base_path . '/models/Domain.php';
 require_once $base_path . '/models/Account.php';
 require_once $base_path . '/classes/PDNSAdminClient.php';
 
-// API key is already validated in index.php, log the request
+// CRITICAL: Enforce authentication for direct API file access
+enforceHTTPS();
+addSecurityHeaders();
+requireApiKey(); // This will exit with 401/403 if auth fails
+
+// Log successful authenticated request
 logApiRequest('domains', $_SERVER['REQUEST_METHOD'], 200);
 
 // Database class should now be available through compatibility layer

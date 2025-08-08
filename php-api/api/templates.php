@@ -5,7 +5,12 @@ $base_path = realpath(__DIR__ . '/..');
 require_once $base_path . '/config/config.php';
 require_once $base_path . '/models/Template.php';
 
-// API key is already validated in index.php, log the request
+// CRITICAL: Enforce authentication for direct API file access
+enforceHTTPS();
+addSecurityHeaders();
+requireApiKey(); // This will exit with 401/403 if auth fails
+
+// Log successful authenticated request
 logApiRequest('templates', $_SERVER['REQUEST_METHOD'], 200);
 
 // Initialize Template model (local database implementation)
