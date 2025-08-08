@@ -9,15 +9,15 @@ if (!isset($_ENV['PDNS_API_KEY'])) {
 }
 
 $pdns_config = [
-    'base_url' => $_ENV['PDNS_BASE_URL'] ?? 'https://dnsadmin.avant.nl/api/v1',
+    'base_url' => $_ENV['PDNS_BASE_URL'] ?? 'https://your-pdns-server.example.com/api/v1',
     'auth_type' => 'basic',
-    'api_key' => $_ENV['PDNS_API_KEY'] ?? 'YXBpYWRtaW46VmV2ZWxnSWNzXm9tMg==', // Fallback for dev
-    'pdns_server_key' => $_ENV['PDNS_SERVER_KEY'] ?? 'morWehofCidwiWejishOwko=!b', // Fallback for dev
+    'api_key' => $_ENV['PDNS_API_KEY'] ?? 'your-pdns-api-key-here', // Fallback for dev
+    'pdns_server_key' => $_ENV['PDNS_SERVER_KEY'] ?? 'your-pdns-server-key-here', // Fallback for dev
     
     // PowerDNS Admin API settings for user management  
-    'pdns_admin_url' => $_ENV['PDNS_BASE_URL'] ?? 'https://dnsadmin.avant.nl/api/v1',
-    'pdns_admin_user' => $_ENV['PDNS_ADMIN_USER'] ?? 'apiadmin', 
-    'pdns_admin_password' => $_ENV['PDNS_ADMIN_PASSWORD'] ?? 'VevelgIcs^om2'
+    'pdns_admin_url' => $_ENV['PDNS_BASE_URL'] ?? 'https://your-pdns-server.example.com/api/v1',
+    'pdns_admin_user' => $_ENV['PDNS_ADMIN_USER'] ?? 'your-admin-username', 
+    'pdns_admin_password' => $_ENV['PDNS_ADMIN_PASSWORD'] ?? 'your-admin-password'
 ];
 
 // API settings
@@ -31,9 +31,9 @@ $api_settings = [
     'hsts_max_age' => 31536000, // HSTS max age in seconds (1 year)
     'api_keys' => [
         // Add your API keys here - format: 'key' => 'description'
-        '18b1513723567c9eacfbc2887cd9cc8737ec0fcf61f5f7d1b11518dc3260cbe9' => 'Admin API Key',
-        ($_ENV['AVANT_API_KEY'] ?? '46b3d78c557cd66a047a38897914d203ab5c359719161e836ecce5508e57b1a9') => 'Fallback API Key',
+        ($_ENV['AVANT_API_KEY'] ?? 'your-api-key-here') => 'Admin API Key',
         // Generate secure keys using: openssl rand -hex 32
+        // Example: 'abc123def456...' => 'Admin API Key',
     ],
     'exempt_endpoints' => [
         // Allow access to documentation without API key for easier development
@@ -43,8 +43,6 @@ $api_settings = [
         'swagger',    // Swagger UI alternate
         'openapi',    // OpenAPI spec
         'health',     // Basic health check endpoint
-        'debug-headers.php',  // Temporary debug endpoint
-        'test-auth.php',      // Authentication flow test
         // Note: All actual API endpoints (/accounts, /domains, etc.) still require authentication
     ]
 ];
