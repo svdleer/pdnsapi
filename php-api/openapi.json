@@ -3,7 +3,7 @@
   "info": {
     "title": "PDNSAdmin PHP API",
     "description": "PHP API wrapper for PowerDNS Admin with local database storage.\n\n## Authentication\nUses Basic Authentication with base64 encoded credentials.\nInclude `Authorization: Basic <base64-credentials>` header in requests.\n\n## Core Features\n- Account and user management with PowerDNS Admin sync\n- Domain management with intelligent ID/name detection\n- DNS record management via PowerDNS Server API\n- Template-based domain creation\n- Local database caching and metadata storage\n",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "contact": {
       "name": "API Support - Silvester van der Leer",
       "email": "silvester@avant.nl"
@@ -49,8 +49,8 @@
     },
     "/accounts": {
       "get": {
-        "summary": "Get accounts with smart filtering",
-        "description": "Retrieve accounts from local database with PowerDNS Admin synchronization.\n\n**Filter Logic (AND conditions):**\n- Single parameter: Direct lookup\n- Multiple parameters: Must ALL match (validation)\n- `?id=14&username=admin` returns user only if ID 14 has username \"admin\"\n- Returns 404 if parameters don't match the same user\n",
+        "summary": "Get accounts with smart filtering (Admin Only)",
+        "description": "\u26a0\ufe0f  **ADMIN ONLY ENDPOINT** - Requires elevated privileges\n\nRetrieve accounts from local database with PowerDNS Admin synchronization.\n\n**Security Notes:**\n- Limited to administrators only\n- Rate limited to prevent enumeration attacks\n- Sensitive data (emails) only returned to privileged users\n\n**Filter Logic (AND conditions):**\n- Single parameter: Direct lookup\n- Multiple parameters: Must ALL match (validation)\n- `?id=14&username=admin` returns user only if ID 14 has username \"admin\"\n- Returns 404 if parameters don't match the same user\n",
         "tags": [
           "Accounts"
         ],
@@ -147,6 +147,25 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Admin privileges required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Access denied. Administrator privileges required."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions"
+          },
           "404": {
             "description": "No accounts found or AND validation failed",
             "content": {
@@ -169,8 +188,8 @@
         }
       },
       "post": {
-        "summary": "Create a new account",
-        "description": "Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.",
+        "summary": "Create a new account (Admin Only)",
+        "description": "\u26a0\ufe0f  **ADMIN ONLY ENDPOINT** - Requires elevated privileges\n\nCreate a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.\n\n**\ud83d\udd12 SECURITY REQUIREMENTS:**\n- **Admin Role Required** - Only administrators can create accounts\n- **Password Policy** - Must meet complexity requirements (8+ chars, mixed case, numbers)\n- **Audit Logging** - Account creation is logged with creator details\n- **Email Validation** - Email addresses must be valid and unique\n",
         "tags": [
           "Accounts"
         ],
@@ -218,10 +237,32 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Bad Request - Invalid input or weak password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Password must be at least 8 characters with mixed case and numbers"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Admin privileges required"
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions to create accounts"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "description": "Conflict - Username or email already exists"
+          },
+          "422": {
+            "description": "Validation Error - Email format invalid"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
@@ -229,8 +270,8 @@
         }
       },
       "put": {
-        "summary": "Update account",
-        "description": "Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).\n\n**JSON Payload (Required):**\n- Include account identifier (`id` or `username`)\n- Include fields to update\n- IP addresses are stored locally only\n",
+        "summary": "Update account (Admin Only)",
+        "description": "\u26a0\ufe0f  **ADMIN ONLY ENDPOINT** - Requires elevated privileges\n\nUpdate an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).\n\n**\ud83d\udd12 SECURITY REQUIREMENTS:**\n- **Admin Role Required** - Only administrators can update accounts\n- **Self-Service Exception** - Users can update their own profile (limited fields)\n- **Password Changes** - Must meet complexity requirements\n- **Audit Logging** - All changes logged with modifier details\n\n**JSON Payload (Required):**\n- Include account identifier (`id` or `username`)\n- Include fields to update\n- IP addresses are stored locally only\n",
         "tags": [
           "Accounts"
         ],
@@ -293,8 +334,8 @@
         }
       },
       "delete": {
-        "summary": "Delete account",
-        "description": "Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.\n\n**JSON Payload (Required):**\n- Use `{\"id\": 94}` to delete account by ID\n- Use `{\"username\": \"johndoe\"}` to delete account by username\n\n**Important:** This operation only deletes from PowerDNS Admin. The local database is updated through \nautomatic synchronization, ensuring the API remains the authoritative source for account management.\n",
+        "summary": "Delete account (Admin Only)",
+        "description": "\u26a0\ufe0f  **CRITICAL OPERATION** - Requires super admin privileges\n\nDelete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.\n\n**\ud83d\udea8 SECURITY WARNINGS:**\n- **Super Admin Required** - Only super administrators can delete accounts\n- **Irreversible Action** - Account deletion cannot be undone\n- **Cascade Effects** - All associated domains and records will be orphaned\n- **Audit Trail** - Deletion logged with administrator details and timestamp\n- **Confirmation Required** - Should require secondary confirmation in UI\n\n**JSON Payload (Required):**\n- Use `{\"id\": 94}` to delete account by ID\n- Use `{\"username\": \"johndoe\"}` to delete account by username\n\n**Important:** This operation only deletes from PowerDNS Admin. The local database is updated through \nautomatic synchronization, ensuring the API remains the authoritative source for account management.\n",
         "tags": [
           "Accounts"
         ],
@@ -1283,6 +1324,74 @@
         "type": "http",
         "scheme": "basic",
         "description": "Basic Authentication using base64 encoded credentials.\n\n**Format:** `Authorization: Basic <base64-encoded-credentials>`\n\n**Example:** \n```\nAuthorization: Basic YWRtaW46YWRtaW4=\n```\n\n**Note:** The credentials should be base64 encoded before sending the request.\n"
+      },
+      "AdminAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "**ADMIN LEVEL ACCESS REQUIRED**\n\nBasic Authentication with administrative privileges.\nRegular user credentials will receive 403 Forbidden.\n\n**Required Role:** Administrator or higher\n"
+      },
+      "SuperAdminAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "**SUPER ADMIN LEVEL ACCESS REQUIRED**\n\nBasic Authentication with super administrative privileges.\nRequired for destructive operations like account deletion.\n\n**Required Role:** Super Administrator\n"
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - Invalid input data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Invalid request data",
+              "errors": [
+                "Name is required",
+                "Email format is invalid"
+              ]
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Resource not found"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict - Resource already exists",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Account already exists"
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Internal server error"
+            }
+          }
+        }
       }
     },
     "schemas": {
@@ -2237,64 +2346,6 @@
               "type": "string"
             },
             "description": "Detailed error messages"
-          }
-        }
-      }
-    },
-    "responses": {
-      "BadRequest": {
-        "description": "Bad request - Invalid input data",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "example": {
-              "error": "Invalid request data",
-              "errors": [
-                "Name is required",
-                "Email format is invalid"
-              ]
-            }
-          }
-        }
-      },
-      "NotFound": {
-        "description": "Resource not found",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "example": {
-              "error": "Resource not found"
-            }
-          }
-        }
-      },
-      "Conflict": {
-        "description": "Conflict - Resource already exists",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "example": {
-              "error": "Account already exists"
-            }
-          }
-        }
-      },
-      "ServerError": {
-        "description": "Internal server error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "example": {
-              "error": "Internal server error"
-            }
           }
         }
       }

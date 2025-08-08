@@ -14,7 +14,7 @@ info:
     - DNS record management via PowerDNS Server API
     - Template-based domain creation
     - Local database caching and metadata storage
-  version: 1.0.7
+  version: 1.0.8
   contact:
     name: API Support - Silvester van der Leer
     email: silvester@avant.nl
@@ -47,9 +47,16 @@ paths:
 
   /accounts:
     get:
-      summary: Get accounts with smart filtering
+      summary: Get accounts with smart filtering (Admin Only)
       description: |
+        ⚠️  **ADMIN ONLY ENDPOINT** - Requires elevated privileges
+        
         Retrieve accounts from local database with PowerDNS Admin synchronization.
+        
+        **Security Notes:**
+        - Limited to administrators only
+        - Rate limited to prevent enumeration attacks
+        - Sensitive data (emails) only returned to privileged users
         
         **Filter Logic (AND conditions):**
         - Single parameter: Direct lookup
@@ -113,6 +120,18 @@ paths:
                   value:
                     data: [{"id": 14, "username": "admin"}]
                     message: "Found user with ID 14 and username 'admin'"
+        '401':
+          description: Unauthorized - Admin privileges required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Access denied. Administrator privileges required."
+        '403':
+          description: Forbidden - Insufficient permissions
         '404':
           description: No accounts found or AND validation failed
           content:
@@ -127,8 +146,17 @@ paths:
           $ref: '#/components/responses/ServerError'
 
     post:
-      summary: Create a new account
-      description: Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.
+      summary: Create a new account (Admin Only)
+      description: |
+        ⚠️  **ADMIN ONLY ENDPOINT** - Requires elevated privileges
+        
+        Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.
+        
+        **🔒 SECURITY REQUIREMENTS:**
+        - **Admin Role Required** - Only administrators can create accounts
+        - **Password Policy** - Must meet complexity requirements (8+ chars, mixed case, numbers)
+        - **Audit Logging** - Account creation is logged with creator details
+        - **Email Validation** - Email addresses must be valid and unique
       tags:
         - Accounts
       requestBody:
@@ -159,16 +187,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Bad Request - Invalid input or weak password
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Password must be at least 8 characters with mixed case and numbers"
+        '401':
+          description: Unauthorized - Admin privileges required
+        '403':
+          description: Forbidden - Insufficient permissions to create accounts
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: Conflict - Username or email already exists
+        '422':
+          description: Validation Error - Email format invalid
         '500':
           $ref: '#/components/responses/ServerError'
 
     put:
-      summary: Update account
+      summary: Update account (Admin Only)
       description: |
+        ⚠️  **ADMIN ONLY ENDPOINT** - Requires elevated privileges
+        
         Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).
+        
+        **🔒 SECURITY REQUIREMENTS:**
+        - **Admin Role Required** - Only administrators can update accounts
+        - **Self-Service Exception** - Users can update their own profile (limited fields)
+        - **Password Changes** - Must meet complexity requirements
+        - **Audit Logging** - All changes logged with modifier details
         
         **JSON Payload (Required):**
         - Include account identifier (`id` or `username`)
@@ -212,9 +262,18 @@ paths:
           $ref: '#/components/responses/ServerError'
 
     delete:
-      summary: Delete account
+      summary: Delete account (Admin Only)
       description: |
+        ⚠️  **CRITICAL OPERATION** - Requires super admin privileges
+        
         Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.
+        
+        **🚨 SECURITY WARNINGS:**
+        - **Super Admin Required** - Only super administrators can delete accounts
+        - **Irreversible Action** - Account deletion cannot be undone
+        - **Cascade Effects** - All associated domains and records will be orphaned
+        - **Audit Trail** - Deletion logged with administrator details and timestamp
+        - **Confirmation Required** - Should require secondary confirmation in UI
         
         **JSON Payload (Required):**
         - Use `{"id": 94}` to delete account by ID
@@ -968,7 +1027,111 @@ components:
         ```
         
         **Note:** The credentials should be base64 encoded before sending the request.
+    
+    AdminAuth:
+      type: http  
+      scheme: basic
+      description: |
+        **ADMIN LEVEL ACCESS REQUIRED**
+        
+        Basic Authentication with administrative privileges.
+        Regular user credentials will receive 403 Forbidden.
+        
+        **Required Role:** Administrator or higher
+        
+    SuperAdminAuth:
+      type: http
+      scheme: basic  
+      description: |
+        **SUPER ADMIN LEVEL ACCESS REQUIRED**
+        
+        Basic Authentication with super administrative privileges.
+        Required for destructive operations like account deletion.
+        
+        **Required Role:** Super Administrator
       
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input data
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Invalid input data provided"
+    
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Authentication credentials are required"
+    
+    Forbidden:
+      description: Forbidden - Insufficient privileges
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Access denied. Administrator privileges required."
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Requested resource was not found"
+    
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Resource already exists with this identifier"
+    
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Rate limit exceeded. Please try again later."
+              retry_after:
+                type: integer
+                example: 60
+                description: "Seconds until next request allowed"
+    
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "An internal server error occurred"
+
   schemas:
     Account:
       type: object
