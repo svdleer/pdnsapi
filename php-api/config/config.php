@@ -31,7 +31,7 @@ $api_settings = [
     'hsts_max_age' => 31536000, // HSTS max age in seconds (1 year)
     'api_keys' => [
         // Add your API keys here - format: 'key' => 'description'
-        '46b3d78c557cd66a047a38897914d203ab5c359719161e836ecce5508e57b1a9' => 'Admin API Key',
+        ($_ENV['AVANT_API_KEY'] ?? '46b3d78c557cd66a047a38897914d203ab5c359719161e836ecce5508e57b1a9') => 'Admin API Key',
         // Generate secure keys using: openssl rand -hex 32
     ],
     'exempt_endpoints' => [
@@ -312,7 +312,8 @@ function ipv6InRange($ip, $subnet, $mask) {
  * Extract API key from Authorization header
  */
 function getApiKeyFromRequest() {
-    $headers = getallheaders();
+    // Use custom function to get headers (getallheaders() not always available)
+    $headers = getAllRequestHeaders();
     
     // Check Authorization header
     if (isset($headers['Authorization'])) {
@@ -345,6 +346,30 @@ function getApiKeyFromRequest() {
     }
     
     return null;
+}
+
+/**
+ * Get all request headers - works in all PHP environments
+ */
+function getAllRequestHeaders() {
+    $headers = [];
+    
+    // Use getallheaders() if available (Apache)
+    if (function_exists('getallheaders')) {
+        return getallheaders();
+    }
+    
+    // Fallback: parse $_SERVER for headers
+    foreach ($_SERVER as $name => $value) {
+        if (strpos($name, 'HTTP_') === 0) {
+            // Convert HTTP_X_API_KEY to X-Api-Key
+            $header_name = str_replace('_', '-', substr($name, 5));
+            $header_name = ucwords(strtolower($header_name), '-');
+            $headers[$header_name] = $value;
+        }
+    }
+    
+    return $headers;
 }
 
 /**
