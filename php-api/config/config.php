@@ -41,7 +41,8 @@ $api_settings = [
         'docs',       // Swagger UI
         'swagger',    // Swagger UI alternate
         'openapi',    // OpenAPI spec
-        'health'      // Basic health check endpoint
+        'health',     // Basic health check endpoint
+        'debug-headers.php',  // Temporary debug endpoint
         // Note: All actual API endpoints (/accounts, /domains, etc.) still require authentication
     ]
 ];
