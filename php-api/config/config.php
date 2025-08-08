@@ -43,6 +43,7 @@ $api_settings = [
         'openapi',    // OpenAPI spec
         'health',     // Basic health check endpoint
         'debug-headers.php',  // Temporary debug endpoint
+        'test-auth.php',      // Authentication flow test
         // Note: All actual API endpoints (/accounts, /domains, etc.) still require authentication
     ]
 ];
