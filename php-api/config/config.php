@@ -71,6 +71,20 @@ $config['security'] = [
     'violation_threshold' => 5, // Block after 5 failed attempts
 ];
 
+// Map security configuration for API functions
+$api_security = [
+    'require_ip_allowlist' => $config['security']['ip_validation_enabled'],
+    'allowed_ips' => $config['security']['allowed_ips'],
+    'log_blocked_attempts' => $config['security']['log_ip_violations'],
+    'trust_proxy_headers' => true, // Trust proxy headers for real IP detection
+    'proxy_header_priority' => [
+        'HTTP_CF_CONNECTING_IP',     // Cloudflare
+        'HTTP_X_FORWARDED_FOR',      // Standard proxy header
+        'HTTP_X_REAL_IP',            // Nginx real IP
+        'HTTP_CLIENT_IP',            // Alternative client IP
+    ],
+];
+
 // API Response helper functions
 function sendResponse($status_code, $data = null, $message = null) {
     http_response_code($status_code);
