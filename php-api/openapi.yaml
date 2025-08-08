@@ -8,13 +8,15 @@ info:
     Uses Basic Authentication with base64 encoded credentials.
     Include `Authorization: Basic <base64-credentials>` header in requests.
     
+    **Admin API Key Required** - Single API key provides full administrative access.
+    
     ## Core Features
     - Account and user management with PowerDNS Admin sync
     - Domain management with intelligent ID/name detection
     - DNS record management via PowerDNS Server API
     - Template-based domain creation
     - Local database caching and metadata storage
-  version: 1.0.8
+  version: 1.0.9
   contact:
     name: API Support - Silvester van der Leer
     email: silvester@avant.nl
@@ -27,7 +29,7 @@ servers:
     description: Production server (PowerDNS Admin API)
 
 security:
-  - BasicAuth: []
+  - AdminApiKey: []
 
 paths:
   /:
@@ -47,16 +49,11 @@ paths:
 
   /accounts:
     get:
-      summary: Get accounts with smart filtering (Admin Only)
+      summary: Get accounts with smart filtering
       description: |
-        ⚠️  **ADMIN ONLY ENDPOINT** - Requires elevated privileges
-        
         Retrieve accounts from local database with PowerDNS Admin synchronization.
         
-        **Security Notes:**
-        - Limited to administrators only
-        - Rate limited to prevent enumeration attacks
-        - Sensitive data (emails) only returned to privileged users
+        **🔑 Requires Admin API Key**
         
         **Filter Logic (AND conditions):**
         - Single parameter: Direct lookup
@@ -121,7 +118,7 @@ paths:
                     data: [{"id": 14, "username": "admin"}]
                     message: "Found user with ID 14 and username 'admin'"
         '401':
-          description: Unauthorized - Admin privileges required
+          description: Unauthorized - Valid Admin API Key required
           content:
             application/json:
               schema:
@@ -129,9 +126,7 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Access denied. Administrator privileges required."
-        '403':
-          description: Forbidden - Insufficient permissions
+                    example: "Valid Admin API Key required"
         '404':
           description: No accounts found or AND validation failed
           content:
@@ -146,17 +141,11 @@ paths:
           $ref: '#/components/responses/ServerError'
 
     post:
-      summary: Create a new account (Admin Only)
+      summary: Create a new account
       description: |
-        ⚠️  **ADMIN ONLY ENDPOINT** - Requires elevated privileges
-        
         Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.
         
-        **🔒 SECURITY REQUIREMENTS:**
-        - **Admin Role Required** - Only administrators can create accounts
-        - **Password Policy** - Must meet complexity requirements (8+ chars, mixed case, numbers)
-        - **Audit Logging** - Account creation is logged with creator details
-        - **Email Validation** - Email addresses must be valid and unique
+        **� Requires Admin API Key**
       tags:
         - Accounts
       requestBody:
@@ -187,38 +176,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
         '400':
-          description: Bad Request - Invalid input or weak password
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Password must be at least 8 characters with mixed case and numbers"
+          description: Bad Request - Invalid input data
         '401':
-          description: Unauthorized - Admin privileges required
-        '403':
-          description: Forbidden - Insufficient permissions to create accounts
+          description: Unauthorized - Valid Admin API Key required
         '409':
           description: Conflict - Username or email already exists
-        '422':
-          description: Validation Error - Email format invalid
         '500':
           $ref: '#/components/responses/ServerError'
 
     put:
-      summary: Update account (Admin Only)
+      summary: Update account
       description: |
-        ⚠️  **ADMIN ONLY ENDPOINT** - Requires elevated privileges
-        
         Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).
         
-        **🔒 SECURITY REQUIREMENTS:**
-        - **Admin Role Required** - Only administrators can update accounts
-        - **Self-Service Exception** - Users can update their own profile (limited fields)
-        - **Password Changes** - Must meet complexity requirements
-        - **Audit Logging** - All changes logged with modifier details
+        **� Requires Admin API Key**
         
         **JSON Payload (Required):**
         - Include account identifier (`id` or `username`)
@@ -262,18 +233,12 @@ paths:
           $ref: '#/components/responses/ServerError'
 
     delete:
-      summary: Delete account (Admin Only)
+      summary: Delete account
       description: |
-        ⚠️  **CRITICAL OPERATION** - Requires super admin privileges
-        
         Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.
         
-        **🚨 SECURITY WARNINGS:**
-        - **Super Admin Required** - Only super administrators can delete accounts
-        - **Irreversible Action** - Account deletion cannot be undone
-        - **Cascade Effects** - All associated domains and records will be orphaned
-        - **Audit Trail** - Deletion logged with administrator details and timestamp
-        - **Confirmation Required** - Should require secondary confirmation in UI
+        **� Requires Admin API Key**
+        **⚠️ Warning:** This action cannot be undone.
         
         **JSON Payload (Required):**
         - Use `{"id": 94}` to delete account by ID
@@ -1013,42 +978,25 @@ paths:
 
 components:
   securitySchemes:
-    BasicAuth:
+    AdminApiKey:
       type: http
       scheme: basic
       description: |
-        Basic Authentication using base64 encoded credentials.
+        **ADMIN API KEY AUTHENTICATION**
         
-        **Format:** `Authorization: Basic <base64-encoded-credentials>`
+        Single API key provides full administrative access to all endpoints.
+        
+        **Format:** `Authorization: Basic <base64-encoded-api-key>`
         
         **Example:** 
         ```
-        Authorization: Basic YWRtaW46YWRtaW4=
+        Authorization: Basic YWRtaW5fa2V5OmFkbWluX3Bhc3M=
         ```
         
-        **Note:** The credentials should be base64 encoded before sending the request.
-    
-    AdminAuth:
-      type: http  
-      scheme: basic
-      description: |
-        **ADMIN LEVEL ACCESS REQUIRED**
-        
-        Basic Authentication with administrative privileges.
-        Regular user credentials will receive 403 Forbidden.
-        
-        **Required Role:** Administrator or higher
-        
-    SuperAdminAuth:
-      type: http
-      scheme: basic  
-      description: |
-        **SUPER ADMIN LEVEL ACCESS REQUIRED**
-        
-        Basic Authentication with super administrative privileges.
-        Required for destructive operations like account deletion.
-        
-        **Required Role:** Super Administrator
+        **Security Notes:**
+        - One API key for all administrative operations
+        - Full access to accounts, domains, templates, and DNS records
+        - Should be rotated regularly and kept secure
       
   responses:
     BadRequest:
