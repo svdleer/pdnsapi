@@ -31,7 +31,8 @@ $api_settings = [
     'hsts_max_age' => 31536000, // HSTS max age in seconds (1 year)
     'api_keys' => [
         // Add your API keys here - format: 'key' => 'description'
-        ($_ENV['AVANT_API_KEY'] ?? '46b3d78c557cd66a047a38897914d203ab5c359719161e836ecce5508e57b1a9') => 'Admin API Key',
+        '18b1513723567c9eacfbc2887cd9cc8737ec0fcf61f5f7d1b11518dc3260cbe9' => 'Admin API Key',
+        ($_ENV['AVANT_API_KEY'] ?? '46b3d78c557cd66a047a38897914d203ab5c359719161e836ecce5508e57b1a9') => 'Fallback API Key',
         // Generate secure keys using: openssl rand -hex 32
     ],
     'exempt_endpoints' => [
