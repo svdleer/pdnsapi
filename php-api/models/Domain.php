@@ -46,7 +46,16 @@ class Domain {
         $stmt->bindParam(":dnssec", $this->dnssec);
         $stmt->bindParam(":account", $this->account);
 
-        return $stmt->execute();
+        try {
+            $result = $stmt->execute();
+            if (!$result) {
+                error_log("SQL Error: " . implode(", ", $stmt->errorInfo()));
+            }
+            return $result;
+        } catch (PDOException $e) {
+            error_log("PDO Exception in create(): " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -64,11 +73,20 @@ class Domain {
             $this->dnssec = $domain_data['dnssec'] ?? 0;
             $this->account = $domain_data['account'] ?? '';
 
+            error_log("Creating domain: " . json_encode([
+                'name' => $this->name,
+                'type' => $this->type,
+                'pdns_user_id' => $this->pdns_user_id,
+                'kind' => $this->kind
+            ]));
+
             if ($this->create()) {
                 $this->id = $this->conn->lastInsertId();
+                error_log("Domain created successfully with ID: " . $this->id);
                 return $this->getDomainArray();
             }
             
+            error_log("Domain create() method returned false");
             return false;
         } catch (Exception $e) {
             error_log("Failed to create domain: " . $e->getMessage());
