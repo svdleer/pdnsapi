@@ -274,58 +274,21 @@ class Template {
             // Extract the zone ID from the API response
             $pdns_zone_id = $api_result['id'] ?? $api_result['data']['id'] ?? null;
             
-            // Now create domain in local database with PowerDNS Admin details
-            require_once __DIR__ . '/Domain.php';
-            $domainModel = new Domain($this->db);
+            // Domain created successfully in PowerDNS Admin
+            // Skip local database creation and rely on sync instead
+            return [
+                'success' => true,
+                'message' => 'Domain created from template successfully in PowerDNS Admin',
+                'data' => [
+                    'domain_name' => $canonical_domain_name,
+                    'template' => $template,
+                    'applied_records' => $applied_records,
+                    'pdns_zone_id' => $pdns_zone_id,
+                    'powerdns_result' => $api_result
+                ]
+            ];
             
-            $domain_result = $domainModel->createDomain([
-                'name' => $canonical_domain_name, // Store canonical name in database
-                'type' => $domain_data['type'] ?? 'Native',
-                'kind' => $domain_data['kind'] ?? 'Native', 
-                'pdns_user_id' => $domain_data['account_id'] ?? $template['account_id'], // Use account_id as pdns_user_id
-                'pdns_zone_id' => $pdns_zone_id, // PowerDNS Admin zone ID
-                'account' => '', // Will be set by sync
-                'dnssec' => 0,
-                'masters' => '',
-            ]);
-            
-            if ($domain_result) {
-                // Apply template records to the domain using PowerDNS Admin API
-                if (!empty($applied_records)) {
-                    $rrsets = [];
-                    foreach ($applied_records as $record) {
-                        $rrsets[] = [
-                            'name' => $record['name'],
-                            'type' => $record['type'],
-                            'changetype' => 'REPLACE',
-                            'records' => [
-                                [
-                                    'content' => $record['content'],
-                                    'disabled' => $record['disabled'] ?? false
-                                ]
-                            ]
-                        ];
-                    }
-                    
-                    // Apply records via PowerDNS Admin API
-                    $records_result = $pdns_client->updateDomainRecords($canonical_domain_name, $rrsets);
-                    error_log("Applied template records to domain {$canonical_domain_name}: " . json_encode($records_result));
-                }
-                
-                return [
-                    'success' => true,
-                    'message' => 'Domain created from template successfully',
-                    'data' => [
-                        'domain' => $domain_result,
-                        'template' => $template,
-                        'applied_records' => $applied_records,
-                        'pdns_zone_id' => $pdns_zone_id
-                    ]
-                ];
-            }
-
-            error_log("Domain creation failed for: " . $domain_name . " with account_id: " . ($domain_data['account_id'] ?? $template['account_id']));
-            return ['success' => false, 'message' => 'Failed to create domain from template - domain creation returned false'];        } catch (Exception $e) {
+        } catch (Exception $e) {
             error_log("Failed to create domain from template: " . $e->getMessage());
             error_log("Stack trace: " . $e->getTraceAsString());
             return ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
