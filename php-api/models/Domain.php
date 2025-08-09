@@ -160,6 +160,16 @@ class Domain {
         return $stmt;
     }
 
+    public function readByAccountId($account_id) {
+        $query = "SELECT * FROM " . $this->table_name . " 
+                WHERE account_id = ?
+                ORDER BY created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $account_id);
+        $stmt->execute();
+        return $stmt;
+    }
+
     public function update() {
         $query = "UPDATE " . $this->table_name . "
                 SET type=:type, pdns_user_id=:pdns_user_id, pdns_zone_id=:pdns_zone_id,
