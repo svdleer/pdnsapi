@@ -201,13 +201,14 @@ function getDomainsByAccount($domain, $account_id) {
 function syncDomainsFromPDNS($domain, $pdns_client) {
     global $db;
     
-    // Get all domains from PowerDNS Admin
-    $pdns_response = $pdns_client->getAllDomains();
+    // Get all domains from PowerDNS Admin with full domain objects including account info
+    $pdns_response = $pdns_client->getAllDomainsWithAccounts();
     
     if($pdns_response['status_code'] == 200) {
         $pdns_domains = $pdns_response['data'];
         $synced_count = 0;
         $updated_count = 0;
+        $account_synced = 0;
         
         // Start a transaction to prevent race conditions
         $db->beginTransaction();
@@ -216,9 +217,20 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
             foreach($pdns_domains as $pdns_domain) {
                 $domain_name = $pdns_domain['name'] ?? '';
                 $pdns_zone_id = $pdns_domain['id'] ?? null;
+                $account_id = $pdns_domain['account_id'] ?? null;
+                $account_name = $pdns_domain['account']['name'] ?? null;
                 
                 if (empty($domain_name)) {
                     continue; // Skip domains without a name
+                }
+                
+                // Sync account if present and doesn't exist locally
+                $local_account_id = null;
+                if ($account_id && $account_name) {
+                    $local_account_id = syncAccountFromPDNSAdmin($account_id, $account_name, $pdns_domain['account'], $db);
+                    if ($local_account_id) {
+                        $account_synced++;
+                    }
                 }
                 
                 // Use a more robust check with SELECT FOR UPDATE to prevent race conditions
@@ -232,38 +244,47 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                 $domain_obj = new Domain($db);
                 
                 if ($existing_domain) {
-                    // Domain exists, update it
+                    // Domain exists, update it with full data from PowerDNS Admin
                     $domain_obj->id = $existing_domain['id'];
                     $domain_obj->readByName(); // Load full data
                     $domain_obj->pdns_zone_id = $pdns_zone_id;
                     $domain_obj->name = $domain_name;
-                    // Note: PowerDNS Admin API /pdnsadmin/zones only provides id and name
-                    // Other fields like account, type, kind etc. are not available
-                    // so we don't update them here to preserve existing data
+                    $domain_obj->account_id = $local_account_id; // Link to local account
+                    
+                    // Update additional fields if available from PowerDNS Admin
+                    if (isset($pdns_domain['type'])) {
+                        $domain_obj->type = $pdns_domain['type'];
+                    }
+                    if (isset($pdns_domain['kind'])) {
+                        $domain_obj->kind = $pdns_domain['kind'];
+                    }
+                    if (isset($pdns_domain['dnssec'])) {
+                        $domain_obj->dnssec = $pdns_domain['dnssec'];
+                    }
                     
                     try {
                         if ($domain_obj->updateBasic()) {
                             $updated_count++;
-                            error_log("Updated existing domain: {$domain_name} (zone_id: {$pdns_zone_id})");
+                            error_log("Updated existing domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_name})");
                         }
                     } catch (Exception $e) {
                         error_log("Failed to update domain {$domain_name}: " . $e->getMessage());
                     }
                 } else {
-                    // Domain doesn't exist, create it with minimal data
+                    // Domain doesn't exist, create it with full data from PowerDNS Admin
                     $domain_obj->name = $domain_name;
-                    $domain_obj->type = 'Zone'; // Default type
+                    $domain_obj->type = $pdns_domain['type'] ?? 'Zone';
                     $domain_obj->pdns_zone_id = $pdns_zone_id;
-                    $domain_obj->kind = 'Master'; // Default kind
-                    $domain_obj->masters = '';
-                    $domain_obj->dnssec = false;
-                    $domain_obj->account = ''; // No account info available from API
-                    $domain_obj->account_id = null; // No user linking available
+                    $domain_obj->kind = $pdns_domain['kind'] ?? 'Master';
+                    $domain_obj->masters = $pdns_domain['masters'] ?? '';
+                    $domain_obj->dnssec = $pdns_domain['dnssec'] ?? false;
+                    $domain_obj->account = $account_name ?? '';
+                    $domain_obj->account_id = $local_account_id; // Link to local account
                     
                     try {
                         if ($domain_obj->create()) {
                             $synced_count++;
-                            error_log("Created new domain: {$domain_name} (zone_id: {$pdns_zone_id})");
+                            error_log("Created new domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_name})");
                         }
                     } catch (Exception $e) {
                         error_log("Failed to create domain {$domain_name}: " . $e->getMessage());
@@ -274,10 +295,11 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
             // Commit the transaction
             $db->commit();
             
-            $message = "Sync completed: {$synced_count} domains added, {$updated_count} domains updated";
+            $message = "Sync completed: {$synced_count} domains added, {$updated_count} domains updated, {$account_synced} accounts synced";
             sendResponse(200, array(
                 'synced' => $synced_count,
                 'updated' => $updated_count,
+                'accounts_synced' => $account_synced,
                 'total_processed' => count($pdns_domains)
             ), $message);
             
@@ -290,6 +312,78 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
     } else {
         $error_msg = isset($pdns_response['data']['message']) ? $pdns_response['data']['message'] : 'Unknown error';
         sendError(500, "Failed to fetch domains from PowerDNS Admin: " . $error_msg);
+    }
+}
+
+/**
+ * Sync account from PowerDNS Admin to local database
+ * Returns local account ID if successful, null otherwise
+ */
+function syncAccountFromPDNSAdmin($pdns_account_id, $account_name, $account_data, $db) {
+    // Check if account already exists locally
+    $check_query = "SELECT id FROM accounts WHERE pdns_account_id = ? OR username = ?";
+    $check_stmt = $db->prepare($check_query);
+    $check_stmt->bindParam(1, $pdns_account_id);
+    $check_stmt->bindParam(2, $account_name);
+    $check_stmt->execute();
+    $existing_account = $check_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($existing_account) {
+        // Account exists, update it if needed
+        $account = new Account($db);
+        $account->id = $existing_account['id'];
+        $account->readOne();
+        
+        // Update fields from PowerDNS Admin if different
+        $needs_update = false;
+        if ($account->pdns_account_id != $pdns_account_id) {
+            $account->pdns_account_id = $pdns_account_id;
+            $needs_update = true;
+        }
+        if ($account->username != $account_name) {
+            $account->username = $account_name;
+            $needs_update = true;
+        }
+        
+        // Update additional fields if available
+        if (isset($account_data['description']) && $account->firstname != $account_data['description']) {
+            $account->firstname = $account_data['description'];
+            $needs_update = true;
+        }
+        if (isset($account_data['mail']) && $account->email != $account_data['mail']) {
+            $account->email = $account_data['mail'];
+            $needs_update = true;
+        }
+        
+        if ($needs_update) {
+            try {
+                $account->update();
+                error_log("Updated existing account: {$account_name} (pdns_id: {$pdns_account_id})");
+            } catch (Exception $e) {
+                error_log("Failed to update account {$account_name}: " . $e->getMessage());
+            }
+        }
+        
+        return $existing_account['id'];
+    } else {
+        // Account doesn't exist, create it
+        $account = new Account($db);
+        $account->username = $account_name;
+        $account->pdns_account_id = $pdns_account_id;
+        $account->firstname = $account_data['description'] ?? '';
+        $account->email = $account_data['mail'] ?? '';
+        $account->role_id = 3; // Default User role
+        
+        try {
+            if ($account->create()) {
+                error_log("Created new account: {$account_name} (pdns_id: {$pdns_account_id})");
+                return $account->id;
+            }
+        } catch (Exception $e) {
+            error_log("Failed to create account {$account_name}: " . $e->getMessage());
+        }
+        
+        return null;
     }
 }
                 

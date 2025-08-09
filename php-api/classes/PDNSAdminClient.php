@@ -101,6 +101,12 @@ class PDNSAdminClient {
         return $this->makeRequest('/pdnsadmin/zones');
     }
 
+    public function getAllDomainsWithAccounts() {
+        // Use the PowerDNS Admin API endpoint that returns full domain objects with account relationships
+        // This endpoint should return domains with their associated account information
+        return $this->makeRequest('/pdnsadmin/zones');
+    }
+
     public function createDomain($zone_data) {
         return $this->makeRequest('/pdnsadmin/zones', 'POST', $zone_data);
     }
@@ -332,6 +338,27 @@ class PDNSAdminClient {
 
     public function deleteApiKey($apikey_id) {
         return $this->makeRequest("/pdnsadmin/apikeys/{$apikey_id}", 'DELETE');
+    }
+
+    // Account operations
+    public function getAllAccounts() {
+        return $this->makeRequest('/pdnsadmin/accounts');
+    }
+
+    public function getAccountByName($account_name) {
+        return $this->makeRequest("/pdnsadmin/accounts/{$account_name}");
+    }
+
+    public function createAccount($account_data) {
+        return $this->makeRequest('/pdnsadmin/accounts', 'POST', $account_data);
+    }
+
+    public function updateAccount($account_id, $account_data) {
+        return $this->makeRequest("/pdnsadmin/accounts/{$account_id}", 'PUT', $account_data);
+    }
+
+    public function deleteAccount($account_id) {
+        return $this->makeRequest("/pdnsadmin/accounts/{$account_id}", 'DELETE');
     }
 
     /**
