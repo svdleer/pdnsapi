@@ -3,7 +3,7 @@
 $base_path = realpath(__DIR__ . '/..');
 
 require_once $base_path . '/config/config.php';
-require_once $base_path . '/models/PowerDNSAdminTemplate.php';
+require_once $base_path . '/models/Template.php';
 
 // CRITICAL: Enforce authentication for direct API file access
 enforceHTTPS();
@@ -13,9 +13,9 @@ requireApiKey(); // This will exit with 401/403 if auth fails
 // Log successful authenticated request
 logApiRequest('templates', $_SERVER['REQUEST_METHOD'], 200);
 
-// Initialize PowerDNS Admin Template model (uses PowerDNS Admin's existing template tables)
-// PowerDNS Admin IS the source of truth for templates
-$template_model = new PowerDNSAdminTemplate();
+// Initialize Template model (local database implementation)
+// Since PowerDNS Admin API doesn't support templates, we use our local implementation
+$template_model = new Template();
 
 // Get the HTTP method
 $request_method = $_SERVER["REQUEST_METHOD"];
@@ -44,16 +44,24 @@ switch($request_method) {
         if ($action === 'create-domain' && $template_id) {
             createDomainFromTemplate($template_model, $template_id, $json_data);
         } else {
-            sendError(400, "Templates should be managed through PowerDNS Admin web interface. Use POST /templates/{id}/create-domain to create domains from templates.");
+            createTemplate($template_model, $json_data);
         }
         break;
         
     case 'PUT':
-        sendError(400, "Templates should be managed through PowerDNS Admin web interface. This API provides read-only access to PowerDNS Admin templates.");
+        if ($template_id) {
+            updateTemplate($template_model, $template_id, $json_data);
+        } else {
+            sendError(400, "Template ID required for update");
+        }
         break;
         
     case 'DELETE':
-        sendError(400, "Templates should be managed through PowerDNS Admin web interface. This API provides read-only access to PowerDNS Admin templates.");
+        if ($template_id) {
+            deleteTemplate($template_model, $template_id);
+        } else {
+            sendError(400, "Template ID required for deletion");
+        }
         break;
         
     default:
@@ -85,6 +93,46 @@ function getTemplate($template_model, $template_id) {
     }
 }
 
+function createTemplate($template_model, $data) {
+    if (!$data || !isset($data['name']) || !isset($data['records'])) {
+        sendError(400, "Template name and records are required");
+        return;
+    }
+    
+    $template = $template_model->createTemplate($data);
+    
+    if ($template !== false) {
+        sendResponse(201, $template, "Template created successfully");
+    } else {
+        sendError(500, "Failed to create template");
+    }
+}
+
+function updateTemplate($template_model, $template_id, $data) {
+    if (!$data) {
+        sendError(400, "Update data is required");
+        return;
+    }
+    
+    $template = $template_model->updateTemplate($template_id, $data);
+    
+    if ($template !== false) {
+        sendResponse(200, $template, "Template updated successfully");
+    } else {
+        sendError(404, "Template not found or update failed");
+    }
+}
+
+function deleteTemplate($template_model, $template_id) {
+    $result = $template_model->deleteTemplate($template_id);
+    
+    if ($result) {
+        sendResponse(200, null, "Template deleted successfully");
+    } else {
+        sendError(404, "Template not found or delete failed");
+    }
+}
+
 function createDomainFromTemplate($template_model, $template_id, $data) {
     if (!$data || !isset($data['name'])) {
         sendError(400, "Domain name is required");
@@ -96,7 +144,7 @@ function createDomainFromTemplate($template_model, $template_id, $data) {
     if ($result && $result['success']) {
         sendResponse(201, $result['data'], $result['message']);
     } else {
-        $error_msg = $result['message'] ?? 'Failed to create domain from PowerDNS Admin template';
+        $error_msg = $result['message'] ?? 'Failed to create domain from template';
         sendError(500, $error_msg);
     }
 }
