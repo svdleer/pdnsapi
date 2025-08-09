@@ -117,11 +117,9 @@ function listAccountDomains($db) {
     
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $domain_item = array(
-            "id" => $row['id'],
+            "id" => $row['id'], // Our internal domain ID
             "name" => $row['name'],
-            "type" => $row['type'],
-            "kind" => $row['kind'],
-            "dnssec" => (bool)$row['dnssec'],
+            "pdns_zone_id" => $row['pdns_zone_id'], // PowerDNS Admin zone ID
             "created_at" => $row['created_at'],
             "updated_at" => $row['updated_at']
         );
