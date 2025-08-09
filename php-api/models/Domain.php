@@ -20,6 +20,8 @@ class Domain {
     public $masters;
     public $dnssec;
     public $account; // PowerDNS account field
+    public $account_id; // Local account ID
+    public $account_name; // Account name from accounts table
     public $created_at;
     public $updated_at;
 
@@ -94,8 +96,10 @@ class Domain {
     }
 
     public function read() {
-        $query = "SELECT * FROM " . $this->table_name . " 
-                ORDER BY created_at DESC";
+        $query = "SELECT d.*, a.username as account_name 
+                FROM " . $this->table_name . " d
+                LEFT JOIN accounts a ON d.account_id = a.id
+                ORDER BY d.created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
@@ -126,7 +130,10 @@ class Domain {
     }
 
     public function readByName() {
-        $query = "SELECT * FROM " . $this->table_name . " WHERE name = ? LIMIT 0,1";
+        $query = "SELECT d.*, a.username as account_name 
+                FROM " . $this->table_name . " d
+                LEFT JOIN accounts a ON d.account_id = a.id
+                WHERE d.name = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->name);
         $stmt->execute();
@@ -143,6 +150,8 @@ class Domain {
             $this->masters = $row['masters'];
             $this->dnssec = $row['dnssec'];
             $this->account = $row['account'];
+            $this->account_id = $row['account_id']; // Add account_id property
+            $this->account_name = $row['account_name']; // Add account_name property
             $this->created_at = $row['created_at'];
             $this->updated_at = $row['updated_at'];
             return true;
@@ -161,9 +170,11 @@ class Domain {
     }
 
     public function readByAccountId($account_id) {
-        $query = "SELECT * FROM " . $this->table_name . " 
-                WHERE account_id = ?
-                ORDER BY created_at DESC";
+        $query = "SELECT d.*, a.username as account_name 
+                FROM " . $this->table_name . " d
+                LEFT JOIN accounts a ON d.account_id = a.id
+                WHERE d.account_id = ?
+                ORDER BY d.created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $account_id);
         $stmt->execute();

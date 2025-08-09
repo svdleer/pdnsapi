@@ -80,6 +80,18 @@ function removeDomainFromAccount($db) {
     
     $domain = new Domain($db);
     
+    // First, check if the domain is currently assigned to admin (account_id = 1)
+    // Admin domains cannot be unassigned
+    $domain->name = $data->domain_name;
+    if ($domain->readByName()) {
+        // Use strict comparison and explicit check for integer 1
+        if ($domain->account_id !== null && (int)$domain->account_id === 1) {
+            sendError(403, "Cannot remove domain from admin account (account_id: 1). Admin domains cannot be unassigned.");
+        }
+    } else {
+        sendError(404, "Domain not found");
+    }
+    
     // Remove domain from account
     if ($domain->removeFromAccount($data->domain_name)) {
         sendResponse(200, [
