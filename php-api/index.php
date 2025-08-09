@@ -34,84 +34,91 @@ if (strpos($path, $base_path) === 0) {
 requireApiKey();
 
 // Route to appropriate API endpoint
-switch($path) {
-    case 'accounts':
-    case 'api/accounts':
-        require_once 'api/accounts.php';
-        break;
-        
-    case 'domains':
-    case 'api/domains':
-        require_once 'api/domains.php';
-        break;
-        
-    case 'domain-account':
-    case 'api/domain-account':
-        require_once 'api/domain-account.php';
-        break;
-        
-    case 'templates':
-    case 'api/templates':
-        require_once 'api/templates.php';
-        break;
-        
-    case 'status':
-    case 'api/status':
-        require_once 'api/status.php';
-        break;
-        
-    case 'openapi':
-    case 'openapi.json':
-    case 'swagger.json':
-        // Serve OpenAPI JSON specification
-        header('Content-Type: application/json');
-        readfile('openapi.json');
-        break;
-        
-    case 'openapi.yaml':
-    case 'swagger.yaml':
-        // Serve OpenAPI YAML specification
-        header('Content-Type: application/yaml');
-        readfile('openapi.yaml');
-        break;
-        
-    case 'docs':
-    case 'swagger':
-    case 'swagger-ui':
-        // Serve Swagger UI (if you want to add it later)
-        serveSwaggerUI();
-        break;
-        
-    case '':
-    case 'index':
-        // Redirect to Swagger UI documentation page
-        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'];
-        $path = $_SERVER['REQUEST_URI'];
-        
-        // Build redirect URL to docs
-        $base_url = $protocol . '://' . $host;
-        $current_path = parse_url($path, PHP_URL_PATH);
-        $current_path = rtrim($current_path, '/');
-        
-        // If we're in a subdirectory like /php-api, preserve it
-        if (strpos($current_path, '/php-api') !== false) {
-            $redirect_url = $base_url . $current_path . '/docs';
-        } else {
-            $redirect_url = $base_url . $current_path . '/docs';
-        }
-        
-        header('Location: ' . $redirect_url, true, 302);
-        exit;
-        break;
-        
-    default:
-        sendError(404, "Endpoint not found", [
-            'available_endpoints' => [
-                '/accounts', '/domains', '/domain-account', '/templates', '/status', '/openapi', '/docs', '/'
-            ]
-        ]);
-        break;
+if (preg_match('/^(api\/)?templates\/(\d+)\/create-domain$/', $path, $matches)) {
+    // Handle /templates/{id}/create-domain
+    $_GET['id'] = $matches[2];
+    $_GET['action'] = 'create-domain';
+    require_once 'api/templates.php';
+} else {
+    switch($path) {
+        case 'accounts':
+        case 'api/accounts':
+            require_once 'api/accounts.php';
+            break;
+            
+        case 'domains':
+        case 'api/domains':
+            require_once 'api/domains.php';
+            break;
+            
+        case 'domain-account':
+        case 'api/domain-account':
+            require_once 'api/domain-account.php';
+            break;
+            
+        case 'templates':
+        case 'api/templates':
+            require_once 'api/templates.php';
+            break;
+            
+        case 'status':
+        case 'api/status':
+            require_once 'api/status.php';
+            break;
+            
+        case 'openapi':
+        case 'openapi.json':
+        case 'swagger.json':
+            // Serve OpenAPI JSON specification
+            header('Content-Type: application/json');
+            readfile('openapi.json');
+            break;
+            
+        case 'openapi.yaml':
+        case 'swagger.yaml':
+            // Serve OpenAPI YAML specification
+            header('Content-Type: application/yaml');
+            readfile('openapi.yaml');
+            break;
+            
+        case 'docs':
+        case 'swagger':
+        case 'swagger-ui':
+            // Serve Swagger UI (if you want to add it later)
+            serveSwaggerUI();
+            break;
+            
+        case '':
+        case 'index':
+            // Redirect to Swagger UI documentation page
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'];
+            $path = $_SERVER['REQUEST_URI'];
+            
+            // Build redirect URL to docs
+            $base_url = $protocol . '://' . $host;
+            $current_path = parse_url($path, PHP_URL_PATH);
+            $current_path = rtrim($current_path, '/');
+            
+            // If we're in a subdirectory like /php-api, preserve it
+            if (strpos($current_path, '/php-api') !== false) {
+                $redirect_url = $base_url . $current_path . '/docs';
+            } else {
+                $redirect_url = $base_url . $current_path . '/docs';
+            }
+            
+            header('Location: ' . $redirect_url, true, 302);
+            exit;
+            break;
+            
+        default:
+            sendError(404, "Endpoint not found", [
+                'available_endpoints' => [
+                    '/accounts', '/domains', '/domain-account', '/templates', '/templates/{id}/create-domain', '/status', '/openapi', '/docs', '/'
+                ]
+            ]);
+            break;
+    }
 }
 
 function serveSwaggerUI() {
