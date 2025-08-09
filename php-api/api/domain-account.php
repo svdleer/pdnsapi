@@ -120,6 +120,7 @@ function listAccountDomains($db) {
     
     // Get domains for account
     // Admin (account_id = 1) can see ALL domains, regardless of ownership
+    // But each domain should show its actual account assignment
     if ($data->account_id == 1) {
         $stmt = $domain->read(); // Get all domains for admin
     } else {
@@ -132,6 +133,8 @@ function listAccountDomains($db) {
             "id" => $row['id'], // Our internal domain ID
             "name" => $row['name'],
             "pdns_zone_id" => $row['pdns_zone_id'], // PowerDNS Admin zone ID
+            "account_id" => $row['account_id'], // Include account_id
+            "account_name" => $row['account_name'], // Include account_name (from JOIN)
             "created_at" => $row['created_at'],
             "updated_at" => $row['updated_at']
         );
