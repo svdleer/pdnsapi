@@ -249,20 +249,20 @@ class Template {
             global $pdns_config;
             $pdns_client = new PDNSAdminClient($pdns_config);
             
-            // Create the domain in PowerDNS Admin
+            // Create the domain in PowerDNS Admin (which forwards to PowerDNS Server)
+            // PowerDNS Admin expects the same format as PowerDNS Server API
             $api_domain_data = [
                 'name' => $canonical_domain_name, // Use canonical name for API
-                'kind' => $domain_data['kind'] ?? 'Native',
+                'kind' => $domain_data['kind'] ?? 'Native', // Native is correct for PowerDNS Admin
                 'nameservers' => [], // Will use default nameservers
             ];
             
             $api_result = $pdns_client->createDomain($api_domain_data);
             error_log("PowerDNS Admin API create domain result: " . json_encode($api_result));
             
-            // Check if the API call was successful (PowerDNS Admin returns different response formats)
+            // Check if the API call was successful (PowerDNS Admin returns 201 for successful creation)
             if (!$api_result || 
-                (isset($api_result['status_code']) && $api_result['status_code'] !== 200 && $api_result['status_code'] !== 201) ||
-                (!isset($api_result['id']) && !isset($api_result['data']['id']))) {
+                (isset($api_result['status_code']) && $api_result['status_code'] !== 201)) {
                 
                 $error_msg = 'Failed to create domain in PowerDNS Admin API';
                 if (isset($api_result['raw_response'])) {
