@@ -1271,39 +1271,60 @@ components:
         Authorization: Basic NDZiM2Q3OGM1NTdjZDY2YTA0N2EzODg5NzkxNGQyMDNhYjVjMzU5NzE5MTYxZTgzNmVjY2U1NTA4ZTU3YjFhOTo=
         ```
         
-        **🛡️ GLOBAL IP ALLOWLIST - KEEP IT SIMPLE:**
+        **🛡️ GLOBAL IP ALLOWLIST - DATABASE-DRIVEN & DYNAMIC:**
         - Single allowlist applies to ALL API endpoints uniformly
+        - **Stored in MySQL database** for persistence and easy management
         - No per-endpoint complexity - either you're allowed or you're not
         - Both IPv4 and IPv6 addresses supported with CIDR notation
-        - Easy to manage and audit
+        - **Enable/disable IPs** without deletion for temporary access control
+        - Easy to manage via CLI tool and audit via database logs
         
-        **Simple Configuration:**
-        ```php
-        // In config/config.php  
-        $config['security'] = [
-            'ip_validation_enabled' => true,
-            'allowed_ips' => [
-                '127.0.0.1',              // localhost
-                '192.168.1.0/24',         // office network
-                '203.0.113.25',           // admin's home IP
-                '10.0.0.100'              // backup admin IP
-            ]
-        ];
+        **Dynamic Management via CLI:**
+        ```bash
+        # List all allowed IPs
+        php manage-ips-clean.php list
+        
+        # Add IPs with descriptions
+        php manage-ips-clean.php add "203.0.113.25" "Admin home IP"
+        php manage-ips-clean.php add "192.168.1.0/24" "Office network"
+        php manage-ips-clean.php add "2001:db8::/32" "IPv6 network"
+        
+        # Temporarily disable/enable IPs
+        php manage-ips-clean.php disable "203.0.113.25"
+        php manage-ips-clean.php enable "203.0.113.25"
+        
+        # Remove IPs permanently
+        php manage-ips-clean.php remove "203.0.113.25"
+        
+        # Test IP access
+        php manage-ips-clean.php test "192.168.1.100"
+        ```
+        
+        **Database Storage:**
+        ```sql
+        -- IPs stored in ip_allowlist table
+        SELECT ip_address, description, enabled 
+        FROM ip_allowlist 
+        WHERE enabled = 1;
         ```
         
         **Security Benefits:**
         - **Defense in depth:** Both API key AND IP must be valid
-        - **Zero complexity:** Same rules apply everywhere
-        - **Easy maintenance:** One list to manage
+        - **Zero complexity:** Same rules apply everywhere  
+        - **Dynamic management:** Add/remove IPs without restarts
+        - **Database persistence:** Changes survive server restarts
+        - **Temporary control:** Enable/disable without deletion
         - **Complete protection:** API inaccessible from non-allowed IPs
+        - **Performance:** In-memory caching with database fallback
         
         **Security Notes:**
         - **Dual authentication:** API key AND IP allowlist required
         - One API key for all administrative operations  
         - Full access to accounts, domains, templates, and DNS records
-        - IP allowlist prevents unauthorized access even with valid key
+        - **Database-driven allowlist** prevents unauthorized access even with valid key
         - Should be rotated regularly and kept secure
-        - Update IP allowlist when network infrastructure changes
+        - **Update allowlist dynamically** via CLI tool when network changes
+        - **Audit trail:** All IP changes tracked in database with timestamps
       
   responses:
     BadRequest:
