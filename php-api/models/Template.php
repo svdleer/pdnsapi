@@ -276,18 +276,46 @@ class Template {
             $pdns_zone_id = $api_result['id'] ?? $api_result['data']['id'] ?? null;
             
             // Domain created successfully in PowerDNS Admin
-            // Skip local database creation and rely on sync instead
-            return [
-                'success' => true,
-                'message' => 'Domain created from template successfully in PowerDNS Admin',
-                'data' => [
-                    'domain_name' => $canonical_domain_name,
-                    'template' => $template,
-                    'applied_records' => $applied_records,
-                    'pdns_zone_id' => $pdns_zone_id,
-                    'powerdns_result' => $api_result
-                ]
-            ];
+            // Now trigger silent sync to pull the domain into our local database
+            try {
+                require_once __DIR__ . '/../api/domains.php';
+                require_once __DIR__ . '/../models/Domain.php';
+                
+                // Create domain and client instances for sync
+                $domain_obj = new Domain($this->db);
+                
+                // Call silent sync to pull the newly created domain
+                $sync_result = $this->triggerSilentSync($domain_obj, $pdns_client);
+                
+                return [
+                    'success' => true,
+                    'message' => 'Domain created from PowerDNS Admin template successfully',
+                    'data' => [
+                        'domain_name' => $canonical_domain_name,
+                        'template' => $template,
+                        'applied_records' => $applied_records,
+                        'pdns_zone_id' => $pdns_zone_id,
+                        'powerdns_result' => $api_result,
+                        'sync_result' => $sync_result
+                    ]
+                ];
+            } catch (Exception $sync_error) {
+                // Domain was created successfully, sync just failed
+                error_log("Domain created but sync failed: " . $sync_error->getMessage());
+                
+                return [
+                    'success' => true,
+                    'message' => 'Domain created from PowerDNS Admin template successfully (sync pending)',
+                    'data' => [
+                        'domain_name' => $canonical_domain_name,
+                        'template' => $template,
+                        'applied_records' => $applied_records,
+                        'pdns_zone_id' => $pdns_zone_id,
+                        'powerdns_result' => $api_result,
+                        'sync_note' => 'Sync will occur on next API call'
+                    ]
+                ];
+            }
             
         } catch (Exception $e) {
             error_log("Failed to create domain from template: " . $e->getMessage());
@@ -308,6 +336,74 @@ class Template {
         ];
         
         return str_replace(array_keys($replacements), array_values($replacements), $value);
+    }
+
+    /**
+     * Trigger silent sync to pull newly created domain into local database
+     */
+    private function triggerSilentSync($domain_obj, $pdns_client) {
+        try {
+            // Get all domains from PowerDNS Admin  
+            $pdns_response = $pdns_client->getAllDomainsWithAccounts();
+            
+            if($pdns_response['status_code'] != 200) {
+                throw new Exception("Failed to fetch domains for sync: " . ($pdns_response['raw_response'] ?? 'Unknown error'));
+            }
+            
+            $pdns_domains = $pdns_response['data'];
+            $synced_count = 0;
+            
+            // Start a transaction
+            $this->db->beginTransaction();
+            
+            foreach($pdns_domains as $pdns_domain) {
+                $domain_name = $pdns_domain['name'] ?? '';
+                $pdns_zone_id = $pdns_domain['id'] ?? null;
+                $account_id = $pdns_domain['account_id'] ?? null;
+                
+                if (empty($domain_name)) {
+                    continue;
+                }
+                
+                // Check if domain exists in local database
+                $stmt = $this->db->prepare("SELECT id FROM domains WHERE name = ?");
+                $stmt->execute([$domain_name]);
+                $local_domain = $stmt->fetch();
+                
+                if (!$local_domain) {
+                    // Domain doesn't exist locally, add it
+                    $default_account_id = $account_id ?? 1; // Default to admin account if no account
+                    
+                    $insert_stmt = $this->db->prepare("
+                        INSERT INTO domains (name, powerdns_zone_id, account_id, created_at, updated_at) 
+                        VALUES (?, ?, ?, NOW(), NOW())
+                    ");
+                    
+                    if ($insert_stmt->execute([$domain_name, $pdns_zone_id, $default_account_id])) {
+                        $synced_count++;
+                    }
+                }
+            }
+            
+            $this->db->commit();
+            
+            return [
+                'success' => true,
+                'synced_domains' => $synced_count,
+                'message' => $synced_count > 0 ? "Synced $synced_count new domains" : "No new domains to sync"
+            ];
+            
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            
+            error_log("Silent sync failed: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
     }
 
     /**
