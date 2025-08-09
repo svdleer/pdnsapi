@@ -40,7 +40,7 @@ class Domain {
         $stmt->bindParam(":name", $this->name);
         $stmt->bindParam(":type", $this->type);
         $stmt->bindParam(":pdns_user_id", $this->pdns_user_id);
-        $stmt->bindParam(":pdns_zone_id", $this->pdns_zone_id);
+        $stmt->bindParam(":pdns_zone_id", $this->pdns_zone_id);  
         $stmt->bindParam(":kind", $this->kind);
         $stmt->bindParam(":masters", $this->masters);
         $stmt->bindParam(":dnssec", $this->dnssec);
