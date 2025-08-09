@@ -33,7 +33,7 @@ class Domain {
         $query = "INSERT INTO " . $this->table_name . "
                 SET name=:name, type=:type, pdns_user_id=:pdns_user_id, 
                     pdns_zone_id=:pdns_zone_id, kind=:kind, masters=:masters, 
-                    dnssec=:dnssec, account=:account, account_id=:account_id, created_at=NOW()";
+                    dnssec=:dnssec, account=:account, created_at=NOW()";
 
         $stmt = $this->conn->prepare($query);
 
@@ -45,7 +45,6 @@ class Domain {
         $stmt->bindParam(":masters", $this->masters);
         $stmt->bindParam(":dnssec", $this->dnssec);
         $stmt->bindParam(":account", $this->account);
-        $stmt->bindParam(":account_id", $this->account_id);
 
         return $stmt->execute();
     }
@@ -58,13 +57,12 @@ class Domain {
             // Set properties from data array
             $this->name = $domain_data['name'];
             $this->type = $domain_data['type'] ?? 'Zone';
-            $this->pdns_user_id = $domain_data['pdns_user_id'] ?? null;
+            $this->pdns_user_id = $domain_data['pdns_user_id'] ?? $domain_data['account_id'] ?? null; // Map account_id to pdns_user_id
             $this->pdns_zone_id = $domain_data['pdns_zone_id'] ?? null;
             $this->kind = $domain_data['kind'] ?? 'Master';
             $this->masters = $domain_data['masters'] ?? '';
             $this->dnssec = $domain_data['dnssec'] ?? 0;
             $this->account = $domain_data['account'] ?? '';
-            $this->account_id = $domain_data['account_id'] ?? null; // Add account_id support
 
             if ($this->create()) {
                 $this->id = $this->conn->lastInsertId();

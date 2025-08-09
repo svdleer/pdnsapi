@@ -249,7 +249,7 @@ class Template {
                 'name' => $domain_name,
                 'type' => $domain_data['type'] ?? 'Zone',
                 'kind' => $domain_data['kind'] ?? 'Master',
-                'account_id' => $domain_data['account_id'] ?? $template['account_id'],
+                'pdns_user_id' => $domain_data['account_id'] ?? $template['account_id'], // Use account_id as pdns_user_id
                 'records' => $applied_records  // Template records applied during creation only
             ]);
             
