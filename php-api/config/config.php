@@ -250,7 +250,19 @@ function ipInRange($ip, $range) {
     }
     
     // Handle CIDR notation
-    list($subnet, $mask) = explode('/', $range);
+    $parts = explode('/', $range);
+    if (count($parts) !== 2) {
+        error_log("Invalid CIDR notation: $range");
+        return false;
+    }
+    
+    list($subnet, $mask) = $parts;
+    
+    // Validate that mask is numeric
+    if (!is_numeric($mask)) {
+        error_log("Invalid CIDR mask (not numeric): $mask in range $range");
+        return false;
+    }
     
     // IPv6 support
     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
@@ -269,8 +281,26 @@ function ipInRange($ip, $range) {
  * Check if IPv4 address is in CIDR range
  */
 function ipv4InRange($ip, $subnet, $mask) {
+    // Validate mask range for IPv4 (0-32)
+    $mask = (int)$mask;
+    if ($mask < 0 || $mask > 32) {
+        error_log("Invalid IPv4 CIDR mask: $mask (must be 0-32)");
+        return false;
+    }
+    
     $ip_long = ip2long($ip);
     $subnet_long = ip2long($subnet);
+    
+    // Handle edge cases
+    if ($ip_long === false || $subnet_long === false) {
+        return false;
+    }
+    
+    // Special case for /0 (all IPs)
+    if ($mask === 0) {
+        return true;
+    }
+    
     $mask_long = -1 << (32 - $mask);
     
     return ($ip_long & $mask_long) === ($subnet_long & $mask_long);
@@ -280,10 +310,22 @@ function ipv4InRange($ip, $subnet, $mask) {
  * Check if IPv6 address is in CIDR range
  */
 function ipv6InRange($ip, $subnet, $mask) {
+    // Validate mask range for IPv6 (0-128)
+    $mask = (int)$mask;
+    if ($mask < 0 || $mask > 128) {
+        error_log("Invalid IPv6 CIDR mask: $mask (must be 0-128)");
+        return false;
+    }
+    
     $ip_bin = inet_pton($ip);
     $subnet_bin = inet_pton($subnet);
     
     if (!$ip_bin || !$subnet_bin) return false;
+    
+    // Special case for /0 (all IPs)
+    if ($mask === 0) {
+        return true;
+    }
     
     $mask_bytes = intval($mask / 8);
     $mask_bits = $mask % 8;
