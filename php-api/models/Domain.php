@@ -30,11 +30,6 @@ class Domain {
     }
 
     public function create() {
-        // Ensure canonical domain name (with trailing dot)
-        if (!empty($this->name) && substr($this->name, -1) !== '.') {
-            $this->name = $this->name . '.';
-        }
-        
         $query = "INSERT INTO " . $this->table_name . "
                 SET name=:name, type=:type, pdns_user_id=:pdns_user_id, 
                     pdns_zone_id=:pdns_zone_id, kind=:kind, masters=:masters, 
