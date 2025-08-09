@@ -79,7 +79,7 @@ class PowerDNSAdminTemplate {
     public function getTemplateRecords($template_id) {
         try {
             $sql = "
-                SELECT name, type, content, ttl, prio as priority, 
+                SELECT name, type, data as content, ttl, NULL as priority, 
                        status as disabled, comment
                 FROM domain_template_record 
                 WHERE template_id = ? 
