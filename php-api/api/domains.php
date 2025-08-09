@@ -165,7 +165,14 @@ function getDomain($domain, $domain_id) {
 }
 
 function getDomainsByAccount($domain, $account_id) {
-    $stmt = $domain->readByAccountId($account_id);
+    // Admin (account_id = 1) can see ALL domains, regardless of ownership
+    if ($account_id == 1) {
+        error_log("Admin user requested domains - returning ALL domains");
+        $stmt = $domain->read(); // Get all domains
+    } else {
+        $stmt = $domain->readByAccountId($account_id);
+    }
+    
     $num = $stmt->rowCount();
     
     if($num > 0) {

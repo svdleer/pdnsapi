@@ -107,7 +107,12 @@ function listAccountDomains($db) {
     }
     
     // Get domains for account
-    $stmt = $domain->readByAccountId($data->account_id);
+    // Admin (account_id = 1) can see ALL domains, regardless of ownership
+    if ($data->account_id == 1) {
+        $stmt = $domain->read(); // Get all domains for admin
+    } else {
+        $stmt = $domain->readByAccountId($data->account_id);
+    }
     $domains_arr = array();
     
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -123,13 +128,17 @@ function listAccountDomains($db) {
         array_push($domains_arr, $domain_item);
     }
     
+    $response_message = $data->account_id == 1 
+        ? "All domains retrieved for admin user" 
+        : "Account domains retrieved successfully";
+        
     sendResponse(200, [
         'account' => [
             'id' => $account->id,
-            'name' => $account->name
+            'name' => $account->username ?? $account->name
         ],
         'domains' => $domains_arr,
         'domain_count' => count($domains_arr)
-    ], "Account domains retrieved successfully");
+    ], $response_message);
 }
 ?>
