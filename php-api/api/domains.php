@@ -233,6 +233,12 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                     }
                 }
                 
+                // If no account from PowerDNS Admin, assign to admin account (ID: 1)
+                if (!$local_account_id) {
+                    $local_account_id = 1; // Default to admin account
+                    error_log("Domain {$domain_name}: No PowerDNS Admin account found, assigning to admin (ID: 1)");
+                }
+                
                 // Use a more robust check with SELECT FOR UPDATE to prevent race conditions
                 $check_query = "SELECT id FROM domains WHERE name = ? FOR UPDATE";
                 $check_stmt = $db->prepare($check_query);
@@ -265,7 +271,8 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                     try {
                         if ($domain_obj->updateBasic()) {
                             $updated_count++;
-                            error_log("Updated existing domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_name})");
+                            $account_info = $account_name ?: ($local_account_id == 1 ? "admin (default)" : "ID:{$local_account_id}");
+                            error_log("Updated existing domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_info})");
                         }
                     } catch (Exception $e) {
                         error_log("Failed to update domain {$domain_name}: " . $e->getMessage());
@@ -284,7 +291,8 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                     try {
                         if ($domain_obj->create()) {
                             $synced_count++;
-                            error_log("Created new domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_name})");
+                            $account_info = $account_name ?: ($local_account_id == 1 ? "admin (default)" : "ID:{$local_account_id}");
+                            error_log("Created new domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_info})");
                         }
                     } catch (Exception $e) {
                         error_log("Failed to create domain {$domain_name}: " . $e->getMessage());
@@ -295,7 +303,7 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
             // Commit the transaction
             $db->commit();
             
-            $message = "Sync completed: {$synced_count} domains added, {$updated_count} domains updated, {$account_synced} accounts synced";
+            $message = "Sync completed: {$synced_count} domains added, {$updated_count} domains updated, {$account_synced} accounts synced. Unassigned domains defaulted to admin account.";
             sendResponse(200, array(
                 'synced' => $synced_count,
                 'updated' => $updated_count,
