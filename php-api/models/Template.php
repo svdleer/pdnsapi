@@ -257,6 +257,7 @@ class Template {
                 'nameservers' => [], // Will use default nameservers
             ];
             
+            error_log("Sending to PowerDNS Admin API: " . json_encode($api_domain_data));
             $api_result = $pdns_client->createDomain($api_domain_data);
             error_log("PowerDNS Admin API create domain result: " . json_encode($api_result));
             
