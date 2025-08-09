@@ -225,6 +225,7 @@ class Template {
             }
             
             $domain_name = rtrim($domain_data['name'], '.');
+            $canonical_domain_name = $domain_name . '.'; // PowerDNS Admin API requires canonical names
             
             // Apply template records to domain
             $applied_records = [];
@@ -250,7 +251,7 @@ class Template {
             
             // Create the domain in PowerDNS Admin
             $api_domain_data = [
-                'name' => $domain_name,
+                'name' => $canonical_domain_name, // Use canonical name for API
                 'kind' => $domain_data['kind'] ?? 'Native',
                 'nameservers' => [], // Will use default nameservers
             ];
@@ -278,7 +279,7 @@ class Template {
             $domainModel = new Domain($this->db);
             
             $domain_result = $domainModel->createDomain([
-                'name' => $domain_name,
+                'name' => $canonical_domain_name, // Store canonical name in database
                 'type' => $domain_data['type'] ?? 'Native',
                 'kind' => $domain_data['kind'] ?? 'Native', 
                 'pdns_user_id' => $domain_data['account_id'] ?? $template['account_id'], // Use account_id as pdns_user_id
@@ -307,8 +308,8 @@ class Template {
                     }
                     
                     // Apply records via PowerDNS Admin API
-                    $records_result = $pdns_client->updateDomainRecords($domain_name, $rrsets);
-                    error_log("Applied template records to domain {$domain_name}: " . json_encode($records_result));
+                    $records_result = $pdns_client->updateDomainRecords($canonical_domain_name, $rrsets);
+                    error_log("Applied template records to domain {$canonical_domain_name}: " . json_encode($records_result));
                 }
                 
                 return [
