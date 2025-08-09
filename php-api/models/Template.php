@@ -264,12 +264,12 @@ class Template {
                     ]
                 ];
             }
-            
-            return ['success' => false, 'message' => 'Failed to create domain from template'];
-            
-        } catch (Exception $e) {
+
+            error_log("Domain creation failed for: " . $domain_name . " with account_id: " . ($domain_data['account_id'] ?? $template['account_id']));
+            return ['success' => false, 'message' => 'Failed to create domain from template - domain creation returned false'];        } catch (Exception $e) {
             error_log("Failed to create domain from template: " . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage()];
+            error_log("Stack trace: " . $e->getTraceAsString());
+            return ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
         }
     }
 
