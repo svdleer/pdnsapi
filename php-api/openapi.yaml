@@ -68,19 +68,16 @@ paths:
           schema:
             type: integer
           description: Filter by account ID (can combine with other filters for validation)
-          example: 14
         - name: username
           in: query
           schema:
             type: string
           description: Filter by username (can combine with ID for validation)
-          example: "admin"
         - name: email
           in: query
           schema:
             type: string
           description: Filter by email address (can combine with other filters)
-          example: "admin@example.com"
         - name: sync
           in: query
           schema:
@@ -100,7 +97,6 @@ paths:
                       $ref: '#/components/schemas/Account'
                   message:
                     type: string
-                    example: "Found user with ID 14 and username 'admin'"
               examples:
                 all_accounts:
                   summary: All accounts
@@ -126,7 +122,6 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Valid Admin API Key required"
         '404':
           description: No accounts found or AND validation failed
           content:
@@ -136,7 +131,6 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "User with ID 14 does not have username 'john'"
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -296,7 +290,6 @@ paths:
           schema:
             type: string
           description: Smart query (auto-detects ID/name/pattern/contains) - primary filter
-          example: "avant"
         - name: account_id
           in: query
           schema:
@@ -328,12 +321,10 @@ paths:
                         - $ref: '#/components/schemas/DomainDetails'
                   message:
                     type: string
-                    example: "Found 40 domains matching 'avant'"
                   query_type:
                     type: string
                     enum: ["all", "id", "name", "pattern", "contains", "account"]
                     description: The type of query that was executed
-                    example: "contains"
 
     post:
       summary: Advanced domain search
@@ -353,31 +344,24 @@ paths:
                 id:
                   type: integer
                   description: Domain ID for exact lookup
-                  example: 123
                 name:
                   type: string
                   description: Exact domain name
-                  example: "example.com"
                 pattern:
                   type: string
                   description: Pattern search (supports * wildcards)
-                  example: "*avant*"
                 contains:
                   type: string
                   description: Contains search (case-insensitive)
-                  example: "avant"
                 account_id:
                   type: integer
                   description: Filter by account ID
-                  example: 1
                 details:
                   type: boolean
                   description: Include full DNS records
-                  example: false
                 sync:
                   type: boolean
                   description: Sync from PowerDNS Admin first
-                  example: false
             examples:
               search_by_id:
                 summary: Get domain by ID
@@ -449,11 +433,9 @@ paths:
                 id:
                   type: integer
                   description: Domain ID (use this OR name, not both)
-                  example: 123
                 name:
                   type: string
                   description: Domain name (use this OR id, not both)
-                  example: "example.com"
                 account_id:
                   type: integer
                   nullable: true
@@ -510,12 +492,10 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Domain example.com updated successfully"
                   validation_warnings:
                     type: array
                     items:
                       type: string
-                    example: ["DNSSEC validation pending", "DNS propagation may take up to 24 hours"]
         '400':
           description: Bad Request - Invalid DNS records or validation failed
           content:
@@ -525,10 +505,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Invalid DNS record content for A record: '999.999.999.999'"
                   field:
                     type: string
-                    example: "rrsets[0].records[0].content"
         '401':
           description: Unauthorized - Valid Admin API Key required
         '403':
@@ -540,7 +518,6 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Access denied: Domain 'example.com' is not owned by your account"
         '404':
           description: Domain not found
         '422':
@@ -552,7 +529,6 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "DNS record name 'malicious.other-domain.com.' is outside zone 'example.com'"
                   validation_errors:
                     type: array
                     items:
@@ -594,11 +570,9 @@ paths:
                 id:
                   type: integer
                   description: Domain ID (use this OR name, not both)
-                  example: 123
                 name:
                   type: string
                   description: Domain name (use this OR id, not both)
-                  example: "example.com"
               anyOf:
                 - required: [id]
                 - required: [name]
@@ -621,7 +595,6 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Domain 'example.com' deleted successfully"
                   audit_log:
                     type: object
                     properties:
@@ -630,7 +603,6 @@ paths:
                         format: date-time
                       records_count:
                         type: integer
-                        example: 15
                         description: "Number of DNS records that were deleted"
         '400':
           description: Bad Request - Invalid domain identifier
@@ -645,7 +617,6 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Access denied: Cannot delete domain 'example.com' - not owned by your account"
         '404':
           description: Domain not found
         '409':
@@ -657,12 +628,10 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Cannot delete domain: 5 active subdomains depend on this zone"
                   dependencies:
                     type: array
                     items:
                       type: string
-                    example: ["sub1.example.com", "sub2.example.com"]
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -688,11 +657,9 @@ paths:
                 domain_name:
                   type: string
                   description: Domain name to add (include trailing dot)
-                  example: "example.com."
                 account_id:
                   type: integer
                   description: Account ID to assign domain to
-                  example: 1
             examples:
               add_domain_to_account:
                 summary: Add domain to account
@@ -727,7 +694,6 @@ paths:
           schema:
             type: integer
           description: Domain ID
-          example: 123
       responses:
         '200':
           description: Domain details
@@ -740,7 +706,6 @@ paths:
                     $ref: '#/components/schemas/Domain'
                   message:
                     type: string
-                    example: "Domain retrieved successfully"
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -766,7 +731,6 @@ paths:
           schema:
             type: integer
           description: Domain ID
-          example: 123
       requestBody:
         required: true
         content:
@@ -850,7 +814,6 @@ paths:
           schema:
             type: integer
           description: Domain ID
-          example: 123
         - name: force
           in: query
           required: false
@@ -914,7 +877,6 @@ paths:
                       $ref: '#/components/schemas/Template'
                   message:
                     type: string
-                    example: "Templates retrieved successfully"
         '401':
           description: Unauthorized - Valid Admin API Key required
           content:
@@ -1003,7 +965,6 @@ paths:
           schema:
             type: integer
           description: Template ID
-          example: 1
       responses:
         '200':
           description: Template details
@@ -1016,7 +977,6 @@ paths:
                     $ref: '#/components/schemas/Template'
                   message:
                     type: string
-                    example: "Template retrieved successfully"
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -1035,7 +995,6 @@ paths:
           schema:
             type: integer
           description: Template ID
-          example: 1
       requestBody:
         required: true
         content:
@@ -1070,7 +1029,6 @@ paths:
           schema:
             type: integer
           description: Template ID
-          example: 1
       responses:
         '200':
           description: Template deleted successfully
@@ -1099,7 +1057,6 @@ paths:
           schema:
             type: integer
           description: Template ID
-          example: 1
       requestBody:
         required: true
         content:
@@ -1111,15 +1068,12 @@ paths:
                 name:
                   type: string
                   description: Domain name to create
-                  example: "example.com"
                 account_id:
                   type: integer
                   description: Account ID to assign the domain to
-                  example: 1
                 description:
                   type: string
                   description: Optional description for the domain
-                  example: "Production domain for example.com"
       responses:
         '201':
           description: Domain created from template successfully
@@ -1132,7 +1086,6 @@ paths:
                     $ref: '#/components/schemas/Domain'
                   message:
                     type: string
-                    example: "Domain created from template successfully"
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -1362,7 +1315,6 @@ components:
             properties:
               error:
                 type: string
-                example: "Invalid input data provided"
     
     Unauthorized:
       description: Unauthorized - Authentication required  
@@ -1373,7 +1325,6 @@ components:
             properties:
               error:
                 type: string
-                example: "Valid Admin API Key required"
     
     Forbidden:
       description: |
@@ -1396,14 +1347,11 @@ components:
               client_ip:
                 type: string
                 description: "Client IP address (for IP blocking errors)"
-                example: "203.0.113.45"
               allowed_ips:
                 type: array
                 items:
                   type: string
                 description: "List of allowed IP ranges (for debugging)"
-                example: ["192.168.1.0/24", "10.0.0.100"]
-                example: "Access denied. Administrator privileges required."
     
     NotFound:
       description: Resource not found
@@ -1414,7 +1362,6 @@ components:
             properties:
               error:
                 type: string
-                example: "Requested resource was not found"
     
     Conflict:
       description: Conflict - Resource already exists
@@ -1425,7 +1372,6 @@ components:
             properties:
               error:
                 type: string
-                example: "Resource already exists with this identifier"
     
     TooManyRequests:
       description: Rate limit exceeded
@@ -1436,10 +1382,8 @@ components:
             properties:
               error:
                 type: string
-                example: "Rate limit exceeded. Please try again later."
               retry_after:
                 type: integer
-                example: 60
                 description: "Seconds until next request allowed"
     
     ServerError:
@@ -1451,7 +1395,6 @@ components:
             properties:
               error:
                 type: string
-                example: "An internal server error occurred"
 
   schemas:
     Account:
@@ -1460,44 +1403,35 @@ components:
         id:
           type: integer
           description: Account ID
-          example: 1
         username:
           type: string
           description: Username (unique)
-          example: "testuser"
         firstname:
           type: string
           description: First name
-          example: "John"
         lastname:
           type: string
           description: Last name
-          example: "Doe"
         email:
           type: string
           format: email
           description: Email address
-          example: "john@example.com"
         role_id:
           type: integer
           description: Role ID (2 = User, 1 = Admin)
-          example: 2
         ip_addresses:
           type: array
           items:
             type: string
             format: ipv4 | ipv6
           description: List of IP addresses (IPv4/IPv6, local storage only)
-          example: ["192.168.1.100", "2001:db8::1"]
         customer_id:
           type: integer
           description: Customer ID for business relationships
-          example: 1001
         pdns_account_id:
           type: integer
           nullable: true
           description: PowerDNS Admin account ID (synced from PowerDNS Admin)
-          example: 12
         created_at:
           type: string
           format: date-time
@@ -1518,24 +1452,19 @@ components:
         username:
           type: string
           description: Username for PowerDNS Admin (must be unique)
-          example: "testuser1754424578"
         plain_text_password:
           type: string
           description: Plain text password for PowerDNS Admin user
-          example: "36440b7d5ab7521f"
         firstname:
           type: string
           description: First name
-          example: "Test"
         lastname:
           type: string
           description: Last name
-          example: "User"
         email:
           type: string
           format: email
           description: Email address
-          example: "test@example.com"
         role:
           type: object
           description: User role object
@@ -1543,11 +1472,9 @@ components:
             id:
               type: integer
               description: Role ID (2 = User, 1 = Admin)
-              example: 2
             name:
               type: string
               description: Role name
-              example: "User"
           required:
             - id
             - name
@@ -1557,11 +1484,9 @@ components:
             type: string
             format: ipv4 | ipv6
           description: List of IP addresses (IPv4/IPv6, local storage only)
-          example: ["192.168.1.100", "2001:db8::1"]
         customer_id:
           type: integer
           description: Customer ID for business relationships
-          example: 1001
 
     AccountIdentifier:
       type: object
@@ -1572,7 +1497,6 @@ components:
             id:
               type: integer
               description: Account ID
-              example: 94
           additionalProperties: false
         - type: object
           required: [username]
@@ -1580,7 +1504,6 @@ components:
             username:
               type: string
               description: Account username
-              example: "johndoe"
           additionalProperties: false
       description: Account identifier object (either ID or username, not both)
 
@@ -1594,7 +1517,6 @@ components:
               id:
                 type: integer
                 description: Account ID
-                example: 94
           - $ref: '#/components/schemas/AccountUpdate'
         - allOf:
           - type: object
@@ -1603,7 +1525,6 @@ components:
               username:
                 type: string
                 description: Account username
-                example: "johndoe"
           - $ref: '#/components/schemas/AccountUpdate'
       description: Account update request with identifier and update fields
 
@@ -1640,46 +1561,36 @@ components:
         id:
           type: integer
           description: Domain ID
-          example: 1
         name:
           type: string
           description: Domain name
-          example: "example.com."
         type:
           type: string
           description: Domain type
-          example: "Zone"
         account_id:
           type: integer
           nullable: true
           description: Associated account ID
-          example: 1
         account_name:
           type: string
           nullable: true
           description: Associated account name
-          example: "customer-account"
         pdns_zone_id:
           type: string
           description: PDNSAdmin zone ID
-          example: "example.com."
         kind:
           type: string
           enum: [Native, Master, Slave]
           description: Zone kind
-          example: "Master"
         masters:
           type: string
           description: Comma-separated list of master servers
-          example: "192.168.1.100,192.168.1.101"
         dnssec:
           type: boolean
           description: DNSSEC enabled
-          example: false
         account:
           type: string
           description: Account name from PDNSAdmin
-          example: "customer-account"
         created_at:
           type: string
           format: date-time
@@ -1715,15 +1626,12 @@ components:
         id:
           type: integer
           description: Local database ID
-          example: 123
         name:
           type: string
           description: Domain name
-          example: "advertorial.avant.nl"
         pdns_zone_id:
           type: integer
           description: PowerDNS zone ID
-          example: 1819
 
     DomainDetails:
       type: object
@@ -1732,27 +1640,21 @@ components:
         id:
           type: string
           description: Zone ID (FQDN with trailing dot)
-          example: "example.com."
         name:
           type: string
           description: Zone name (FQDN with trailing dot)
-          example: "example.com."
         type:
           type: string
           description: Resource type
-          example: "Zone"
         kind:
           type: string
           description: Zone kind
-          example: "Native"
         dnssec:
           type: boolean
           description: DNSSEC enabled
-          example: false
         edited_serial:
           type: integer
           description: Last edited serial
-          example: 2023010101
         masters:
           type: array
           items:
@@ -1771,15 +1673,12 @@ components:
         name:
           type: string
           description: Record name (FQDN with trailing dot)
-          example: "www.example.com."
         type:
           type: string
           description: DNS record type
-          example: "A"
         ttl:
           type: integer
           description: Time to live in seconds
-          example: 3600
         records:
           type: array
           description: DNS records in this set
@@ -1793,11 +1692,9 @@ components:
         content:
           type: string
           description: Record content/value
-          example: "192.168.1.100"
         disabled:
           type: boolean
           description: Whether record is disabled
-          example: false
 
     RRSetUpdate:
       type: object
@@ -1817,18 +1714,15 @@ components:
         name:
           type: string
           description: Record name (FQDN with trailing dot) - must be subdomain of zone
-          example: "www.example.com."
           pattern: "^[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*\\.$"
         type:
           type: string
           description: DNS record type (A, AAAA, CNAME, MX, TXT, SRV)
-          example: "A"
           enum: ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS"]
         changetype:
           type: string
           enum: ["REPLACE", "DELETE"]
           description: Operation type
-          example: "REPLACE"
         records:
           type: array
           description: Records for REPLACE operations (omit for DELETE)
@@ -1845,11 +1739,9 @@ components:
         domain_name:
           type: string
           description: Domain name to add to account
-          example: "example.com."
         account_id:
           type: integer
           description: Account ID
-          example: 1
 
     DomainAccountRemove:
       type: object
@@ -1859,7 +1751,6 @@ components:
         domain_name:
           type: string
           description: Domain name to remove from account
-          example: "example.com."
 
     DomainAccountList:
       type: object
@@ -1869,7 +1760,6 @@ components:
         account_id:
           type: integer
           description: Account ID to list domains for
-          example: 1
 
     AccountDomainsList:
       type: object
@@ -1901,7 +1791,6 @@ components:
           properties:
             api_version:
               type: string
-              example: "1.0.0"
             timestamp:
               type: string
               format: date-time
@@ -1909,7 +1798,6 @@ components:
               type: object
               additionalProperties:
                 type: string
-              example:
                 accounts: "/api/accounts"
                 domains: "/api/domains"
                 status: "/api/status"
@@ -1996,7 +1884,6 @@ components:
               type: object
               additionalProperties:
                 type: string
-              example:
                 accounts: "/api/accounts"
                 domains: "/api/domains"
                 status: "/api/status"
@@ -2012,7 +1899,6 @@ components:
       properties:
         message:
           type: string
-          example: "Operation completed successfully"
 
     Template:
       type: object
@@ -2020,15 +1906,12 @@ components:
         id:
           type: integer
           description: Template ID
-          example: 1
         name:
           type: string
           description: Template name
-          example: "Standard Web Server"
         description:
           type: string
           description: Template description
-          example: "Standard template for web server domains"
         records:
           type: array
           items:
@@ -2051,11 +1934,9 @@ components:
         name:
           type: string
           description: Template name
-          example: "Standard Web Server"
         description:
           type: string
           description: Template description
-          example: "Standard template for web server domains"
         records:
           type: array
           items:
@@ -2083,27 +1964,21 @@ components:
         id:
           type: integer
           description: Record ID
-          example: 1
         name:
           type: string
           description: Record name
-          example: "www"
         type:
           type: string
           description: Record type
-          example: "A"
         content:
           type: string
           description: Record content
-          example: "192.168.1.100"
         ttl:
           type: integer
           description: Time to live
-          example: 3600
         priority:
           type: integer
           description: Record priority (for MX records)
-          example: 10
 
     TemplateRecordCreate:
       type: object
@@ -2115,24 +1990,19 @@ components:
         name:
           type: string
           description: Record name
-          example: "www"
         type:
           type: string
           enum: [A, AAAA, CNAME, MX, TXT, NS, PTR, SRV]
           description: Record type
-          example: "A"
         content:
           type: string
           description: Record content
-          example: "192.168.1.100"
         ttl:
           type: integer
           description: Time to live, default 3600
-          example: 3600
         priority:
           type: integer
           description: Record priority (for MX records)
-          example: 10
 
     Error:
       type: object
@@ -2140,7 +2010,6 @@ components:
         error:
           type: string
           description: Error message
-          example: "Invalid request data"
         errors:
           type: array
           items:
@@ -2154,7 +2023,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
             error: "Invalid request data"
             errors: ["Name is required", "Email format is invalid"]
 
@@ -2164,7 +2032,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
             error: "Resource not found"
 
     Conflict:
@@ -2173,7 +2040,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
             error: "Account already exists"
 
     ServerError:
@@ -2182,7 +2048,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
             error: "Internal server error"
 
 tags:

@@ -61,8 +61,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Filter by account ID (can combine with other filters for validation)",
-            "example": 14
+            "description": "Filter by account ID (can combine with other filters for validation)"
           },
           {
             "name": "username",
@@ -70,8 +69,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Filter by username (can combine with ID for validation)",
-            "example": "admin"
+            "description": "Filter by username (can combine with ID for validation)"
           },
           {
             "name": "email",
@@ -79,8 +77,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Filter by email address (can combine with other filters)",
-            "example": "admin@example.com"
+            "description": "Filter by email address (can combine with other filters)"
           },
           {
             "name": "sync",
@@ -106,8 +103,7 @@
                       }
                     },
                     "message": {
-                      "type": "string",
-                      "example": "Found user with ID 14 and username 'admin'"
+                      "type": "string"
                     }
                   }
                 },
@@ -155,8 +151,7 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string",
-                      "example": "Valid Admin API Key required"
+                      "type": "string"
                     }
                   }
                 }
@@ -171,8 +166,7 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string",
-                      "example": "User with ID 14 does not have username 'john'"
+                      "type": "string"
                     }
                   }
                 }
@@ -379,8 +373,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Smart query (auto-detects ID/name/pattern/contains) - primary filter",
-            "example": "avant"
+            "description": "Smart query (auto-detects ID/name/pattern/contains) - primary filter"
           },
           {
             "name": "account_id",
@@ -429,8 +422,7 @@
                       }
                     },
                     "message": {
-                      "type": "string",
-                      "example": "Found 40 domains matching 'avant'"
+                      "type": "string"
                     },
                     "query_type": {
                       "type": "string",
@@ -442,8 +434,7 @@
                         "contains",
                         "account"
                       ],
-                      "description": "The type of query that was executed",
-                      "example": "contains"
+                      "description": "The type of query that was executed"
                     }
                   }
                 }
@@ -471,13 +462,11 @@
                 "properties": {
                   "domain_name": {
                     "type": "string",
-                    "description": "Domain name to add (include trailing dot)",
-                    "example": "example.com."
+                    "description": "Domain name to add (include trailing dot)"
                   },
                   "account_id": {
                     "type": "integer",
-                    "description": "Account ID to assign domain to",
-                    "example": 1
+                    "description": "Account ID to assign domain to"
                   }
                 }
               },
@@ -531,13 +520,11 @@
                 "properties": {
                   "id": {
                     "type": "integer",
-                    "description": "Domain ID (use this OR name, not both)",
-                    "example": 123
+                    "description": "Domain ID (use this OR name, not both)"
                   },
                   "name": {
                     "type": "string",
-                    "description": "Domain name (use this OR id, not both)",
-                    "example": "example.com"
+                    "description": "Domain name (use this OR id, not both)"
                   },
                   "account_id": {
                     "type": "integer",
@@ -632,18 +619,13 @@
                   "type": "object",
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Domain example.com updated successfully"
+                      "type": "string"
                     },
                     "validation_warnings": {
                       "type": "array",
                       "items": {
                         "type": "string"
-                      },
-                      "example": [
-                        "DNSSEC validation pending",
-                        "DNS propagation may take up to 24 hours"
-                      ]
+                      }
                     }
                   }
                 }
@@ -658,12 +640,10 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string",
-                      "example": "Invalid DNS record content for A record: '999.999.999.999'"
+                      "type": "string"
                     },
                     "field": {
-                      "type": "string",
-                      "example": "rrsets[0].records[0].content"
+                      "type": "string"
                     }
                   }
                 }
@@ -681,8 +661,7 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string",
-                      "example": "Access denied: Domain 'example.com' is not owned by your account"
+                      "type": "string"
                     }
                   }
                 }
@@ -700,8 +679,7 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string",
-                      "example": "DNS record name 'malicious.other-domain.com.' is outside zone 'example.com'"
+                      "type": "string"
                     },
                     "validation_errors": {
                       "type": "array",
@@ -740,13 +718,11 @@
                 "properties": {
                   "id": {
                     "type": "integer",
-                    "description": "Domain ID (use this OR name, not both)",
-                    "example": 123
+                    "description": "Domain ID (use this OR name, not both)"
                   },
                   "name": {
                     "type": "string",
-                    "description": "Domain name (use this OR id, not both)",
-                    "example": "example.com"
+                    "description": "Domain name (use this OR id, not both)"
                   }
                 },
                 "anyOf": [
@@ -788,8 +764,7 @@
                   "type": "object",
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Domain 'example.com' deleted successfully"
+                      "type": "string"
                     },
                     "audit_log": {
                       "type": "object",
@@ -800,7 +775,6 @@
                         },
                         "records_count": {
                           "type": "integer",
-                          "example": 15,
                           "description": "Number of DNS records that were deleted"
                         }
                       }
@@ -824,8 +798,7 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string",
-                      "example": "Access denied: Cannot delete domain 'example.com' - not owned by your account"
+                      "type": "string"
                     }
                   }
                 }
@@ -843,18 +816,13 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string",
-                      "example": "Cannot delete domain: 5 active subdomains depend on this zone"
+                      "type": "string"
                     },
                     "dependencies": {
                       "type": "array",
                       "items": {
                         "type": "string"
-                      },
-                      "example": [
-                        "sub1.example.com",
-                        "sub2.example.com"
-                      ]
+                      }
                     }
                   }
                 }
@@ -882,8 +850,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Domain ID",
-            "example": 123
+            "description": "Domain ID"
           }
         ],
         "responses": {
@@ -898,8 +865,7 @@
                       "$ref": "#/components/schemas/Domain"
                     },
                     "message": {
-                      "type": "string",
-                      "example": "Domain retrieved successfully"
+                      "type": "string"
                     }
                   }
                 }
@@ -928,8 +894,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Domain ID",
-            "example": 123
+            "description": "Domain ID"
           }
         ],
         "requestBody": {
@@ -1023,8 +988,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Domain ID",
-            "example": 123
+            "description": "Domain ID"
           },
           {
             "name": "force",
@@ -1099,8 +1063,7 @@
                       }
                     },
                     "message": {
-                      "type": "string",
-                      "example": "Templates retrieved successfully"
+                      "type": "string"
                     }
                   }
                 }
@@ -1210,8 +1173,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Template ID",
-            "example": 1
+            "description": "Template ID"
           }
         ],
         "responses": {
@@ -1226,8 +1188,7 @@
                       "$ref": "#/components/schemas/Template"
                     },
                     "message": {
-                      "type": "string",
-                      "example": "Template retrieved successfully"
+                      "type": "string"
                     }
                   }
                 }
@@ -1256,8 +1217,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Template ID",
-            "example": 1
+            "description": "Template ID"
           }
         ],
         "requestBody": {
@@ -1306,8 +1266,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Template ID",
-            "example": 1
+            "description": "Template ID"
           }
         ],
         "responses": {
@@ -1346,8 +1305,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Template ID",
-            "example": 1
+            "description": "Template ID"
           }
         ],
         "requestBody": {
@@ -1362,18 +1320,15 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "Domain name to create",
-                    "example": "example.com"
+                    "description": "Domain name to create"
                   },
                   "account_id": {
                     "type": "integer",
-                    "description": "Account ID to assign the domain to",
-                    "example": 1
+                    "description": "Account ID to assign the domain to"
                   },
                   "description": {
                     "type": "string",
-                    "description": "Optional description for the domain",
-                    "example": "Production domain for example.com"
+                    "description": "Optional description for the domain"
                   }
                 }
               }
@@ -1392,8 +1347,7 @@
                       "$ref": "#/components/schemas/Domain"
                     },
                     "message": {
-                      "type": "string",
-                      "example": "Domain created from template successfully"
+                      "type": "string"
                     }
                   }
                 }
@@ -1628,9 +1582,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "example": {
+              "$ref": "#/components/schemas/Error",
               "error": "Invalid request data",
               "errors": [
                 "Name is required",
@@ -1645,9 +1597,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "example": {
+              "$ref": "#/components/schemas/Error",
               "error": "Resource not found"
             }
           }
@@ -1658,9 +1608,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "example": {
+              "$ref": "#/components/schemas/Error",
               "error": "Account already exists"
             }
           }
@@ -1671,9 +1619,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "example": {
+              "$ref": "#/components/schemas/Error",
               "error": "Internal server error"
             }
           }
@@ -1686,34 +1632,28 @@
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Account ID",
-            "example": 1
+            "description": "Account ID"
           },
           "username": {
             "type": "string",
-            "description": "Username (unique)",
-            "example": "testuser"
+            "description": "Username (unique)"
           },
           "firstname": {
             "type": "string",
-            "description": "First name",
-            "example": "John"
+            "description": "First name"
           },
           "lastname": {
             "type": "string",
-            "description": "Last name",
-            "example": "Doe"
+            "description": "Last name"
           },
           "email": {
             "type": "string",
             "format": "email",
-            "description": "Email address",
-            "example": "john@example.com"
+            "description": "Email address"
           },
           "role_id": {
             "type": "integer",
-            "description": "Role ID (2 = User, 1 = Admin)",
-            "example": 2
+            "description": "Role ID (2 = User, 1 = Admin)"
           },
           "ip_addresses": {
             "type": "array",
@@ -1721,22 +1661,16 @@
               "type": "string",
               "format": "ipv4 | ipv6"
             },
-            "description": "List of IP addresses (IPv4/IPv6, local storage only)",
-            "example": [
-              "192.168.1.100",
-              "2001:db8::1"
-            ]
+            "description": "List of IP addresses (IPv4/IPv6, local storage only)"
           },
           "customer_id": {
             "type": "integer",
-            "description": "Customer ID for business relationships",
-            "example": 1001
+            "description": "Customer ID for business relationships"
           },
           "pdns_account_id": {
             "type": "integer",
             "nullable": true,
-            "description": "PowerDNS Admin account ID (synced from PowerDNS Admin)",
-            "example": 12
+            "description": "PowerDNS Admin account ID (synced from PowerDNS Admin)"
           },
           "created_at": {
             "type": "string",
@@ -1761,29 +1695,24 @@
         "properties": {
           "username": {
             "type": "string",
-            "description": "Username for PowerDNS Admin (must be unique)",
-            "example": "testuser1754424578"
+            "description": "Username for PowerDNS Admin (must be unique)"
           },
           "plain_text_password": {
             "type": "string",
-            "description": "Plain text password for PowerDNS Admin user",
-            "example": "36440b7d5ab7521f"
+            "description": "Plain text password for PowerDNS Admin user"
           },
           "firstname": {
             "type": "string",
-            "description": "First name",
-            "example": "Test"
+            "description": "First name"
           },
           "lastname": {
             "type": "string",
-            "description": "Last name",
-            "example": "User"
+            "description": "Last name"
           },
           "email": {
             "type": "string",
             "format": "email",
-            "description": "Email address",
-            "example": "test@example.com"
+            "description": "Email address"
           },
           "role": {
             "type": "object",
@@ -1791,13 +1720,11 @@
             "properties": {
               "id": {
                 "type": "integer",
-                "description": "Role ID (2 = User, 1 = Admin)",
-                "example": 2
+                "description": "Role ID (2 = User, 1 = Admin)"
               },
               "name": {
                 "type": "string",
-                "description": "Role name",
-                "example": "User"
+                "description": "Role name"
               }
             },
             "required": [
@@ -1811,16 +1738,11 @@
               "type": "string",
               "format": "ipv4 | ipv6"
             },
-            "description": "List of IP addresses (IPv4/IPv6, local storage only)",
-            "example": [
-              "192.168.1.100",
-              "2001:db8::1"
-            ]
+            "description": "List of IP addresses (IPv4/IPv6, local storage only)"
           },
           "customer_id": {
             "type": "integer",
-            "description": "Customer ID for business relationships",
-            "example": 1001
+            "description": "Customer ID for business relationships"
           }
         }
       },
@@ -1835,8 +1757,7 @@
             "properties": {
               "id": {
                 "type": "integer",
-                "description": "Account ID",
-                "example": 94
+                "description": "Account ID"
               }
             },
             "additionalProperties": false
@@ -1849,8 +1770,7 @@
             "properties": {
               "username": {
                 "type": "string",
-                "description": "Account username",
-                "example": "johndoe"
+                "description": "Account username"
               }
             },
             "additionalProperties": false
@@ -1871,8 +1791,7 @@
                 "properties": {
                   "id": {
                     "type": "integer",
-                    "description": "Account ID",
-                    "example": 94
+                    "description": "Account ID"
                   }
                 }
               },
@@ -1891,8 +1810,7 @@
                 "properties": {
                   "username": {
                     "type": "string",
-                    "description": "Account username",
-                    "example": "johndoe"
+                    "description": "Account username"
                   }
                 }
               },
@@ -1944,35 +1862,29 @@
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Domain ID",
-            "example": 1
+            "description": "Domain ID"
           },
           "name": {
             "type": "string",
-            "description": "Domain name",
-            "example": "example.com."
+            "description": "Domain name"
           },
           "type": {
             "type": "string",
-            "description": "Domain type",
-            "example": "Zone"
+            "description": "Domain type"
           },
           "account_id": {
             "type": "integer",
             "nullable": true,
-            "description": "Associated account ID",
-            "example": 1
+            "description": "Associated account ID"
           },
           "account_name": {
             "type": "string",
             "nullable": true,
-            "description": "Associated account name",
-            "example": "customer-account"
+            "description": "Associated account name"
           },
           "pdns_zone_id": {
             "type": "string",
-            "description": "PDNSAdmin zone ID",
-            "example": "example.com."
+            "description": "PDNSAdmin zone ID"
           },
           "kind": {
             "type": "string",
@@ -1981,23 +1893,19 @@
               "Master",
               "Slave"
             ],
-            "description": "Zone kind",
-            "example": "Master"
+            "description": "Zone kind"
           },
           "masters": {
             "type": "string",
-            "description": "Comma-separated list of master servers",
-            "example": "192.168.1.100,192.168.1.101"
+            "description": "Comma-separated list of master servers"
           },
           "dnssec": {
             "type": "boolean",
-            "description": "DNSSEC enabled",
-            "example": false
+            "description": "DNSSEC enabled"
           },
           "account": {
             "type": "string",
-            "description": "Account name from PDNSAdmin",
-            "example": "customer-account"
+            "description": "Account name from PDNSAdmin"
           },
           "created_at": {
             "type": "string",
@@ -2046,18 +1954,15 @@
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Local database ID",
-            "example": 123
+            "description": "Local database ID"
           },
           "name": {
             "type": "string",
-            "description": "Domain name",
-            "example": "advertorial.avant.nl"
+            "description": "Domain name"
           },
           "pdns_zone_id": {
             "type": "integer",
-            "description": "PowerDNS zone ID",
-            "example": 1819
+            "description": "PowerDNS zone ID"
           }
         }
       },
@@ -2067,33 +1972,27 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Zone ID (FQDN with trailing dot)",
-            "example": "example.com."
+            "description": "Zone ID (FQDN with trailing dot)"
           },
           "name": {
             "type": "string",
-            "description": "Zone name (FQDN with trailing dot)",
-            "example": "example.com."
+            "description": "Zone name (FQDN with trailing dot)"
           },
           "type": {
             "type": "string",
-            "description": "Resource type",
-            "example": "Zone"
+            "description": "Resource type"
           },
           "kind": {
             "type": "string",
-            "description": "Zone kind",
-            "example": "Native"
+            "description": "Zone kind"
           },
           "dnssec": {
             "type": "boolean",
-            "description": "DNSSEC enabled",
-            "example": false
+            "description": "DNSSEC enabled"
           },
           "edited_serial": {
             "type": "integer",
-            "description": "Last edited serial",
-            "example": 2023010101
+            "description": "Last edited serial"
           },
           "masters": {
             "type": "array",
@@ -2117,18 +2016,15 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Record name (FQDN with trailing dot)",
-            "example": "www.example.com."
+            "description": "Record name (FQDN with trailing dot)"
           },
           "type": {
             "type": "string",
-            "description": "DNS record type",
-            "example": "A"
+            "description": "DNS record type"
           },
           "ttl": {
             "type": "integer",
-            "description": "Time to live in seconds",
-            "example": 3600
+            "description": "Time to live in seconds"
           },
           "records": {
             "type": "array",
@@ -2145,13 +2041,11 @@
         "properties": {
           "content": {
             "type": "string",
-            "description": "Record content/value",
-            "example": "192.168.1.100"
+            "description": "Record content/value"
           },
           "disabled": {
             "type": "boolean",
-            "description": "Whether record is disabled",
-            "example": false
+            "description": "Whether record is disabled"
           }
         }
       },
@@ -2167,13 +2061,11 @@
           "name": {
             "type": "string",
             "description": "Record name (FQDN with trailing dot) - must be subdomain of zone",
-            "example": "www.example.com.",
             "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*\\.$"
           },
           "type": {
             "type": "string",
             "description": "DNS record type (A, AAAA, CNAME, MX, TXT, SRV)",
-            "example": "A",
             "enum": [
               "A",
               "AAAA",
@@ -2191,8 +2083,7 @@
               "REPLACE",
               "DELETE"
             ],
-            "description": "Operation type",
-            "example": "REPLACE"
+            "description": "Operation type"
           },
           "records": {
             "type": "array",
@@ -2213,13 +2104,11 @@
         "properties": {
           "domain_name": {
             "type": "string",
-            "description": "Domain name to add to account",
-            "example": "example.com."
+            "description": "Domain name to add to account"
           },
           "account_id": {
             "type": "integer",
-            "description": "Account ID",
-            "example": 1
+            "description": "Account ID"
           }
         }
       },
@@ -2231,8 +2120,7 @@
         "properties": {
           "domain_name": {
             "type": "string",
-            "description": "Domain name to remove from account",
-            "example": "example.com."
+            "description": "Domain name to remove from account"
           }
         }
       },
@@ -2244,8 +2132,7 @@
         "properties": {
           "account_id": {
             "type": "integer",
-            "description": "Account ID to list domains for",
-            "example": 1
+            "description": "Account ID to list domains for"
           }
         }
       },
@@ -2289,8 +2176,7 @@
             "type": "object",
             "properties": {
               "api_version": {
-                "type": "string",
-                "example": "1.0.0"
+                "type": "string"
               },
               "timestamp": {
                 "type": "string",
@@ -2299,9 +2185,7 @@
               "endpoints": {
                 "type": "object",
                 "additionalProperties": {
-                  "type": "string"
-                },
-                "example": {
+                  "type": "string",
                   "accounts": "/api/accounts",
                   "domains": "/api/domains",
                   "status": "/api/status"
@@ -2438,9 +2322,7 @@
               "endpoints": {
                 "type": "object",
                 "additionalProperties": {
-                  "type": "string"
-                },
-                "example": {
+                  "type": "string",
                   "accounts": "/api/accounts",
                   "domains": "/api/domains",
                   "status": "/api/status"
@@ -2463,8 +2345,7 @@
         "type": "object",
         "properties": {
           "message": {
-            "type": "string",
-            "example": "Operation completed successfully"
+            "type": "string"
           }
         }
       },
@@ -2473,18 +2354,15 @@
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Template ID",
-            "example": 1
+            "description": "Template ID"
           },
           "name": {
             "type": "string",
-            "description": "Template name",
-            "example": "Standard Web Server"
+            "description": "Template name"
           },
           "description": {
             "type": "string",
-            "description": "Template description",
-            "example": "Standard template for web server domains"
+            "description": "Template description"
           },
           "records": {
             "type": "array",
@@ -2513,13 +2391,11 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Template name",
-            "example": "Standard Web Server"
+            "description": "Template name"
           },
           "description": {
             "type": "string",
-            "description": "Template description",
-            "example": "Standard template for web server domains"
+            "description": "Template description"
           },
           "records": {
             "type": "array",
@@ -2555,33 +2431,27 @@
         "properties": {
           "id": {
             "type": "integer",
-            "description": "Record ID",
-            "example": 1
+            "description": "Record ID"
           },
           "name": {
             "type": "string",
-            "description": "Record name",
-            "example": "www"
+            "description": "Record name"
           },
           "type": {
             "type": "string",
-            "description": "Record type",
-            "example": "A"
+            "description": "Record type"
           },
           "content": {
             "type": "string",
-            "description": "Record content",
-            "example": "192.168.1.100"
+            "description": "Record content"
           },
           "ttl": {
             "type": "integer",
-            "description": "Time to live",
-            "example": 3600
+            "description": "Time to live"
           },
           "priority": {
             "type": "integer",
-            "description": "Record priority (for MX records)",
-            "example": 10
+            "description": "Record priority (for MX records)"
           }
         }
       },
@@ -2595,8 +2465,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Record name",
-            "example": "www"
+            "description": "Record name"
           },
           "type": {
             "type": "string",
@@ -2610,23 +2479,19 @@
               "PTR",
               "SRV"
             ],
-            "description": "Record type",
-            "example": "A"
+            "description": "Record type"
           },
           "content": {
             "type": "string",
-            "description": "Record content",
-            "example": "192.168.1.100"
+            "description": "Record content"
           },
           "ttl": {
             "type": "integer",
-            "description": "Time to live, default 3600",
-            "example": 3600
+            "description": "Time to live, default 3600"
           },
           "priority": {
             "type": "integer",
-            "description": "Record priority (for MX records)",
-            "example": 10
+            "description": "Record priority (for MX records)"
           }
         }
       },
@@ -2635,8 +2500,7 @@
         "properties": {
           "error": {
             "type": "string",
-            "description": "Error message",
-            "example": "Invalid request data"
+            "description": "Error message"
           },
           "errors": {
             "type": "array",

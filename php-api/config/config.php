@@ -52,19 +52,8 @@ $config['security'] = [
     'ip_validation_enabled' => true,
     
     // Global IP allowlist - applies to ALL API endpoints
-    // Simple and secure: if your IP isn't here, no API access
-    'allowed_ips' => [
-        '127.0.0.1',           // localhost
-        '::1',                 // localhost IPv6
-        '149.210.167.40',      // server primary IP
-        '149.210.166.5',       // server secondary IP
-        '2a01:7c8:aab3:5d8:149:210:166:5', // server IPv6
-        '192.168.1.0/24',      // local network example
-        '10.0.0.0/8',          // private network example
-        // Add your admin IPs here:
-        // '203.0.113.10',     // office IP
-        // '198.51.100.50',    // backup admin IP
-    ],
+    // IP allowlist now loaded from database (see getIpAllowlist() function)
+    'allowed_ips' => [], // Populated dynamically from database
     
     // Security logging and response
     'log_ip_violations' => true,
@@ -219,6 +208,44 @@ function getClientIpAddress() {
 }
 
 /**
+ * Load IP allowlist from database
+ */
+function getIpAllowlist() {
+    global $pdo;
+    
+    static $cached_ips = null;
+    
+    // Return cached IPs if already loaded
+    if ($cached_ips !== null) {
+        return $cached_ips;
+    }
+    
+    $cached_ips = [];
+    
+    try {
+        $stmt = $pdo->prepare("SELECT ip_address FROM ip_allowlist WHERE enabled = 1");
+        $stmt->execute();
+        
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $cached_ips[] = $row['ip_address'];
+        }
+        
+        // Fallback to localhost if database is empty or fails
+        if (empty($cached_ips)) {
+            error_log("Warning: IP allowlist empty, adding localhost fallback");
+            $cached_ips = ['127.0.0.1', '::1'];
+        }
+        
+    } catch (Exception $e) {
+        error_log("Error loading IP allowlist from database: " . $e->getMessage());
+        // Fallback to localhost if database fails
+        $cached_ips = ['127.0.0.1', '::1'];
+    }
+    
+    return $cached_ips;
+}
+
+/**
  * Check if the client IP is in the allowlist
  */
 function isIpAllowed() {
@@ -230,8 +257,9 @@ function isIpAllowed() {
     }
     
     $client_ip = getClientIpAddress();
+    $allowed_ips = getIpAllowlist(); // Load from database
     
-    foreach ($api_security['allowed_ips'] as $allowed_ip) {
+    foreach ($allowed_ips as $allowed_ip) {
         if (ipInRange($client_ip, $allowed_ip)) {
             return true;
         }

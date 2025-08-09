@@ -64,4 +64,12 @@ class PDNSAdminDatabase {
     }
 }
 }
+
+// Initialize global PDO connection
+$database = new Database();
+$pdo = $database->getConnection();
+
+// Initialize PowerDNS Admin database connection
+$pdns_admin_db = new PDNSAdminDatabase();
+$pdns_admin_pdo = $pdns_admin_db->getConnection();
 ?>
