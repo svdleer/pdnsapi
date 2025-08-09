@@ -2,19 +2,19 @@
 CREATE DATABASE IF NOT EXISTS pdns_api_db;
 USE pdns_api_db;
 
--- Accounts table
-CREATE TABLE IF NOT EXISTS accounts (
+-- User Metadata table - ONLY for metadata not stored in PowerDNS Admin
+-- PowerDNS Admin is the source of truth for all user data (username, email, etc.)
+CREATE TABLE IF NOT EXISTS user_metadata (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    description TEXT,
-    contact VARCHAR(255),
-    mail VARCHAR(255),
-    ip_addresses TEXT, -- JSON field to store IPv4/IPv6 addresses
-    pdns_account_id INT,
+    pdns_user_id INT NOT NULL, -- References PowerDNS Admin user.id
+    ip_addresses TEXT, -- JSON array of IPv4/IPv6 addresses (business requirement)
+    customer_id INT, -- Business relationship mapping (custom field)
+    notes TEXT, -- Additional business notes
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_name (name),
-    INDEX idx_pdns_id (pdns_account_id)
+    INDEX idx_pdns_user_id (pdns_user_id),
+    INDEX idx_customer_id (customer_id),
+    UNIQUE KEY unique_pdns_user (pdns_user_id)
 );
 
 -- Domains table
@@ -22,17 +22,16 @@ CREATE TABLE IF NOT EXISTS domains (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     type VARCHAR(50) DEFAULT 'Zone',
-    account_id INT,
-    pdns_zone_id VARCHAR(255),
+    pdns_user_id INT, -- References PowerDNS Admin user.id (domain owner)
+    pdns_zone_id VARCHAR(255), -- PowerDNS zone ID for sync
     kind ENUM('Native', 'Master', 'Slave') DEFAULT 'Master',
     masters TEXT,
     dnssec BOOLEAN DEFAULT FALSE,
-    account VARCHAR(255),
+    account VARCHAR(255), -- PowerDNS account field
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL,
     INDEX idx_name (name),
-    INDEX idx_account_id (account_id),
+    INDEX idx_pdns_user_id (pdns_user_id),
     INDEX idx_pdns_zone_id (pdns_zone_id)
 );
 

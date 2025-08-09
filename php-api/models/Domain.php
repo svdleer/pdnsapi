@@ -14,13 +14,12 @@ class Domain {
     public $id;
     public $name;
     public $type;
-    public $account_id;
+    public $pdns_user_id; // PowerDNS Admin user.id (domain owner)
     public $pdns_zone_id;
-    public $pdns_account_id;
     public $kind;
     public $masters;
     public $dnssec;
-    public $account;
+    public $account; // PowerDNS account field
     public $created_at;
     public $updated_at;
 
@@ -30,18 +29,16 @@ class Domain {
 
     public function create() {
         $query = "INSERT INTO " . $this->table_name . "
-                SET name=:name, type=:type, account_id=:account_id, 
-                    pdns_zone_id=:pdns_zone_id, pdns_account_id=:pdns_account_id,
-                    kind=:kind, masters=:masters, dnssec=:dnssec, 
-                    account=:account, created_at=NOW()";
+                SET name=:name, type=:type, pdns_user_id=:pdns_user_id, 
+                    pdns_zone_id=:pdns_zone_id, kind=:kind, masters=:masters, 
+                    dnssec=:dnssec, account=:account, created_at=NOW()";
 
         $stmt = $this->conn->prepare($query);
 
         $stmt->bindParam(":name", $this->name);
         $stmt->bindParam(":type", $this->type);
-        $stmt->bindParam(":account_id", $this->account_id);
+        $stmt->bindParam(":pdns_user_id", $this->pdns_user_id);
         $stmt->bindParam(":pdns_zone_id", $this->pdns_zone_id);
-        $stmt->bindParam(":pdns_account_id", $this->pdns_account_id);
         $stmt->bindParam(":kind", $this->kind);
         $stmt->bindParam(":masters", $this->masters);
         $stmt->bindParam(":dnssec", $this->dnssec);
@@ -58,9 +55,8 @@ class Domain {
             // Set properties from data array
             $this->name = $domain_data['name'];
             $this->type = $domain_data['type'] ?? 'Zone';
-            $this->account_id = $domain_data['account_id'] ?? null;
+            $this->pdns_user_id = $domain_data['pdns_user_id'] ?? null;
             $this->pdns_zone_id = $domain_data['pdns_zone_id'] ?? null;
-            $this->pdns_account_id = $domain_data['pdns_account_id'] ?? null;
             $this->kind = $domain_data['kind'] ?? 'Master';
             $this->masters = $domain_data['masters'] ?? '';
             $this->dnssec = $domain_data['dnssec'] ?? 0;
@@ -86,9 +82,8 @@ class Domain {
             'id' => $this->id,
             'name' => $this->name,
             'type' => $this->type,
-            'account_id' => $this->account_id,
+            'pdns_user_id' => $this->pdns_user_id,
             'pdns_zone_id' => $this->pdns_zone_id,
-            'pdns_account_id' => $this->pdns_account_id,
             'kind' => $this->kind,
             'masters' => $this->masters,
             'dnssec' => $this->dnssec,
@@ -99,20 +94,15 @@ class Domain {
     }
 
     public function read() {
-        $query = "SELECT d.*, a.name as account_name 
-                FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
-                ORDER BY d.created_at DESC";
+        $query = "SELECT * FROM " . $this->table_name . " 
+                ORDER BY created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
     }
 
     public function readOne() {
-        $query = "SELECT d.*, a.name as account_name 
-                FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
-                WHERE d.id = ? LIMIT 0,1";
+        $query = "SELECT * FROM " . $this->table_name . " WHERE id = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->id);
         $stmt->execute();
@@ -122,7 +112,7 @@ class Domain {
         if ($row) {
             $this->name = $row['name'];
             $this->type = $row['type'];
-            $this->account_id = $row['account_id'];
+            $this->pdns_user_id = $row['pdns_user_id'];
             $this->pdns_zone_id = $row['pdns_zone_id'];
             $this->kind = $row['kind'];
             $this->masters = $row['masters'];
@@ -136,10 +126,7 @@ class Domain {
     }
 
     public function readByName() {
-        $query = "SELECT d.*, a.name as account_name 
-                FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
-                WHERE d.name = ? LIMIT 0,1";
+        $query = "SELECT * FROM " . $this->table_name . " WHERE name = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->name);
         $stmt->execute();
@@ -150,7 +137,7 @@ class Domain {
             $this->id = $row['id'];
             $this->name = $row['name'];
             $this->type = $row['type'];
-            $this->account_id = $row['account_id'];
+            $this->pdns_user_id = $row['pdns_user_id'];
             $this->pdns_zone_id = $row['pdns_zone_id'];
             $this->kind = $row['kind'];
             $this->masters = $row['masters'];
@@ -163,21 +150,19 @@ class Domain {
         return false;
     }
 
-    public function readByAccountId($account_id) {
-        $query = "SELECT d.*, a.name as account_name 
-                FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
-                WHERE d.account_id = ?
-                ORDER BY d.created_at DESC";
+    public function readByUserId($pdns_user_id) {
+        $query = "SELECT * FROM " . $this->table_name . " 
+                WHERE pdns_user_id = ?
+                ORDER BY created_at DESC";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $account_id);
+        $stmt->bindParam(1, $pdns_user_id);
         $stmt->execute();
         return $stmt;
     }
 
     public function update() {
         $query = "UPDATE " . $this->table_name . "
-                SET type=:type, account_id=:account_id, pdns_zone_id=:pdns_zone_id,
+                SET type=:type, pdns_user_id=:pdns_user_id, pdns_zone_id=:pdns_zone_id,
                     kind=:kind, masters=:masters, dnssec=:dnssec, 
                     account=:account, updated_at=NOW()
                 WHERE id=:id";
@@ -185,7 +170,7 @@ class Domain {
         $stmt = $this->conn->prepare($query);
 
         $stmt->bindParam(':type', $this->type);
-        $stmt->bindParam(':account_id', $this->account_id);
+        $stmt->bindParam(':pdns_user_id', $this->pdns_user_id);
         $stmt->bindParam(':pdns_zone_id', $this->pdns_zone_id);
         $stmt->bindParam(':kind', $this->kind);
         $stmt->bindParam(':masters', $this->masters);
@@ -218,10 +203,10 @@ class Domain {
     }
 
     public function search($keywords) {
-        $query = "SELECT d.*, a.name as account_name 
+        $query = "SELECT d.*, a.username as account_name 
                 FROM " . $this->table_name . " d
-                LEFT JOIN users a ON d.account_id = a.id
-                WHERE d.name LIKE ? OR d.type LIKE ? OR a.name LIKE ?
+                LEFT JOIN accounts a ON d.account_id = a.id
+                WHERE d.name LIKE ? OR d.type LIKE ? OR a.username LIKE ?
                 ORDER BY d.created_at DESC";
 
         $stmt = $this->conn->prepare($query);
