@@ -219,82 +219,153 @@ function syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn, $silent = true)
 }
 
 function getAllAccounts($account) {
-    $stmt = $account->read();
-    $num = $stmt->rowCount();
+    global $pdns_admin_conn;
     
-    if($num > 0) {
-        $accounts_arr = array();
-        
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            extract($row);
-            
-            $account_item = array(
-                "id" => $id,
-                "username" => $username,
-                "firstname" => $firstname,
-                "lastname" => $lastname,
-                "email" => $email,
-                "role_id" => $role_id,
-                "ip_addresses" => $ip_addresses ? json_decode($ip_addresses, true) : [],
-                "customer_id" => $customer_id,
-                "pdns_account_id" => $pdns_account_id,
-                "created_at" => $created_at,
-                "updated_at" => $updated_at
-            );
-            
-            array_push($accounts_arr, $account_item);
-        }
-        
-        sendResponse(200, $accounts_arr);
-    } else {
-        sendResponse(200, array(), "No accounts found");
+    // PowerDNS Admin is the source of truth - read from there first
+    if (!$pdns_admin_conn) {
+        sendError(500, "Failed to connect to PowerDNS Admin database");
+        return;
     }
+    
+    // Get all users from PowerDNS Admin (primary source)
+    $pdns_query = "SELECT id, username, firstname, lastname, email, role_id FROM user ORDER BY username";
+    $pdns_stmt = $pdns_admin_conn->prepare($pdns_query);
+    $pdns_stmt->execute();
+    $pdns_users = $pdns_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (empty($pdns_users)) {
+        sendResponse(200, array(), "No accounts found in PowerDNS Admin");
+        return;
+    }
+    
+    // Get local metadata (IP addresses, customer_id) if available
+    $local_metadata = [];
+    $local_stmt = $account->read();
+    while ($row = $local_stmt->fetch(PDO::FETCH_ASSOC)) {
+        $local_metadata[$row['pdns_account_id']] = [
+            'ip_addresses' => $row['ip_addresses'] ? json_decode($row['ip_addresses'], true) : [],
+            'customer_id' => $row['customer_id'],
+            'local_created_at' => $row['created_at'],
+            'local_updated_at' => $row['updated_at']
+        ];
+    }
+    
+    // Combine PowerDNS Admin data with local metadata
+    $accounts_arr = array();
+    foreach ($pdns_users as $pdns_user) {
+        $metadata = $local_metadata[$pdns_user['id']] ?? [];
+        
+        $account_item = array(
+            "id" => $pdns_user['id'], // PowerDNS Admin ID is primary
+            "username" => $pdns_user['username'],
+            "firstname" => $pdns_user['firstname'],
+            "lastname" => $pdns_user['lastname'],
+            "email" => $pdns_user['email'],
+            "role_id" => $pdns_user['role_id'],
+            "pdns_account_id" => $pdns_user['id'],
+            // Local metadata (may be empty)
+            "ip_addresses" => $metadata['ip_addresses'] ?? [],
+            "customer_id" => $metadata['customer_id'] ?? null,
+            "source" => "PowerDNS Admin (primary)",
+            "has_local_metadata" => !empty($metadata)
+        );
+        
+        array_push($accounts_arr, $account_item);
+    }
+    
+    sendResponse(200, $accounts_arr, "Accounts retrieved from PowerDNS Admin with local metadata");
 }
 
 function getAccount($account, $account_id) {
-    $account->id = $account_id;
+    global $pdns_admin_conn;
     
-    if($account->readOne()) {
-        $account_arr = array(
-            "id" => $account->id,
-            "username" => $account->username,
-            "firstname" => $account->firstname,
-            "lastname" => $account->lastname,
-            "email" => $account->email,
-            "role_id" => $account->role_id,
-            "ip_addresses" => $account->ip_addresses ? json_decode($account->ip_addresses, true) : [],
-            "customer_id" => $account->customer_id,
-            "pdns_account_id" => $account->pdns_account_id,
-            "created_at" => $account->created_at,
-            "updated_at" => $account->updated_at
-        );
-        
-        sendResponse(200, $account_arr);
-    } else {
-        sendError(404, "Account not found");
+    // PowerDNS Admin is the source of truth - read from there first
+    if (!$pdns_admin_conn) {
+        sendError(500, "Failed to connect to PowerDNS Admin database");
+        return;
     }
+    
+    // Get user from PowerDNS Admin (primary source)
+    $pdns_query = "SELECT id, username, firstname, lastname, email, role_id FROM user WHERE id = ?";
+    $pdns_stmt = $pdns_admin_conn->prepare($pdns_query);
+    $pdns_stmt->execute([$account_id]);
+    $pdns_user = $pdns_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$pdns_user) {
+        sendError(404, "Account not found in PowerDNS Admin");
+        return;
+    }
+    
+    // Get local metadata if available
+    $local_query = "SELECT ip_addresses, customer_id, created_at, updated_at FROM accounts WHERE pdns_account_id = ?";
+    $local_stmt = $account->db->prepare($local_query);
+    $local_stmt->execute([$pdns_user['id']]);
+    $local_data = $local_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $account_arr = array(
+        "id" => $pdns_user['id'], // PowerDNS Admin ID is primary
+        "username" => $pdns_user['username'],
+        "firstname" => $pdns_user['firstname'],
+        "lastname" => $pdns_user['lastname'],
+        "email" => $pdns_user['email'],
+        "role_id" => $pdns_user['role_id'],
+        "pdns_account_id" => $pdns_user['id'],
+        // Local metadata (may be empty)
+        "ip_addresses" => $local_data ? json_decode($local_data['ip_addresses'], true) ?: [] : [],
+        "customer_id" => $local_data['customer_id'] ?? null,
+        "source" => "PowerDNS Admin (primary)",
+        "has_local_metadata" => $local_data !== false,
+        "local_created_at" => $local_data['created_at'] ?? null,
+        "local_updated_at" => $local_data['updated_at'] ?? null
+    );
+    
+    sendResponse(200, $account_arr, "Account retrieved from PowerDNS Admin with local metadata");
 }
 
 function getAccountByName($account, $account_name) {
-    if($account->readByName($account_name)) {
-        $account_arr = array(
-            "id" => $account->id,
-            "username" => $account->username,
-            "firstname" => $account->firstname,
-            "lastname" => $account->lastname,
-            "email" => $account->email,
-            "role_id" => $account->role_id,
-            "ip_addresses" => $account->ip_addresses ? json_decode($account->ip_addresses, true) : [],
-            "customer_id" => $account->customer_id,
-            "pdns_account_id" => $account->pdns_account_id,
-            "created_at" => $account->created_at,
-            "updated_at" => $account->updated_at
-        );
-        
-        sendResponse(200, $account_arr);
-    } else {
-        sendError(404, "Account not found");
+    global $pdns_admin_conn;
+    
+    // PowerDNS Admin is the source of truth - read from there first
+    if (!$pdns_admin_conn) {
+        sendError(500, "Failed to connect to PowerDNS Admin database");
+        return;
     }
+    
+    // Get user from PowerDNS Admin (primary source)
+    $pdns_query = "SELECT id, username, firstname, lastname, email, role_id FROM user WHERE username = ?";
+    $pdns_stmt = $pdns_admin_conn->prepare($pdns_query);
+    $pdns_stmt->execute([$account_name]);
+    $pdns_user = $pdns_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$pdns_user) {
+        sendError(404, "Account not found in PowerDNS Admin");
+        return;
+    }
+    
+    // Get local metadata if available
+    $local_query = "SELECT ip_addresses, customer_id, created_at, updated_at FROM accounts WHERE pdns_account_id = ?";
+    $local_stmt = $account->db->prepare($local_query);
+    $local_stmt->execute([$pdns_user['id']]);
+    $local_data = $local_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $account_arr = array(
+        "id" => $pdns_user['id'], // PowerDNS Admin ID is primary
+        "username" => $pdns_user['username'],
+        "firstname" => $pdns_user['firstname'],
+        "lastname" => $pdns_user['lastname'],
+        "email" => $pdns_user['email'],
+        "role_id" => $pdns_user['role_id'],
+        "pdns_account_id" => $pdns_user['id'],
+        // Local metadata (may be empty)
+        "ip_addresses" => $local_data ? json_decode($local_data['ip_addresses'], true) ?: [] : [],
+        "customer_id" => $local_data['customer_id'] ?? null,
+        "source" => "PowerDNS Admin (primary)",
+        "has_local_metadata" => $local_data !== false,
+        "local_created_at" => $local_data['created_at'] ?? null,
+        "local_updated_at" => $local_data['updated_at'] ?? null
+    );
+    
+    sendResponse(200, $account_arr, "Account retrieved from PowerDNS Admin with local metadata");
 }
 
 function createAccount($account) {
@@ -372,36 +443,44 @@ function createAccount($account) {
         return;
     }
     
-    // Create in local database with additional fields
-    $account->username = $pdns_user['username'];
-    $account->password = null; // Don't store password locally
-    $account->firstname = $pdns_user['firstname'];
-    $account->lastname = $pdns_user['lastname'];
-    $account->email = $pdns_user['email'];
-    $account->role_id = $pdns_user['role_id'];
-    $account->ip_addresses = json_encode($validated_ips);
-    $account->customer_id = $customer_id;
-    $account->pdns_account_id = $pdns_user['id'];
+    // Check if we need to store additional metadata (IP addresses or customer_id)
+    $needs_local_storage = !empty($validated_ips) || $customer_id !== null;
     
-    if($account->create()) {
-        // Auto-sync after account creation (silent mode is default)
-        global $pdns_admin_conn;
-        syncAccountsFromPDNSAdminDB($account, $pdns_admin_conn);
+    if ($needs_local_storage) {
+        // Only store in local DB if we have additional metadata to store
+        $account->username = $pdns_user['username'];
+        $account->password = null; // Don't store password locally
+        $account->firstname = $pdns_user['firstname'];
+        $account->lastname = $pdns_user['lastname'];
+        $account->email = $pdns_user['email'];
+        $account->role_id = $pdns_user['role_id'];
+        $account->ip_addresses = json_encode($validated_ips);
+        $account->customer_id = $customer_id;
+        $account->pdns_account_id = $pdns_user['id'];
         
-        sendResponse(201, [
-            'id' => $account->id,
-            'username' => $account->username,
-            'firstname' => $account->firstname,
-            'lastname' => $account->lastname,
-            'email' => $account->email,
-            'role_id' => $account->role_id,
-            'pdns_account_id' => $account->pdns_account_id,
-            'ip_addresses' => $account->ip_addresses ? json_decode($account->ip_addresses, true) : [],
-            'customer_id' => $account->customer_id
-        ], "Account created successfully in PowerDNS Admin and synced to local database");
-    } else {
-        sendError(503, "User created in PowerDNS Admin but failed to sync to local database");
+        if (!$account->create()) {
+            // Log the error but don't fail - PowerDNS Admin user was created successfully
+            error_log("Warning: Failed to store additional metadata for user {$pdns_user['username']} in local database");
+        }
     }
+    
+    // Always return the PowerDNS Admin user data (with any additional metadata if stored)
+    $response_data = [
+        'id' => $pdns_user['id'], // PowerDNS Admin ID is primary
+        'username' => $pdns_user['username'],
+        'firstname' => $pdns_user['firstname'],
+        'lastname' => $pdns_user['lastname'],
+        'email' => $pdns_user['email'],
+        'role_id' => $pdns_user['role_id'],
+        'pdns_account_id' => $pdns_user['id'],
+        'ip_addresses' => $validated_ips, // Return what was provided
+        'customer_id' => $customer_id,
+        'source' => 'PowerDNS Admin (primary)',
+        'local_metadata_stored' => $needs_local_storage
+    ];
+    
+    sendResponse(201, $response_data, "User created successfully in PowerDNS Admin" . 
+        ($needs_local_storage ? " with additional metadata stored locally" : ""));
 }
 
 function updateAccount($account, $account_identifier) {
