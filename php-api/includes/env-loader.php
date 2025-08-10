@@ -42,10 +42,16 @@ function loadEnv($filePath) {
     return true;
 }
 
-// Load .env file from php-api directory (parent of includes)
-$env_path = dirname(__DIR__) . '/.env';
+// Load .env file from project root (parent of php-api)
+$env_path = dirname(dirname(__DIR__)) . '/.env';
 
 if (file_exists($env_path)) {
     loadEnv($env_path);
+} else {
+    // Fallback: try php-api directory
+    $env_path_fallback = dirname(__DIR__) . '/.env';
+    if (file_exists($env_path_fallback)) {
+        loadEnv($env_path_fallback);
+    }
 }
 ?>

@@ -44,10 +44,17 @@ class PDNSAdminClient {
     public function makeRequest($endpoint, $method = 'GET', $data = null) {
         $url = $this->base_url . $endpoint;
         
+        error_log("PDNSAdminClient: Making {$method} request to {$url}");
+        if ($data) {
+            error_log("PDNSAdminClient: Request data: " . json_encode($data, JSON_PRETTY_PRINT));
+        }
+        
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30); // 30 second timeout
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10); // 10 second connection timeout
         
         // Set headers
         $headers = ['Content-Type: application/json'];
@@ -56,19 +63,22 @@ class PDNSAdminClient {
         $use_server_key = $this->isServerEndpoint($endpoint);
         $key_to_use = $use_server_key ? $this->pdns_server_key : $this->api_key;
         
-        if ($this->auth_type === 'apikey' && $key_to_use) {
-            // Use X-API-Key header
-            $headers[] = 'X-API-Key: ' . $key_to_use;
-        } elseif ($this->auth_type === 'basic' && $key_to_use) {
-            // Use the already base64 encoded API key for Basic Auth
-            $headers[] = 'Authorization: Basic ' . $key_to_use;
+        error_log("PDNSAdminClient: Using " . ($use_server_key ? "server" : "admin") . " key for endpoint {$endpoint}");
+        
+        if ($use_server_key && $this->pdns_server_key) {
+            // Server endpoints use X-API-Key header with the raw API key
+            $headers[] = 'X-API-Key: ' . $this->pdns_server_key;
+        } elseif (!$use_server_key && $this->auth_type === 'basic' && $this->api_key) {
+            // Admin endpoints use Authorization: Basic with base64 encoded credentials
+            $headers[] = 'Authorization: Basic ' . $this->api_key;
         } elseif ($this->auth_type === 'basic' && $this->username && $this->password) {
-            // Encode username:password to base64 for basic auth
+            // Fallback: Encode username:password to base64 for basic auth
             $credentials = base64_encode($this->username . ':' . $this->password);
             $headers[] = 'Authorization: Basic ' . $credentials;
         }
         
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        error_log("PDNSAdminClient: Request headers: " . json_encode($headers));
         
         if ($data && in_array($method, ['POST', 'PUT', 'PATCH'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
@@ -76,13 +86,30 @@ class PDNSAdminClient {
         
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
         curl_close($ch);
         
-        return [
+        if ($curl_error) {
+            error_log("PDNSAdminClient: CURL Error: {$curl_error}");
+        }
+        
+        error_log("PDNSAdminClient: Response HTTP {$http_code}, length: " . strlen($response));
+        error_log("PDNSAdminClient: Response preview: " . substr($response, 0, 500));
+        
+        $result = [
             'status_code' => $http_code,
             'data' => json_decode($response, true),
-            'raw_response' => $response
+            'raw_response' => $response,
+            'curl_error' => $curl_error
         ];
+        
+        // Log JSON decode errors
+        if (json_last_error() !== JSON_ERROR_NONE && !empty($response)) {
+            error_log("PDNSAdminClient: JSON decode error: " . json_last_error_msg());
+            $result['json_error'] = json_last_error_msg();
+        }
+        
+        return $result;
     }
 
     // Domain/Zone operations
@@ -98,63 +125,137 @@ class PDNSAdminClient {
     // ✅ PUT /servers/localhost/zones/{name} (replace zone) - WORKS
     
     public function getAllDomains() {
+        // Use PowerDNS Server API to get complete list of zones (bypasses user filtering)
+        $response = $this->makeRequest('/servers/localhost/zones', 'GET');
+        
+        if ($response['status_code'] === 200) {
+            return $response;
+        }
+        
+        // Fallback to PowerDNS Admin API if server API fails
         return $this->makeRequest('/pdnsadmin/zones');
     }
 
     public function getAllDomainsWithAccounts() {
-        // Query PowerDNS Admin database directly to get ALL domains
-        // This bypasses the API filtering that limits domains to user permissions
+        // Get domains from PowerDNS Server API and enhance with local database info
+        $domains_response = $this->makeRequest('/servers/localhost/zones', 'GET');
         
-        try {
-            // Connect to PowerDNS Admin database directly using correct credentials
-            $host = 'cora.avant.nl';
-            $dbname = 'pda';  // PowerDNS Admin database
-            $username = 'pdns_api_db';
-            $password = '8swoajKuchij]';
-            
-            $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
-            $pdo = new PDO($dsn, $username, $password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ]);
-            
-            $sql = "SELECT 
-                        d.id,
-                        d.name,
-                        d.type,
-                        d.account_id,
-                        a.name as account_name,
-                        a.description as account_description
-                    FROM domain d
-                    LEFT JOIN account a ON d.account_id = a.id
-                    ORDER BY d.name";
-            
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute();
-            $domains = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            error_log("Fetched " . count($domains) . " domains directly from PowerDNS Admin database");
-            
-            // Return in the same format as the API response
-            return [
-                'status_code' => 200,
-                'data' => $domains,
-                'metadata' => [
-                    'total_domains' => count($domains),
-                    'source' => 'direct_database_query',
-                    'note' => 'Retrieved directly from PowerDNS Admin database to bypass API filtering'
-                ]
-            ];
-            
-        } catch (Exception $e) {
-            error_log("Error querying PowerDNS Admin database: " . $e->getMessage());
+        if ($domains_response['status_code'] !== 200) {
+            // Fallback to PowerDNS Admin API
+            $domains_response = $this->makeRequest('/pdnsadmin/zones', 'GET');
+        }
+        
+        if ($domains_response['status_code'] !== 200 || !isset($domains_response['data'])) {
             return [
                 'status_code' => 500,
-                'data' => [],
-                'error' => 'Database connection failed: ' . $e->getMessage()
+                'data' => null,
+                'error' => 'Failed to retrieve domains from API'
             ];
         }
+        
+        // Enhance with local database information (accounts, metadata, business logic)
+        try {
+            require_once __DIR__ . '/../includes/autoloader.php';
+            $db = new Database();
+            $conn = $db->getConnection();
+            
+            // Get all local domain records with account associations
+            $stmt = $conn->query("
+                SELECT 
+                    d.name,
+                    d.account_id,
+                    d.pdns_account_id,
+                    d.created_at,
+                    d.updated_at,
+                    a.username as account_name,
+                    a.email as account_email,
+                    CONCAT(a.firstname, ' ', a.lastname) as account_description
+                FROM domains d
+                LEFT JOIN accounts a ON d.account_id = a.id
+            ");
+            $local_domains = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Index by domain name for quick lookup (handle both with/without trailing dots)
+            $local_index = [];
+            foreach ($local_domains as $local_domain) {
+                $domain_name = rtrim($local_domain['name'], '.');
+                $local_index[$domain_name] = $local_domain;
+                // Also index with trailing dot for exact matches
+                $local_index[$domain_name . '.'] = $local_domain;
+            }
+            
+            error_log("Built local index with " . count($local_index) . " entries from " . count($local_domains) . " local domains");
+            
+        } catch (Exception $e) {
+            error_log("Failed to load local domain data: " . $e->getMessage());
+            $local_index = [];
+        }
+        
+        // Enhance domain data with local database information
+        $enhanced_domains = [];
+        $matched_count = 0;
+        foreach ($domains_response['data'] as $domain) {
+            $domain_name = rtrim($domain['name'], '.');
+            $domain_name_with_dot = $domain_name . '.';
+            
+            // Try both with and without trailing dot, and original name
+            $local_data = null;
+            if (isset($local_index[$domain_name])) {
+                $local_data = $local_index[$domain_name];
+            } elseif (isset($local_index[$domain_name_with_dot])) {
+                $local_data = $local_index[$domain_name_with_dot];
+            } elseif (isset($local_index[$domain['name']])) {
+                $local_data = $local_index[$domain['name']];
+            }
+            
+            if ($local_data !== null) {
+                $matched_count++;
+                error_log("Matched domain: " . $domain['name'] . " -> " . $local_data['name'] . " (account: " . ($local_data['account_id'] ?? 'none') . ")");
+            }
+            
+            $enhanced_domain = [
+                'id' => $domain['id'] ?? $domain['name'],
+                'name' => $domain['name'],
+                'type' => $domain['kind'] ?? $domain['type'] ?? 'Native',
+                
+                // PowerDNS data
+                'powerdns_account' => $domain['account'] ?? null,
+                'dnssec' => $domain['dnssec'] ?? false,
+                'serial' => $domain['serial'] ?? null,
+                'records_count' => isset($domain['rrsets']) ? count($domain['rrsets']) : null,
+                
+                // Local database enrichment
+                'account_id' => $local_data['account_id'] ?? null,
+                'account_name' => $local_data['account_name'] ?? null,
+                'account_email' => $local_data['account_email'] ?? null,
+                'account_description' => $local_data['account_description'] ?? null,
+                'pdns_account_id' => $local_data['pdns_account_id'] ?? null,
+                'created_at' => $local_data['created_at'] ?? null,
+                'updated_at' => $local_data['updated_at'] ?? null,
+                
+                // Metadata flags
+                'has_local_data' => $local_data !== null,
+                'sync_status' => $local_data !== null ? 'synced' : 'api_only'
+            ];
+            
+            $enhanced_domains[] = $enhanced_domain;
+        }
+        
+        error_log("Enhanced " . count($enhanced_domains) . " domains ({$matched_count} matched with local data) from API + database");
+        
+        return [
+            'status_code' => 200,
+            'data' => $enhanced_domains,
+            'metadata' => [
+                'total_domains' => count($enhanced_domains),
+                'synced_domains' => $matched_count,
+                'api_only_domains' => count($enhanced_domains) - $matched_count,
+                'source' => 'api_plus_database_enrichment',
+                'domains_source' => 'powerdns_api',
+                'enrichment_source' => 'local_database',
+                'note' => 'PowerDNS API data enriched with local database business information'
+            ]
+        ];
     }
 
     public function createDomain($zone_data) {
@@ -166,66 +267,50 @@ class PDNSAdminClient {
     }
 
     /**
-     * Get domain by name - requires local database lookup to find PowerDNS ID
-     * This function assumes you have a local database with domain name->powerdns_id mapping
+     * Get domain by name using PowerDNS Server API (most reliable)
      */
     public function getDomainByName($domain_name) {
-        // First get the PowerDNS zone ID from local database
-        $powerdns_id = $this->getDomainIdByName($domain_name);
+        // Ensure domain name has trailing dot for canonical form
+        $canonical_name = rtrim($domain_name, '.') . '.';
         
-        if (!$powerdns_id) {
+        // Try PowerDNS Server API first (most reliable and complete)
+        $response = $this->makeRequest("/servers/localhost/zones/{$canonical_name}", 'GET');
+        
+        if ($response['status_code'] === 200) {
             return [
-                'status_code' => 404,
-                'data' => null,
-                'raw_response' => json_encode(['error' => 'Domain not found in local database'])
+                'status_code' => 200,
+                'data' => $response['data'],
+                'raw_response' => $response['raw_response'],
+                'source' => 'powerdns_server_api'
             ];
         }
-
-        // PowerDNS Admin API doesn't support individual domain retrieval
-        // So we get all domains and filter by the one we want
-        $response = $this->getAllDomains();
         
-        if ($response['status_code'] === 200 && isset($response['data'])) {
-            foreach ($response['data'] as $domain) {
-                // Check both name and PowerDNS ID matches
-                if (isset($domain['name']) && $domain['name'] === $domain_name) {
+        // Fallback: Search in all domains list
+        error_log("Direct zone lookup failed, searching in all domains list");
+        $all_domains = $this->getAllDomains();
+        
+        if ($all_domains['status_code'] === 200 && isset($all_domains['data'])) {
+            foreach ($all_domains['data'] as $domain) {
+                $domain_name_check = isset($domain['name']) ? rtrim($domain['name'], '.') : '';
+                $search_name = rtrim($domain_name, '.');
+                
+                if ($domain_name_check === $search_name) {
                     return [
                         'status_code' => 200,
                         'data' => $domain,
-                        'raw_response' => json_encode($domain)
-                    ];
-                }
-                // Also check by PowerDNS ID if available
-                if (isset($domain['id']) && $domain['id'] == $powerdns_id) {
-                    return [
-                        'status_code' => 200,
-                        'data' => $domain,
-                        'raw_response' => json_encode($domain)
+                        'raw_response' => json_encode($domain),
+                        'source' => 'domains_list_search'
                     ];
                 }
             }
-            
-            // If not found in PowerDNS Admin, return local database info with note
-            return [
-                'status_code' => 200,
-                'data' => [
-                    'pdns_zone_id' => $powerdns_id,
-                    'name' => $domain_name,
-                    'source' => 'local_database_only',
-                    'note' => 'Domain found in local database but not in PowerDNS Admin API response'
-                ],
-                'raw_response' => json_encode([
-                    'pdns_zone_id' => $powerdns_id,
-                    'name' => $domain_name,
-                    'source' => 'local_database_only'
-                ])
-            ];
         }
-
+        
+        // Not found
         return [
-            'status_code' => 500,
+            'status_code' => 404,
             'data' => null,
-            'raw_response' => json_encode(['error' => 'Failed to retrieve domains from PowerDNS Admin API'])
+            'raw_response' => json_encode(['error' => 'Domain not found']),
+            'source' => 'api_search_complete'
         ];
     }
 
@@ -264,58 +349,70 @@ class PDNSAdminClient {
     }
 
     /**
-     * Delete domain by name - requires local database lookup to find PowerDNS ID
+     * Delete domain by name using PowerDNS Admin API
      */
     public function deleteDomainByName($domain_name) {
-        // First get the PowerDNS zone ID from local database
-        $powerdns_id = $this->getDomainIdByName($domain_name);
+        // Ensure domain name has trailing dot for canonical form
+        $canonical_name = rtrim($domain_name, '.') . '.';
         
-        if (!$powerdns_id) {
-            return [
-                'status_code' => 404,
-                'data' => null,
-                'raw_response' => json_encode(['error' => 'Domain not found in local database'])
-            ];
-        }
-
-        // Use the existing deleteDomain function with the PowerDNS ID
-        return $this->deleteDomain($powerdns_id);
+        // Use PowerDNS Admin API to delete the zone
+        // Note: PowerDNS Admin API expects the canonical zone name
+        return $this->makeRequest("/pdnsadmin/zones/{$canonical_name}", 'DELETE');
     }
 
     /**
-     * Search domains by name pattern - uses local database for efficient searching
+     * Search domains by name pattern using API
      */
     public function searchDomainsByName($name_pattern) {
-        try {
-            require_once __DIR__ . '/../includes/autoloader.php';
-            $db = new Database();
-            $conn = $db->getConnection();
-            
-            $stmt = $conn->prepare('SELECT id, name, pdns_zone_id FROM domains WHERE name LIKE :pattern ORDER BY name');
-            $pattern = '%' . $name_pattern . '%';
-            $stmt->bindParam(':pattern', $pattern);
-            $stmt->execute();
-            $results = $stmt->fetchAll();
-            
-            return [
-                'status_code' => 200,
-                'data' => $results,
-                'raw_response' => json_encode($results)
-            ];
-        } catch (Exception $e) {
+        // Get all domains from API
+        $all_domains = $this->getAllDomains();
+        
+        if ($all_domains['status_code'] !== 200 || !isset($all_domains['data'])) {
             return [
                 'status_code' => 500,
                 'data' => null,
-                'raw_response' => json_encode(['error' => 'Database search failed: ' . $e->getMessage()])
+                'raw_response' => json_encode(['error' => 'Failed to retrieve domains for search'])
             ];
         }
+        
+        // Filter domains by name pattern
+        $pattern_lower = strtolower($name_pattern);
+        $matching_domains = [];
+        
+        foreach ($all_domains['data'] as $domain) {
+            if (isset($domain['name'])) {
+                $domain_name_lower = strtolower($domain['name']);
+                if (strpos($domain_name_lower, $pattern_lower) !== false) {
+                    $matching_domains[] = [
+                        'id' => $domain['id'] ?? $domain['name'],
+                        'name' => $domain['name'],
+                        'type' => $domain['kind'] ?? $domain['type'] ?? 'Native',
+                        'records_count' => isset($domain['rrsets']) ? count($domain['rrsets']) : null
+                    ];
+                }
+            }
+        }
+        
+        return [
+            'status_code' => 200,
+            'data' => $matching_domains,
+            'raw_response' => json_encode($matching_domains),
+            'metadata' => [
+                'search_pattern' => $name_pattern,
+                'total_matches' => count($matching_domains),
+                'searched_from' => $all_domains['source'] ?? 'api'
+            ]
+        ];
     }
 
     /**
+     * @deprecated This function is deprecated - use API-based domain lookups instead
      * Helper function to get domain ID by name from local database
      * This function connects to the local database to find the PowerDNS Admin zone ID
      */
     private function getDomainIdByName($domain_name) {
+        error_log("DEPRECATED: getDomainIdByName() called - use API-based domain lookups instead");
+        
         try {
             require_once __DIR__ . '/../includes/autoloader.php';
             $db = new Database();
@@ -504,6 +601,103 @@ class PDNSAdminClient {
         }
         
         return false;
+    }
+
+    /**
+     * Sync PowerDNS domains with local database
+     * This maintains local database records for business logic while PowerDNS handles DNS
+     */
+    public function syncDomainsToLocalDatabase() {
+        try {
+            // Get all domains from PowerDNS API
+            $domains_response = $this->makeRequest('/servers/localhost/zones', 'GET');
+            
+            if ($domains_response['status_code'] !== 200) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to fetch domains from PowerDNS API',
+                    'status_code' => $domains_response['status_code']
+                ];
+            }
+            
+            require_once __DIR__ . '/../includes/autoloader.php';
+            $db = new Database();
+            $conn = $db->getConnection();
+            
+            $synced = 0;
+            $updated = 0;
+            $errors = 0;
+            
+            foreach ($domains_response['data'] as $domain) {
+                $domain_name = rtrim($domain['name'], '.');
+                
+                try {
+                    // Check if domain already exists in local database
+                    $stmt = $conn->prepare('SELECT id FROM domains WHERE name = ?');
+                    $stmt->execute([$domain_name]);
+                    $exists = $stmt->fetch();
+                    
+                    if (!$exists) {
+                        // Insert new domain record
+                        $stmt = $conn->prepare('
+                            INSERT INTO domains (name, type, pdns_zone_id, kind, dnssec, account, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+                        ');
+                        
+                        $stmt->execute([
+                            $domain_name,
+                            'Zone',
+                            $domain['id'] ?? $domain_name,
+                            $domain['kind'] ?? 'Native',
+                            $domain['dnssec'] ?? 0,
+                            $domain['account'] ?? null
+                        ]);
+                        
+                        $synced++;
+                        error_log("Synced new domain: {$domain_name}");
+                    } else {
+                        // Update existing domain
+                        $stmt = $conn->prepare('
+                            UPDATE domains 
+                            SET pdns_zone_id = ?, kind = ?, dnssec = ?, account = ?, updated_at = NOW()
+                            WHERE name = ?
+                        ');
+                        
+                        $stmt->execute([
+                            $domain['id'] ?? $domain_name,
+                            $domain['kind'] ?? 'Native',
+                            $domain['dnssec'] ?? 0,
+                            $domain['account'] ?? null,
+                            $domain_name
+                        ]);
+                        
+                        $updated++;
+                    }
+                    
+                } catch (Exception $e) {
+                    error_log("Error syncing domain {$domain_name}: " . $e->getMessage());
+                    $errors++;
+                }
+            }
+            
+            return [
+                'success' => true,
+                'message' => 'Domain sync completed',
+                'stats' => [
+                    'total_processed' => count($domains_response['data']),
+                    'new_synced' => $synced,
+                    'updated' => $updated,
+                    'errors' => $errors
+                ]
+            ];
+            
+        } catch (Exception $e) {
+            error_log("Domain sync failed: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Domain sync failed: ' . $e->getMessage()
+            ];
+        }
     }
 }
 ?>
