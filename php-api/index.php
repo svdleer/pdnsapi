@@ -74,14 +74,20 @@ if (preg_match('/^(api\/)?templates\/(\d+)\/create-domain$/', $path, $matches)) 
         case 'openapi':
         case 'openapi.json':
         case 'swagger.json':
-            // Serve OpenAPI JSON specification
+            // Serve OpenAPI JSON specification with CORS headers
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization');
             header('Content-Type: application/json');
             readfile('openapi.json');
             break;
             
         case 'openapi.yaml':
         case 'swagger.yaml':
-            // Serve OpenAPI YAML specification
+            // Serve OpenAPI YAML specification with CORS headers
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization');
             header('Content-Type: application/yaml');
             readfile('openapi.yaml');
             break;

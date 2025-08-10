@@ -351,11 +351,15 @@
             // Clear existing Swagger UI
             document.getElementById('swagger-ui').innerHTML = '';
             
-            // Determine OpenAPI URL based on language
+            // Determine OpenAPI URL based on language  
+            // Get current directory path from the URL
+            const currentPath = window.location.pathname.replace(/\/[^\/]*$/, '');
+            const baseUrl = window.location.origin + currentPath;
             const openApiUrl = currentLang === 'en' 
-                ? window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi"
-                : window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi-i18n.php?lang=" + currentLang;
+                ? baseUrl + '/openapi'
+                : baseUrl + '/openapi-i18n.php?lang=' + currentLang;
             
+            console.log('Base URL:', baseUrl);
             console.log('OpenAPI URL:', openApiUrl);
             
             // Initialize Swagger UI
