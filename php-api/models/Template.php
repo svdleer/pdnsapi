@@ -169,30 +169,33 @@ class Template {
                 $applied_records[] = $applied_record;
             }
             
-            // Create domain using PowerDNS Admin API first
+            // Create domain using PowerDNS Admin API with template records in one pass
             require_once __DIR__ . '/../classes/PDNSAdminClient.php';
             require_once __DIR__ . '/../config/pdns-admin-database.php';
             
             global $pdns_config;
             $pdns_client = new PDNSAdminClient($pdns_config);
             
-            // Create the domain in PowerDNS Admin (which forwards to PowerDNS Server)
-            // PowerDNS Admin expects the same format as PowerDNS Server API
+            // Prepare rrsets from template records
+            $rrsets = $this->prepareRRSets($applied_records, $canonical_domain_name);
+            
+            // Create the domain in PowerDNS Admin with rrsets in one pass
             $api_domain_data = [
-                'name' => $canonical_domain_name, // Use canonical name for API
-                'kind' => $domain_data['kind'] ?? 'Native', // Native is correct for PowerDNS Admin
+                'name' => $canonical_domain_name,
+                'kind' => $domain_data['kind'] ?? 'Native',
+                'rrsets' => $rrsets, // Include rrsets in domain creation
                 'nameservers' => [], // Will use default nameservers
             ];
             
-            error_log("Sending to PowerDNS Admin API: " . json_encode($api_domain_data));
+            error_log("Creating domain with template records in one pass: " . json_encode($api_domain_data));
             $api_result = $pdns_client->createDomain($api_domain_data);
-            error_log("PowerDNS Admin API create domain result: " . json_encode($api_result));
+            error_log("PowerDNS Admin API create domain with rrsets result: " . json_encode($api_result));
             
-            // Check if the API call was successful (PowerDNS Admin returns 201 for successful creation)
+            // Check if the API call was successful
             if (!$api_result || 
                 (isset($api_result['status_code']) && $api_result['status_code'] !== 201)) {
                 
-                $error_msg = 'Failed to create domain in PowerDNS Admin API';
+                $error_msg = 'Failed to create domain with template in PowerDNS Admin API';
                 if (isset($api_result['raw_response'])) {
                     $error_msg .= ': ' . $api_result['raw_response'];
                 }
@@ -200,20 +203,7 @@ class Template {
             }
             
             // Extract the zone ID from the API response
-            $pdns_zone_id = $api_result['id'] ?? $api_result['data']['id'] ?? null;
-            
-            // Now apply template records to the created domain using rrsets
-            $rrsets = $this->prepareRRSets($applied_records, $canonical_domain_name);
-            
-            if (!empty($rrsets)) {
-                $record_result = $pdns_client->updateDomainRecords($canonical_domain_name, $rrsets);
-                error_log("Template records application result: " . json_encode($record_result));
-                
-                if (!$record_result || (isset($record_result['status_code']) && $record_result['status_code'] !== 204)) {
-                    error_log("Warning: Failed to apply template records, but domain was created");
-                    // Don't fail completely - domain was created successfully
-                }
-            }
+            $pdns_zone_id = $api_result['data']['id'] ?? $api_result['data']['name'] ?? $canonical_domain_name;
             
             // Domain created successfully in PowerDNS Admin
             // Skip local database creation and rely on sync instead
