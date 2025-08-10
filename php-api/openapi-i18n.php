@@ -6,6 +6,10 @@
  * Supports English (en) and Dutch (nl) translations
  */
 
+// Enable error reporting for debugging (remove in production)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Set CORS headers to allow browser access
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
@@ -18,9 +22,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Load environment and translations
-require_once __DIR__ . '/includes/env-loader.php';
-require_once __DIR__ . '/translations.php';
+// Load environment and translations with error handling
+try {
+    if (file_exists(__DIR__ . '/includes/env-loader.php')) {
+        require_once __DIR__ . '/includes/env-loader.php';
+    }
+    
+    if (file_exists(__DIR__ . '/translations.php')) {
+        require_once __DIR__ . '/translations.php';
+    } else {
+        throw new Exception('translations.php not found');
+    }
+    
+    if (!function_exists('getTranslations')) {
+        throw new Exception('getTranslations function not defined');
+    }
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Configuration error: ' . $e->getMessage()]);
+    exit;
+}
 
 // Get requested language, default to English
 $lang = $_GET['lang'] ?? 'en';
