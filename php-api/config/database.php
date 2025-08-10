@@ -2,16 +2,29 @@
 /**
  * Database Configuration
  */
+
+// Load environment variables
+if (!defined('ENV_LOADED')) {
+    require_once __DIR__ . '/../includes/env-loader.php';
+    define('ENV_LOADED', true);
+}
+
 if (!class_exists('Database')) {
 class Database {
-    private $host = 'cora.avant.nl';
-    private $db_name = 'pdns_api_db';
-    private $username = 'pdns_api_db';
-    private $password = '8swoajKuchij]';
-    private $charset = 'utf8mb4';
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
+    private $charset;
     private $conn;
 
-
+    public function __construct() {
+        $this->host = $_ENV['API_DB_HOST'] ?? 'localhost';
+        $this->db_name = $_ENV['API_DB_NAME'] ?? 'database_name_required';
+        $this->username = $_ENV['API_DB_USER'] ?? 'username_required';
+        $this->password = $_ENV['API_DB_PASS'] ?? 'password_required';
+        $this->charset = $_ENV['API_DB_CHARSET'] ?? 'utf8mb4';
+    }
 
     public function getConnection() {
         $this->conn = null;
@@ -37,12 +50,20 @@ class Database {
 // PowerDNS Admin Database Connection
 if (!class_exists('PDNSAdminDatabase')) {
 class PDNSAdminDatabase {
-    private $host = 'cora.avant.nl';
-    private $db_name = 'pda';  // PowerDNS Admin database
-    private $username = 'pdns_api_db'; // PowerDNS Admin DB user
-    private $password = '8swoajKuchij]'; // PowerDNS Admin DB password
-    private $charset = 'utf8mb4';
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
+    private $charset;
     private $conn;
+
+    public function __construct() {
+        $this->host = $_ENV['PDNS_ADMIN_DB_HOST'] ?? 'localhost';
+        $this->db_name = $_ENV['PDNS_ADMIN_DB_NAME'] ?? 'database_name_required';
+        $this->username = $_ENV['PDNS_ADMIN_DB_USER'] ?? 'username_required';
+        $this->password = $_ENV['PDNS_ADMIN_DB_PASS'] ?? 'password_required';
+        $this->charset = $_ENV['API_DB_CHARSET'] ?? 'utf8mb4';
+    }
 
     public function getConnection() {
         $this->conn = null;

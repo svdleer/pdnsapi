@@ -6,11 +6,11 @@
 try {
     // PowerDNS Admin database connection
     $pdns_admin_config = [
-        'host' => $_ENV['PDNS_ADMIN_DB_HOST'] ?? 'cora.avant.nl',
+        'host' => $_ENV['PDNS_ADMIN_DB_HOST'] ?? 'localhost',
         'port' => $_ENV['PDNS_ADMIN_DB_PORT'] ?? 3306,
-        'database' => $_ENV['PDNS_ADMIN_DB_NAME'] ?? 'pda',
-        'username' => $_ENV['PDNS_ADMIN_DB_USER'] ?? 'pdns_api_db',
-        'password' => $_ENV['PDNS_ADMIN_DB_PASS'] ?? '8swoajKuchij]'
+        'database' => $_ENV['PDNS_ADMIN_DB_NAME'] ?? 'database_name_required',
+        'username' => $_ENV['PDNS_ADMIN_DB_USER'] ?? 'username_required',
+        'password' => $_ENV['PDNS_ADMIN_DB_PASS'] ?? 'password_required'
     ];
 
     $dsn = sprintf(
@@ -37,9 +37,9 @@ try {
 
 // Set the config array for PDNSAdminClient
 $pdns_config = [
-    'base_url' => $_ENV['PDNS_BASE_URL'] ?? 'https://cora.avant.nl/api/v1',
+    'base_url' => $_ENV['PDNS_BASE_URL'] ?? 'https://localhost/api/v1',
     'auth_type' => 'basic',
-    'api_key' => $_ENV['PDNS_API_KEY'] ?? 'your-pdns-api-key-here',
-    'pdns_server_key' => $_ENV['PDNS_SERVER_KEY'] ?? 'your-pdns-server-key-here'
+    'api_key' => $_ENV['PDNS_API_KEY'] ?? 'api_key_required',
+    'pdns_server_key' => $_ENV['PDNS_SERVER_KEY'] ?? 'server_key_required'
 ];
 ?>
