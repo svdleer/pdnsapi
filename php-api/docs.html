@@ -47,13 +47,15 @@
             border-bottom: 1px solid #e5e7eb;
             text-align: center;
             position: relative;
+            min-height: 50px;
         }
         
         .nav-links a {
-            margin: 0 15px;
+            margin: 0 10px;
             color: #3b82f6;
             text-decoration: none;
             font-weight: 500;
+            font-size: 14px;
         }
         
         .nav-links a:hover {
@@ -63,18 +65,19 @@
         /* Language Toggle Styles */
         .language-toggle {
             position: absolute;
-            right: 20px;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            z-index: 10;
         }
         
         .toggle-switch {
             position: relative;
-            width: 60px;
-            height: 30px;
+            width: 50px;
+            height: 25px;
             background: #e5e7eb;
             border-radius: 15px;
             cursor: pointer;
@@ -87,10 +90,10 @@
         
         .toggle-slider {
             position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 24px;
-            height: 24px;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
             background: white;
             border-radius: 50%;
             transition: transform 0.3s;
@@ -98,18 +101,50 @@
         }
         
         .toggle-switch.active .toggle-slider {
-            transform: translateX(30px);
+            transform: translateX(25px);
         }
         
         .language-label {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 500;
-            min-width: 30px;
+            min-width: 25px;
             text-align: center;
         }
         
         .language-label.inactive {
             opacity: 0.5;
+        }
+        
+        /* Responsive design for language toggle */
+        @media (max-width: 768px) {
+            .nav-links a {
+                margin: 0 5px;
+                font-size: 12px;
+            }
+            
+            .language-toggle {
+                right: 5px;
+                gap: 5px;
+            }
+            
+            .language-label {
+                font-size: 14px;
+                min-width: 20px;
+            }
+            
+            .toggle-switch {
+                width: 40px;
+                height: 20px;
+            }
+            
+            .toggle-slider {
+                width: 16px;
+                height: 16px;
+            }
+            
+            .toggle-switch.active .toggle-slider {
+                transform: translateX(20px);
+            }
         }
         
         .info-section {
