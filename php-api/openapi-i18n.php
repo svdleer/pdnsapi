@@ -58,16 +58,20 @@ $openapi = [
     'info' => [
         'title' => $translations['api_title'],
         'description' => $translations['api_description'],
-        'version' => '1.0.0',
+        'version' => '1.1.0',
         'contact' => [
-            'name' => 'API Support',
-            'email' => 'support@avant.nl'
+            'name' => 'API Support - Silvester van der Leer',
+            'email' => 'silvester@avant.nl'
+        ],
+        'license' => [
+            'name' => 'MIT',
+            'url' => 'https://opensource.org/licenses/MIT'
         ]
     ],
     'servers' => [
         [
             'url' => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . 
-                     '://' . $_SERVER['HTTP_HOST'],
+                     '://' . $_SERVER['HTTP_HOST'] . '/',
             'description' => $translations['server_description']
         ]
     ],
@@ -264,6 +268,69 @@ $openapi = [
                     ]
                 ]
             ]
+        ],
+        '/api/ip-allowlist' => [
+            'get' => [
+                'tags' => [$translations['tag_system']],
+                'summary' => ($lang === 'nl') ? 'IP Allowlist Weergeven' : 'List IP Allowlist',
+                'description' => ($lang === 'nl') ? 
+                    'Alle IP adressen in de globale allowlist ophalen. ' . 
+                    (isset($translations['security_requirements_title']) ? $translations['security_requirements_title'] : '') : 
+                    'Retrieve all IP addresses in the global allowlist.',
+                'responses' => [
+                    '200' => [
+                        'description' => $translations['response_success'],
+                        'content' => [
+                            'application/json' => [
+                                'schema' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'success' => ['type' => 'boolean'],
+                                        'data' => [
+                                            'type' => 'array',
+                                            'items' => ['$ref' => '#/components/schemas/IPAllowlistEntry']
+                                        ],
+                                        'count' => ['type' => 'integer']
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ],
+                    '401' => ['description' => $translations['response_unauthorized']],
+                    '500' => ['description' => $translations['response_server_error']]
+                ]
+            ],
+            'post' => [
+                'tags' => [$translations['tag_system']],
+                'summary' => ($lang === 'nl') ? 'IP Toevoegen aan Allowlist' : 'Add IP to Allowlist',
+                'description' => ($lang === 'nl') ? 
+                    'Een nieuw IP adres of CIDR bereik toevoegen aan de globale allowlist. ' . 
+                    (isset($translations['ip_security_note']) ? $translations['ip_security_note'] : '') : 
+                    'Add a new IP address or CIDR range to the global allowlist.',
+                'requestBody' => [
+                    'required' => true,
+                    'content' => [
+                        'application/json' => [
+                            'schema' => [
+                                'type' => 'object',
+                                'required' => ['ip_address'],
+                                'properties' => [
+                                    'ip_address' => ['type' => 'string', 'description' => ($lang === 'nl') ? 'IP adres of CIDR bereik' : 'IP address or CIDR range'],
+                                    'description' => ['type' => 'string', 'description' => ($lang === 'nl') ? 'Beschrijving voor dit IP item' : 'Description for this IP entry'],
+                                    'enabled' => ['type' => 'boolean', 'description' => ($lang === 'nl') ? 'Of dit IP ingeschakeld moet zijn' : 'Whether this IP should be enabled']
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                'responses' => [
+                    '201' => ['description' => $translations['response_created']],
+                    '400' => ['description' => $translations['response_bad_request']],
+                    '401' => ['description' => $translations['response_unauthorized']],
+                    '409' => ['description' => $translations['response_conflict']],
+                    '500' => ['description' => $translations['response_server_error']]
+                ]
+            ]
         ]
     ],
     'components' => [
@@ -339,19 +406,40 @@ $openapi = [
                     'total' => ['type' => 'integer', 'description' => $translations['total_items']],
                     'total_pages' => ['type' => 'integer', 'description' => $translations['total_pages']]
                 ]
+            ],
+            'IPAllowlistEntry' => [
+                'type' => 'object',
+                'properties' => [
+                    'id' => ['type' => 'integer', 'description' => ($lang === 'nl') ? 'Allowlist item ID' : 'Allowlist entry ID'],
+                    'ip_address' => ['type' => 'string', 'description' => ($lang === 'nl') ? 'IP adres of CIDR bereik' : 'IP address or CIDR range'],
+                    'description' => ['type' => 'string', 'description' => ($lang === 'nl') ? 'Beschrijving van dit IP item' : 'Description of this IP entry'],
+                    'enabled' => ['type' => 'boolean', 'description' => ($lang === 'nl') ? 'Of dit IP momenteel ingeschakeld is' : 'Whether this IP is currently enabled'],
+                    'created_at' => ['type' => 'string', 'format' => 'date-time', 'description' => ($lang === 'nl') ? 'Wanneer dit item werd aangemaakt' : 'When this entry was created'],
+                    'updated_at' => ['type' => 'string', 'format' => 'date-time', 'description' => ($lang === 'nl') ? 'Wanneer dit item laatst werd bijgewerkt' : 'When this entry was last updated']
+                ]
             ]
         ],
         'securitySchemes' => [
-            'ApiKeyAuth' => [
+            'AdminApiKey' => [
                 'type' => 'apiKey',
                 'in' => 'header',
                 'name' => 'X-API-Key',
-                'description' => $translations['api_key_description']
+                'description' => $translations['api_key_description'] . "\n\n" .
+                    (isset($translations['authentication_note']) ? $translations['authentication_note'] . "\n\n" : '') .
+                    (isset($translations['security_warnings']) ? $translations['security_warnings'] . "\n\n" : '') .
+                    (isset($translations['cli_management_title']) ? $translations['cli_management_title'] . "\n" : '') .
+                    (isset($translations['cli_examples']) ? $translations['cli_examples'] . "\n\n" : '') .
+                    (isset($translations['database_storage_title']) ? $translations['database_storage_title'] . "\n" : '') .
+                    (isset($translations['database_example']) ? $translations['database_example'] . "\n\n" : '') .
+                    (isset($translations['security_benefits_title']) ? $translations['security_benefits_title'] . "\n" : '') .
+                    (isset($translations['security_benefits']) ? $translations['security_benefits'] . "\n\n" : '') .
+                    (isset($translations['security_notes_title']) ? $translations['security_notes_title'] . "\n" : '') .
+                    (isset($translations['security_notes']) ? $translations['security_notes'] : '')
             ]
         ]
     ],
     'security' => [
-        ['ApiKeyAuth' => []]
+        ['AdminApiKey' => []]
     ],
     'tags' => [
         ['name' => $translations['tag_system'], 'description' => $translations['tag_system_description']],
