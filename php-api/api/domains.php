@@ -280,6 +280,8 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                             $updated_count++;
                             $account_info = $account_name ?: ($local_account_id == 1 ? "admin (default)" : "ID:{$local_account_id}");
                             error_log("Updated existing domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_info})");
+                        } else {
+                            error_log("Failed to update domain {$domain_name}: updateBasic() returned false");
                         }
                     } catch (Exception $e) {
                         error_log("Failed to update domain {$domain_name}: " . $e->getMessage());
@@ -300,6 +302,14 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                             $synced_count++;
                             $account_info = $account_name ?: ($local_account_id == 1 ? "admin (default)" : "ID:{$local_account_id}");
                             error_log("Created new domain: {$domain_name} (zone_id: {$pdns_zone_id}, account: {$account_info})");
+                        } else {
+                            error_log("Failed to create domain {$domain_name}: create() returned false. Domain data: " . json_encode([
+                                'name' => $domain_name,
+                                'type' => $domain_obj->type,
+                                'pdns_zone_id' => $pdns_zone_id,
+                                'kind' => $domain_obj->kind,
+                                'account_id' => $local_account_id
+                            ]));
                         }
                     } catch (Exception $e) {
                         error_log("Failed to create domain {$domain_name}: " . $e->getMessage());
