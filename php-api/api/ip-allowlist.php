@@ -3,56 +3,50 @@
  * IP Allowlist Management API
  * 
  * Provides API endpoints for managing the global IP allowlist used for API security.
- * 
- * Endpoints:
- * - GET /api/ip-allowlist - List all IP allowlist entries
- * - POST /api/ip-allowlist - Add new IP to allowlist
- * - PUT /api/ip-allowlist/{id} - Update existing IP allowlist entry
- * - DELETE /api/ip-allowlist/{id} - Remove IP from allowlist
- * - POST /api/ip-allowlist/test - Test if an IP would be allowed
  */
 
-// Determine the correct base path
-$base_path = realpath(__DIR__ . '/..');
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Don't display, but log them
+ini_set('log_errors', 1);
 
-require_once $base_path . '/config/config.php';
-require_once $base_path . '/config/database.php';
-require_once $base_path . '/includes/database-compat.php';
+try {
+    // Determine the correct base path
+    $base_path = realpath(__DIR__ . '/..');
 
-// CRITICAL: Enforce authentication for direct API file access
-// This prevents bypassing the main index.php routing
-enforceHTTPS();
-addSecurityHeaders();
-requireApiKey(); // This will exit with 401/403 if auth fails
+    require_once $base_path . '/config/config.php';
+    require_once $base_path . '/config/database.php';
+    require_once $base_path . '/includes/database-compat.php';
 
-// Log successful authenticated request
-logApiRequest('ip-allowlist', $_SERVER['REQUEST_METHOD'], 200);
+    // CRITICAL: Enforce authentication for direct API file access
+    enforceHTTPS();
+    addSecurityHeaders();
+    requireApiKey();
 
-header('Content-Type: application/json');
+    // Log successful authenticated request
+    logApiRequest('ip-allowlist', $_SERVER['REQUEST_METHOD'], 200);
+
+    header('Content-Type: application/json');
 
 // Database class should now be available through compatibility layer
 if (!class_exists('Database')) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Database class not available']);
+    echo json_encode(['success' => false, 'error' => 'Database compatibility layer failed']);
     exit;
 }
 
 // Initialize database connection
-$db = Database::getInstance();
-$conn = $db->getConnection();
+$database = new Database();
+$conn = $database->getConnection();    if (!$conn) {
+        throw new Exception('Database connection failed');
+    }
 
-if (!$conn) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Database connection failed']);
-    exit;
-}
+    // Get request method and path
+    $method = $_SERVER['REQUEST_METHOD'];
+    $path = $_SERVER['PATH_INFO'] ?? '';
+    $pathParts = array_filter(explode('/', $path));
 
-// Get request method and path
-$method = $_SERVER['REQUEST_METHOD'];
-$path = $_SERVER['PATH_INFO'] ?? '';
-$pathParts = array_filter(explode('/', $path));
-
-try {
+    // Route to appropriate handler
     switch ($method) {
         case 'GET':
             handleGetRequest($conn, $pathParts);
@@ -70,11 +64,14 @@ try {
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);
     }
+
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => 'Internal server error: ' . $e->getMessage()
+        'error' => 'Internal server error: ' . $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine()
     ]);
 }
 
