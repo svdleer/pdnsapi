@@ -92,7 +92,7 @@ class Template {
                 $formatted_records[] = [
                     'name' => $record['name'],
                     'type' => $record['type'],
-                    'content' => $record['data'],
+                    'content' => $record['data'], // 'data' is the correct column name in PowerDNS Admin
                     'ttl' => (int)$record['ttl'],
                     'priority' => null, // PowerDNS Admin doesn't separate priority
                     'disabled' => !$record['status'], // status=1 means active, so !status means disabled
@@ -202,6 +202,19 @@ class Template {
             // Extract the zone ID from the API response
             $pdns_zone_id = $api_result['id'] ?? $api_result['data']['id'] ?? null;
             
+            // Now apply template records to the created domain using rrsets
+            $rrsets = $this->prepareRRSets($applied_records, $canonical_domain_name);
+            
+            if (!empty($rrsets)) {
+                $record_result = $pdns_client->updateDomainRecords($canonical_domain_name, $rrsets);
+                error_log("Template records application result: " . json_encode($record_result));
+                
+                if (!$record_result || (isset($record_result['status_code']) && $record_result['status_code'] !== 204)) {
+                    error_log("Warning: Failed to apply template records, but domain was created");
+                    // Don't fail completely - domain was created successfully
+                }
+            }
+            
             // Domain created successfully in PowerDNS Admin
             // Skip local database creation and rely on sync instead
             return [
@@ -235,6 +248,47 @@ class Template {
         ];
         
         return str_replace(array_keys($replacements), array_values($replacements), $value);
+    }
+
+    /**
+     * Prepare rrsets for PowerDNS API from template records
+     */
+    private function prepareRRSets($applied_records, $domain_name) {
+        $rrsets = [];
+        $grouped_records = [];
+        
+        // Group records by name and type
+        foreach ($applied_records as $record) {
+            $key = $record['name'] . '|' . $record['type'];
+            if (!isset($grouped_records[$key])) {
+                $grouped_records[$key] = [
+                    'name' => $record['name'] === '@' ? $domain_name : 
+                             ($record['name'] === $domain_name ? $domain_name : 
+                              $record['name'] . '.' . rtrim($domain_name, '.')),
+                    'type' => $record['type'],
+                    'ttl' => $record['ttl'],
+                    'records' => []
+                ];
+            }
+            
+            $grouped_records[$key]['records'][] = [
+                'content' => $record['content'],
+                'disabled' => $record['disabled'] ?? false
+            ];
+        }
+        
+        // Convert to rrsets format
+        foreach ($grouped_records as $group) {
+            $rrsets[] = [
+                'name' => $group['name'],
+                'type' => $group['type'],
+                'ttl' => $group['ttl'],
+                'changetype' => 'REPLACE',
+                'records' => $group['records']
+            ];
+        }
+        
+        return $rrsets;
     }
 
     /**
