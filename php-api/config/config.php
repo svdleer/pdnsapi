@@ -48,6 +48,7 @@ $api_settings = [
         'env-debug.php',  // Temporary env debug endpoint
         'simple-env-check.php', // Simple env check
         'config-test.php', // Config loading test
+        'json-debug.php', // JSON POST debug
         'ip-allowlist-debug.php', // IP allowlist debug
         'routing-debug.php', // Routing debug
         // Note: All actual API endpoints (/accounts, /domains, etc.) still require authentication
