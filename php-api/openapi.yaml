@@ -1256,6 +1256,279 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /ip-allowlist:
+    get:
+      summary: List IP allowlist entries
+      description: |
+        Retrieve all IP addresses in the global allowlist.
+        
+        **🔑 Requires Admin API Key**
+        
+        **🛡️ SECURITY MANAGEMENT:**
+        - View all allowed IP addresses and CIDR ranges
+        - Check enabled/disabled status
+        - Review descriptions and timestamps
+        - Critical for security auditing and management
+      tags:
+        - IP Allowlist
+        - Security
+      responses:
+        '200':
+          description: List of IP allowlist entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IPAllowlistEntry'
+                  count:
+                    type: integer
+                    example: 5
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Add IP to allowlist
+      description: |
+        Add a new IP address or CIDR range to the global allowlist.
+        
+        **🔑 Requires Admin API Key**
+        
+        **🛡️ SECURITY IMPACT:**
+        - Grants API access to specified IP/range
+        - Takes effect immediately
+        - All new IPs are enabled by default
+        - Supports both IPv4 and IPv6 with CIDR notation
+      tags:
+        - IP Allowlist
+        - Security
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ip_address
+              properties:
+                ip_address:
+                  type: string
+                  description: IP address or CIDR range
+                  example: "192.168.1.100"
+                description:
+                  type: string
+                  description: Description for this IP entry
+                  example: "Office workstation"
+                enabled:
+                  type: boolean
+                  description: Whether this IP should be enabled
+                  default: true
+      responses:
+        '201':
+          description: IP address added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "IP address added to allowlist"
+                  data:
+                    $ref: '#/components/schemas/IPAllowlistEntry'
+        '400':
+          description: Bad request - Invalid IP address or missing required fields
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '409':
+          description: Conflict - IP address already exists in allowlist
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /ip-allowlist/{id}:
+    put:
+      summary: Update IP allowlist entry
+      description: |
+        Update an existing IP allowlist entry.
+        
+        **🔑 Requires Admin API Key**
+        
+        **🛡️ SECURITY IMPACT:**
+        - Modify existing IP access permissions
+        - Can enable/disable access without deletion
+        - Changes take effect immediately
+      tags:
+        - IP Allowlist
+        - Security
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: IP allowlist entry ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ip_address:
+                  type: string
+                  description: Updated IP address or CIDR range
+                  example: "192.168.1.0/24"
+                description:
+                  type: string
+                  description: Updated description
+                  example: "Office network range"
+                enabled:
+                  type: boolean
+                  description: Enable or disable this IP entry
+      responses:
+        '200':
+          description: IP allowlist entry updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "IP allowlist entry updated"
+                  data:
+                    $ref: '#/components/schemas/IPAllowlistEntry'
+        '400':
+          description: Bad request - Invalid data or no fields to update
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '404':
+          description: Not found - IP allowlist entry not found
+        '409':
+          description: Conflict - IP address already exists in allowlist
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    delete:
+      summary: Remove IP from allowlist
+      description: |
+        Remove an IP address from the global allowlist.
+        
+        **🔑 Requires Admin API Key**
+        
+        **⚠️ SECURITY WARNING:**
+        - Permanently removes IP access
+        - Cannot be undone without re-adding
+        - May immediately block active connections from this IP
+        - Use disable instead for temporary access removal
+      tags:
+        - IP Allowlist
+        - Security
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: IP allowlist entry ID
+      responses:
+        '200':
+          description: IP address removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "IP address removed from allowlist"
+                  data:
+                    type: object
+                    properties:
+                      ip_address:
+                        type: string
+                        example: "192.168.1.100"
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '404':
+          description: Not found - IP allowlist entry not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /ip-allowlist/test:
+    post:
+      summary: Test IP allowlist access
+      description: |
+        Test if a specific IP address would be allowed by the current allowlist.
+        
+        **🔑 Requires Admin API Key**
+        
+        **🔍 TESTING & DEBUGGING:**
+        - Validate IP access before making changes
+        - Test CIDR range matching
+        - Verify allowlist configuration
+        - Useful for troubleshooting access issues
+      tags:
+        - IP Allowlist
+        - Security
+        - Testing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ip_address
+              properties:
+                ip_address:
+                  type: string
+                  description: IP address to test
+                  example: "192.168.1.50"
+      responses:
+        '200':
+          description: IP test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  ip_address:
+                    type: string
+                    example: "192.168.1.50"
+                  allowed:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "IP address is allowed"
+        '400':
+          description: Bad request - Invalid IP address format
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '500':
+          $ref: '#/components/responses/ServerError'
+
 components:
   securitySchemes:
     AdminApiKey:
@@ -1631,6 +1904,36 @@ components:
           type: string
           format: date-time
           description: Last update timestamp
+
+    IPAllowlistEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Allowlist entry ID
+          example: 1
+        ip_address:
+          type: string
+          description: IP address or CIDR range
+          example: "192.168.1.100"
+        description:
+          type: string
+          description: Description of this IP entry
+          example: "Office workstation"
+        enabled:
+          type: boolean
+          description: Whether this IP is currently enabled
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: When this entry was created
+          example: "2025-08-10T08:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: When this entry was last updated
+          example: "2025-08-10T08:30:00Z"
 
     DomainUpdate:
       type: object
@@ -2099,3 +2402,9 @@ tags:
     description: Domain-account relationship management
   - name: Status
     description: API status, health checks, and synchronization
+  - name: IP Allowlist
+    description: IP allowlist management for API security
+  - name: Security
+    description: Security-related operations and access control
+  - name: Testing
+    description: Testing and validation utilities

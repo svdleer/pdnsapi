@@ -39,6 +39,11 @@ if (preg_match('/^(api\/)?templates\/(\d+)\/create-domain$/', $path, $matches)) 
     $_GET['id'] = $matches[2];
     $_GET['action'] = 'create-domain';
     require_once 'api/templates.php';
+} elseif (preg_match('/^(api\/)?ip-allowlist(\/.*)?$/', $path, $matches)) {
+    // Handle /ip-allowlist and /ip-allowlist/* routes
+    $remaining_path = $matches[2] ?? '';
+    $_SERVER['PATH_INFO'] = $remaining_path;
+    require_once 'api/ip-allowlist.php';
 } else {
     switch($path) {
         case 'accounts':
