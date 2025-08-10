@@ -296,7 +296,7 @@ function syncDomainsFromPDNS($domain, $pdns_client) {
                     $domain_obj->dnssec = $pdns_domain['dnssec'] ?? false;
                     $domain_obj->account = $account_name ?? '';
                     $domain_obj->account_id = $local_account_id; // Link to local account
-                    $domain_obj->pdns_user_id = $local_account_id; // Set pdns_user_id for create() method
+                    $domain_obj->pdns_account_id = $local_account_id; // Set pdns_account_id for create() method
                     
                     try {
                         if ($domain_obj->create()) {

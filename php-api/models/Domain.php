@@ -31,16 +31,18 @@ class Domain {
 
     public function create() {
         $query = "INSERT INTO " . $this->table_name . "
-                SET name=:name, type=:type, pdns_user_id=:pdns_user_id, 
-                    pdns_zone_id=:pdns_zone_id, kind=:kind, masters=:masters, 
+                SET name=:name, type=:type, account_id=:account_id, 
+                    pdns_zone_id=:pdns_zone_id, pdns_account_id=:pdns_account_id,
+                    kind=:kind, masters=:masters, 
                     dnssec=:dnssec, account=:account, created_at=NOW()";
 
         $stmt = $this->conn->prepare($query);
 
         $stmt->bindParam(":name", $this->name);
         $stmt->bindParam(":type", $this->type);
-        $stmt->bindParam(":pdns_user_id", $this->pdns_user_id);
+        $stmt->bindParam(":account_id", $this->account_id);
         $stmt->bindParam(":pdns_zone_id", $this->pdns_zone_id);  
+        $stmt->bindParam(":pdns_account_id", $this->pdns_account_id);
         $stmt->bindParam(":kind", $this->kind);
         $stmt->bindParam(":masters", $this->masters);
         $stmt->bindParam(":dnssec", $this->dnssec);
