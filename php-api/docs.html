@@ -46,6 +46,7 @@
             margin-bottom: 20px;
             border-bottom: 1px solid #e5e7eb;
             text-align: center;
+            position: relative;
         }
         
         .nav-links a {
@@ -57,6 +58,58 @@
         
         .nav-links a:hover {
             text-decoration: underline;
+        }
+        
+        /* Language Toggle Styles */
+        .language-toggle {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: #3b82f6;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(30px);
+        }
+        
+        .language-label {
+            font-size: 18px;
+            font-weight: 500;
+            min-width: 30px;
+            text-align: center;
+        }
+        
+        .language-label.inactive {
+            opacity: 0.5;
         }
         
         .info-section {
@@ -71,25 +124,6 @@
         
         .info-content {
             padding: 30px;
-        }
-        
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }
-        
-        .feature-card {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 6px;
-            border-left: 4px solid #3b82f6;
-        }
-        
-        .feature-card h3 {
-            margin: 0 0 10px 0;
-            color: #1f2937;
         }
         
         .endpoints-list {
@@ -130,50 +164,38 @@
         <a href="#swagger-ui">Interactive API</a>
         <a href="/openapi">OpenAPI Spec (JSON)</a>
         <a href="/openapi.yaml">OpenAPI Spec (YAML)</a>
-        <span style="margin-left: 20px;">|</span>
-        <a href="?lang=en" style="margin-left: 10px;">🇺🇸 English</a>
-        <a href="?lang=nl">🇳🇱 Nederlands</a>
+        
+        <!-- Language Toggle -->
+        <div class="language-toggle">
+            <span class="language-label" id="lang-en">🇺🇸</span>
+            <div class="toggle-switch" id="language-toggle">
+                <div class="toggle-slider"></div>
+            </div>
+            <span class="language-label" id="lang-nl">🇳🇱</span>
+        </div>
     </div>
     
     <div class="info-section" id="overview">
         <div class="info-content">
             <h2>Overview</h2>
-            <p>The PDNSAdmin PHP API is a comprehensive wrapper for PowerDNS Admin that provides local database storage and extended functionality for managing DNS accounts and domains.</p>
+            <p>PHP API wrapper for PowerDNS Admin with local database storage for extended functionality.</p>
             
             <h3 id="features">Key Features</h3>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <h3>🏢 Account Management</h3>
-                    <p>Create, read, update, and delete accounts with IP address storage (local only)</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🌐 Domain Management</h3>
-                    <p>Manage domains with automatic PDNSAdmin synchronization (creation and updates only)</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🔗 Domain-Account Links</h3>
-                    <p>Associate domains with accounts, automatically updating both local DB and PDNSAdmin</p>
-                </div>
-                <div class="feature-card">
-                    <h3>📡 Data Synchronization</h3>
-                    <p>Sync domains and accounts from PDNSAdmin API for offline access</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🗄️ Local Database</h3>
-                    <p>Store data locally for better performance and extended functionality</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🔒 Safety Features</h3>
-                    <p>Domain deletion disabled, comprehensive validation, and error handling</p>
-                </div>
-            </div>
-            
-            <h3>Important Notes</h3>
             <ul>
-                <li><strong>IP Addresses:</strong> Stored locally only, not sent to PDNSAdmin</li>
-                <li><strong>Domain Deletion:</strong> Disabled for safety - domains can only be created and updated</li>
-                <li><strong>Account Sync:</strong> Account changes automatically sync with PDNSAdmin</li>
-                <li><strong>Domain Assignment:</strong> Domain-account assignments update both local DB and PDNSAdmin</li>
+                <li><strong>Account Management</strong> - CRUD operations with local IP storage</li>
+                <li><strong>Domain Management</strong> - Create/update domains via PowerDNS Admin API</li>
+                <li><strong>Domain-Account Links</strong> - Associate domains with accounts</li>
+                <li><strong>IP Allowlist</strong> - Global API access control</li>
+                <li><strong>Templates</strong> - Reusable domain configurations</li>
+                <li><strong>Data Sync</strong> - PowerDNS Admin integration</li>
+            </ul>
+            
+            <h3>Technical Notes</h3>
+            <ul>
+                <li><strong>Authentication:</strong> X-API-Key header required</li>
+                <li><strong>IP Security:</strong> Global allowlist applies to all endpoints</li>
+                <li><strong>Local Storage:</strong> IP addresses stored locally only</li>
+                <li><strong>Safety:</strong> Domain deletion disabled for data protection</li>
             </ul>
         </div>
     </div>
@@ -230,16 +252,134 @@
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
     <script>
-        window.onload = function() {
-            // Get language from URL parameter
+        // Language management
+        let currentLang = 'en';
+        
+        // Static content translations
+        const translations = {
+            'en': {
+                'page-title': 'PDNSAdmin PHP API Documentation',
+                'header-title': 'PDNSAdmin PHP API',
+                'header-subtitle': 'Documentation and Interactive API Explorer',
+                'nav-overview': 'Overview',
+                'nav-features': 'Features',
+                'nav-endpoints': 'Quick Reference',
+                'nav-interactive': 'Interactive API',
+                'overview-title': 'Overview',
+                'overview-text': 'PHP API wrapper for PowerDNS Admin with local database storage for extended functionality.',
+                'features-title': 'Key Features',
+                'interactive-title': 'Interactive API Documentation',
+                'interactive-text': 'Use the interactive API explorer below to test endpoints and view detailed request/response schemas.'
+            },
+            'nl': {
+                'page-title': 'PDNSAdmin PHP API Documentatie',
+                'header-title': 'PDNSAdmin PHP API',
+                'header-subtitle': 'Documentatie en Interactieve API Explorer',
+                'nav-overview': 'Overzicht',
+                'nav-features': 'Functies',
+                'nav-endpoints': 'Snelle Referentie',
+                'nav-interactive': 'Interactieve API',
+                'overview-title': 'Overzicht',
+                'overview-text': 'PHP API wrapper voor PowerDNS Admin met lokale database opslag voor uitgebreide functionaliteit.',
+                'features-title': 'Belangrijkste Functies',
+                'interactive-title': 'Interactieve API Documentatie',
+                'interactive-text': 'Gebruik de interactieve API explorer hieronder om endpoints te testen en gedetailleerde request/response schema\'s te bekijken.'
+            }
+        };
+        
+        // Update static content based on language
+        function updateStaticContent() {
+            const t = translations[currentLang];
+            
+            // Update page title
+            document.title = t['page-title'];
+            
+            // Update header
+            document.querySelector('.header h1').textContent = t['header-title'];
+            document.querySelector('.header p').textContent = t['header-subtitle'];
+            
+            // Update navigation
+            const navLinks = document.querySelectorAll('.nav-links a');
+            navLinks[0].textContent = t['nav-overview'];
+            navLinks[1].textContent = t['nav-features'];
+            navLinks[2].textContent = t['nav-endpoints'];
+            navLinks[3].textContent = t['nav-interactive'];
+            
+            // Update content sections
+            document.querySelector('#overview + .info-content h2').textContent = t['overview-title'];
+            document.querySelector('#overview + .info-content p').textContent = t['overview-text'];
+            document.querySelector('#features').textContent = t['features-title'];
+            document.querySelector('#swagger-ui').previousElementSibling.querySelector('h2').textContent = t['interactive-title'];
+            document.querySelector('#swagger-ui').previousElementSibling.querySelector('p').textContent = t['interactive-text'];
+        }
+        
+        // Initialize language from URL or localStorage
+        function initializeLanguage() {
             const urlParams = new URLSearchParams(window.location.search);
-            const lang = urlParams.get('lang') || 'en';
+            const urlLang = urlParams.get('lang');
+            const storedLang = localStorage.getItem('api-docs-language');
             
-            // Update OpenAPI URL to use localized version
-            const openApiUrl = lang === 'en' 
+            currentLang = urlLang || storedLang || 'en';
+            updateToggleState();
+            
+            // Store the language preference
+            localStorage.setItem('api-docs-language', currentLang);
+        }
+        
+        // Update toggle visual state
+        function updateToggleState() {
+            const toggle = document.getElementById('language-toggle');
+            const enLabel = document.getElementById('lang-en');
+            const nlLabel = document.getElementById('lang-nl');
+            
+            if (currentLang === 'nl') {
+                toggle.classList.add('active');
+                enLabel.classList.add('inactive');
+                nlLabel.classList.remove('inactive');
+            } else {
+                toggle.classList.remove('active');
+                enLabel.classList.remove('inactive');
+                nlLabel.classList.add('inactive');
+            }
+        }
+        
+        // Switch language
+        function switchLanguage() {
+            currentLang = currentLang === 'en' ? 'nl' : 'en';
+            
+            // Update localStorage
+            localStorage.setItem('api-docs-language', currentLang);
+            
+            // Update URL without page reload
+            const url = new URL(window.location);
+            if (currentLang === 'en') {
+                url.searchParams.delete('lang');
+            } else {
+                url.searchParams.set('lang', currentLang);
+            }
+            window.history.replaceState({}, '', url);
+            
+            // Update toggle state
+            updateToggleState();
+            
+            // Update static content
+            updateStaticContent();
+            
+            // Reload Swagger UI with new language
+            initializeSwaggerUI();
+        }
+        
+        // Initialize Swagger UI
+        function initializeSwaggerUI() {
+            // Clear existing Swagger UI
+            document.getElementById('swagger-ui').innerHTML = '';
+            
+            // Determine OpenAPI URL based on language
+            const openApiUrl = currentLang === 'en' 
                 ? window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi"
-                : window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi-i18n.php?lang=" + lang;
+                : window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi-i18n.php?lang=" + currentLang;
             
+            // Initialize Swagger UI
             const ui = SwaggerUIBundle({
                 url: openApiUrl,
                 dom_id: '#swagger-ui',
@@ -259,6 +399,20 @@
                 showRequestHeaders: true,
                 showCommonExtensions: true
             });
+        }
+        
+        window.onload = function() {
+            // Initialize language system
+            initializeLanguage();
+            
+            // Update static content for initial language
+            updateStaticContent();
+            
+            // Setup toggle click handler
+            document.getElementById('language-toggle').addEventListener('click', switchLanguage);
+            
+            // Initialize Swagger UI
+            initializeSwaggerUI();
         };
     </script>
 </body>
