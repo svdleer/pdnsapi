@@ -251,10 +251,24 @@ class Template {
         foreach ($applied_records as $record) {
             $key = $record['name'] . '|' . $record['type'];
             if (!isset($grouped_records[$key])) {
+                // Fix record name resolution - avoid double domain names
+                $record_name = $record['name'];
+                if ($record_name === '@') {
+                    // @ should become the domain name itself
+                    $final_name = rtrim($domain_name, '.');
+                } elseif ($record_name === rtrim($domain_name, '.') || $record_name === $domain_name) {
+                    // If record name is already the domain name, use as-is
+                    $final_name = rtrim($domain_name, '.');
+                } elseif (strpos($record_name, '.') === false) {
+                    // If record name has no dots, it's a subdomain - append domain
+                    $final_name = $record_name . '.' . rtrim($domain_name, '.');
+                } else {
+                    // Record name already contains dots - use as-is
+                    $final_name = $record_name;
+                }
+                
                 $grouped_records[$key] = [
-                    'name' => $record['name'] === '@' ? $domain_name : 
-                             ($record['name'] === $domain_name ? $domain_name : 
-                              $record['name'] . '.' . rtrim($domain_name, '.')),
+                    'name' => $final_name,
                     'type' => $record['type'],
                     'ttl' => $record['ttl'],
                     'records' => []
