@@ -293,6 +293,134 @@
         let currentLang = localStorage.getItem('swagger-language') || 'en';
         let swaggerUI;
 
+        // Page content translations
+        const pageTranslations = {
+            en: {
+                'page-title': 'PowerDNS Admin API Documentation',
+                'page-description': 'A security-enhanced API for managing PowerDNS Admin operations with local database caching and metadata storage.',
+                'key-features': 'Key Features',
+                'account-management': 'Account Management',
+                'account-management-desc': 'Create, read, update, and delete accounts with IP address storage (local only)',
+                'domain-management': 'Domain Management', 
+                'domain-management-desc': 'Manage domains with automatic PDNSAdmin synchronization (creation and updates only)',
+                'domain-account-links': 'Domain-Account Links',
+                'domain-account-links-desc': 'Associate domains with accounts, automatically updating both local DB and PDNSAdmin',
+                'data-synchronization': 'Data Synchronization',
+                'data-synchronization-desc': 'Sync domains and accounts from PDNSAdmin API for offline access',
+                'local-database': 'Local Database',
+                'local-database-desc': 'Store data locally for better performance and extended functionality',
+                'safety-features': 'Safety Features',
+                'safety-features-desc': 'Domain deletion disabled, comprehensive validation, and error handling',
+                'important-notes': 'Important Notes',
+                'ip-addresses-note': 'IP Addresses: Stored locally only, not sent to PDNSAdmin',
+                'domain-deletion-note': 'Domain Deletion: Disabled for safety - domains can only be created and updated',
+                'account-sync-note': 'Account Sync: Account changes automatically sync with PDNSAdmin',
+                'domain-assignment-note': 'Domain Assignment: Domain-account assignments update both local DB and PDNSAdmin',
+                'interactive-api-docs': 'Interactive API Documentation',
+                'interactive-api-desc': 'Use the interactive API explorer below to test endpoints and view detailed request/response schemas.'
+            },
+            nl: {
+                'page-title': 'PowerDNS Admin API Documentatie',
+                'page-description': 'Een beveiliging-verbeterde API voor het beheren van PowerDNS Admin operaties met lokale database caching en metadata opslag.',
+                'key-features': 'Belangrijkste Functies',
+                'account-management': 'Account Beheer',
+                'account-management-desc': 'Accounts aanmaken, lezen, bijwerken en verwijderen met IP-adres opslag (alleen lokaal)',
+                'domain-management': 'Domein Beheer',
+                'domain-management-desc': 'Domeinen beheren met automatische PDNSAdmin synchronisatie (alleen aanmaken en bijwerken)',
+                'domain-account-links': 'Domein-Account Koppelingen',
+                'domain-account-links-desc': 'Domeinen koppelen aan accounts, automatisch bijwerken van zowel lokale DB als PDNSAdmin',
+                'data-synchronization': 'Data Synchronisatie',
+                'data-synchronization-desc': 'Domeinen en accounts synchroniseren vanuit PDNSAdmin API voor offline toegang',
+                'local-database': 'Lokale Database',
+                'local-database-desc': 'Data lokaal opslaan voor betere prestaties en uitgebreide functionaliteit',
+                'safety-features': 'Veiligheidsfuncties',
+                'safety-features-desc': 'Domein verwijdering uitgeschakeld, uitgebreide validatie en foutafhandeling',
+                'important-notes': 'Belangrijke Opmerkingen',
+                'ip-addresses-note': 'IP-Adressen: Alleen lokaal opgeslagen, niet naar PDNSAdmin verzonden',
+                'domain-deletion-note': 'Domein Verwijdering: Uitgeschakeld voor veiligheid - domeinen kunnen alleen aangemaakt en bijgewerkt worden',
+                'account-sync-note': 'Account Synchronisatie: Account wijzigingen synchroniseren automatisch met PDNSAdmin',
+                'domain-assignment-note': 'Domein Toewijzing: Domein-account toewijzingen updaten zowel lokale DB als PDNSAdmin',
+                'interactive-api-docs': 'Interactieve API Documentatie',
+                'interactive-api-desc': 'Gebruik de interactieve API verkenner hieronder om endpoints te testen en gedetailleerde request/response schemas te bekijken.'
+            }
+        };
+
+        // Translate page content
+        function translatePage() {
+            const translations = pageTranslations[currentLang];
+            
+            // Update header title and description
+            const headerTitle = document.querySelector('.header h1');
+            if (headerTitle) headerTitle.textContent = translations['page-title'];
+            
+            const headerDesc = document.querySelector('.header p');
+            if (headerDesc) headerDesc.textContent = 'Documentatie en Interactieve API Verkenner';
+            
+            // Update overview section
+            const overviewTitle = document.querySelector('#overview h2');
+            if (overviewTitle) overviewTitle.textContent = currentLang === 'en' ? 'Overview' : 'Overzicht';
+            
+            const overviewDesc = document.querySelector('#overview p');
+            if (overviewDesc) {
+                overviewDesc.textContent = currentLang === 'en' 
+                    ? 'The PDNSAdmin PHP API is a comprehensive wrapper for PowerDNS Admin that provides local database storage and extended functionality for managing DNS accounts and domains.'
+                    : 'De PDNSAdmin PHP API is een uitgebreide wrapper voor PowerDNS Admin die lokale database opslag en uitgebreide functionaliteit biedt voor het beheren van DNS accounts en domeinen.';
+            }
+            
+            // Update Key Features section
+            const keyFeaturesTitle = document.querySelector('#features h2');
+            if (keyFeaturesTitle) keyFeaturesTitle.textContent = translations['key-features'];
+            
+            // Update feature cards
+            const featureCards = document.querySelectorAll('.feature-card');
+            if (featureCards.length >= 6) {
+                featureCards[0].querySelector('h3').innerHTML = '🏢 ' + translations['account-management'];
+                featureCards[0].querySelector('p').textContent = translations['account-management-desc'];
+                
+                featureCards[1].querySelector('h3').innerHTML = '🌐 ' + translations['domain-management'];
+                featureCards[1].querySelector('p').textContent = translations['domain-management-desc'];
+                
+                featureCards[2].querySelector('h3').innerHTML = '🔗 ' + translations['domain-account-links'];
+                featureCards[2].querySelector('p').textContent = translations['domain-account-links-desc'];
+                
+                featureCards[3].querySelector('h3').innerHTML = '📡 ' + translations['data-synchronization'];
+                featureCards[3].querySelector('p').textContent = translations['data-synchronization-desc'];
+                
+                featureCards[4].querySelector('h3').innerHTML = '🗄️ ' + translations['local-database'];
+                featureCards[4].querySelector('p').textContent = translations['local-database-desc'];
+                
+                featureCards[5].querySelector('h3').innerHTML = '🔒 ' + translations['safety-features'];
+                featureCards[5].querySelector('p').textContent = translations['safety-features-desc'];
+            }
+            
+            // Update Important Notes
+            const importantNotesTitle = document.querySelector('.notes-section h3');
+            if (importantNotesTitle) importantNotesTitle.textContent = translations['important-notes'];
+            
+            const notesList = document.querySelectorAll('.notes-section li');
+            if (notesList.length >= 4) {
+                notesList[0].innerHTML = '<strong>' + translations['ip-addresses-note'].split(':')[0] + ':</strong> ' + translations['ip-addresses-note'].split(':')[1];
+                notesList[1].innerHTML = '<strong>' + translations['domain-deletion-note'].split(':')[0] + ':</strong> ' + translations['domain-deletion-note'].split(':')[1];
+                notesList[2].innerHTML = '<strong>' + translations['account-sync-note'].split(':')[0] + ':</strong> ' + translations['account-sync-note'].split(':')[1];
+                notesList[3].innerHTML = '<strong>' + translations['domain-assignment-note'].split(':')[0] + ':</strong> ' + translations['domain-assignment-note'].split(':')[1];
+            }
+            
+            // Update Interactive API Documentation section
+            const apiDocsTitle = document.querySelector('#swagger-ui').previousElementSibling.querySelector('h2');
+            if (apiDocsTitle) apiDocsTitle.textContent = translations['interactive-api-docs'];
+            
+            const apiDocsDesc = document.querySelector('#swagger-ui').previousElementSibling.querySelector('p');
+            if (apiDocsDesc) apiDocsDesc.textContent = translations['interactive-api-desc'];
+            
+            // Update navigation links
+            const navLinks = document.querySelectorAll('.nav-links a');
+            if (navLinks.length >= 3) {
+                navLinks[0].textContent = currentLang === 'en' ? 'Overview' : 'Overzicht';
+                navLinks[1].textContent = currentLang === 'en' ? 'Features' : 'Functies';
+                navLinks[2].textContent = currentLang === 'en' ? 'Interactive API' : 'Interactieve API';
+            }
+        }
+
         // Switch language function (called by onclick in HTML)
         function switchLanguage() {
             console.log('Language toggle clicked! Current:', currentLang);
@@ -302,6 +430,9 @@
             
             // Update toggle visual state
             updateToggleState();
+            
+            // Translate page content
+            translatePage();
             
             // Reload Swagger UI with new language
             loadSwaggerUI();
@@ -446,6 +577,7 @@
         window.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded, initializing with language:', currentLang);
             updateToggleState();
+            translatePage(); // Translate page content on load
             loadSwaggerUI();
         });
     </script>
