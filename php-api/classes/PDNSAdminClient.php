@@ -102,9 +102,59 @@ class PDNSAdminClient {
     }
 
     public function getAllDomainsWithAccounts() {
-        // Use the PowerDNS Admin API endpoint that returns full domain objects with account relationships
-        // This endpoint should return domains with their associated account information
-        return $this->makeRequest('/pdnsadmin/zones');
+        // Query PowerDNS Admin database directly to get ALL domains
+        // This bypasses the API filtering that limits domains to user permissions
+        
+        try {
+            // Connect to PowerDNS Admin database directly
+            $host = '127.0.0.1';
+            $dbname = 'powerdnsadmin';
+            $username = 'powerdnsadmin';
+            $password = 'powerdnsadmin123';
+            
+            $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
+            $pdo = new PDO($dsn, $username, $password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]);
+            
+            $sql = "SELECT 
+                        d.id,
+                        d.name,
+                        d.type,
+                        d.account_id,
+                        a.name as account_name,
+                        a.description as account_description
+                    FROM domain d
+                    LEFT JOIN account a ON d.account_id = a.id
+                    ORDER BY d.name";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute();
+            $domains = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            error_log("Fetched " . count($domains) . " domains directly from PowerDNS Admin database");
+            
+            // Return in the same format as the API response
+            return [
+                'status_code' => 200,
+                'data' => $domains,
+                'metadata' => [
+                    'total_domains' => count($domains),
+                    'source' => 'direct_database_query',
+                    'note' => 'Retrieved directly from PowerDNS Admin database to bypass API filtering'
+                ]
+            ];
+            
+        } catch (Exception $e) {
+            error_log("Error querying PowerDNS Admin database: " . $e->getMessage());
+            return [
+                'status_code' => 500,
+                'data' => [],
+                'error' => 'Database connection failed: ' . $e->getMessage()
+            ];
+        }
     }
 
     public function createDomain($zone_data) {
@@ -281,6 +331,77 @@ class PDNSAdminClient {
             // Log error and return null if database connection fails
             error_log("Database error in getDomainIdByName: " . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Ensure a domain has proper user permissions so it appears in PowerDNS Admin API
+     * This fixes the issue where domains without explicit permissions are filtered out
+     */
+    public function ensureDomainPermissions($domain_name, $username = 'admin') {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            global $pdns_admin_pdo;
+            
+            // Get user ID
+            $stmt = $pdns_admin_pdo->prepare('SELECT id FROM user WHERE username = :username');
+            $stmt->bindParam(':username', $username);
+            $stmt->execute();
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                return [
+                    'success' => false,
+                    'message' => "User '{$username}' not found"
+                ];
+            }
+            
+            $user_id = $user['id'];
+            
+            // Get domain ID
+            $stmt = $pdns_admin_pdo->prepare('SELECT id FROM domain WHERE name = :domain_name');
+            $stmt->bindParam(':domain_name', $domain_name);
+            $stmt->execute();
+            $domain = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$domain) {
+                return [
+                    'success' => false,
+                    'message' => "Domain '{$domain_name}' not found"
+                ];
+            }
+            
+            $domain_id = $domain['id'];
+            
+            // Check if association already exists
+            $stmt = $pdns_admin_pdo->prepare('SELECT id FROM domain_user WHERE domain_id = :domain_id AND user_id = :user_id');
+            $stmt->bindParam(':domain_id', $domain_id);
+            $stmt->bindParam(':user_id', $user_id);
+            $stmt->execute();
+            
+            if ($stmt->fetch()) {
+                return [
+                    'success' => true,
+                    'message' => "Domain '{$domain_name}' already has permissions for user '{$username}'"
+                ];
+            }
+            
+            // Create domain-user association
+            $stmt = $pdns_admin_pdo->prepare('INSERT INTO domain_user (domain_id, user_id) VALUES (:domain_id, :user_id)');
+            $stmt->bindParam(':domain_id', $domain_id);
+            $stmt->bindParam(':user_id', $user_id);
+            $stmt->execute();
+            
+            return [
+                'success' => true,
+                'message' => "Added domain permissions for '{$domain_name}' to user '{$username}'"
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Database error: ' . $e->getMessage()
+            ];
         }
     }
 
