@@ -181,7 +181,7 @@ class Template {
             
             // Create the domain in PowerDNS Admin with rrsets in one pass
             $api_domain_data = [
-                'name' => $canonical_domain_name,
+                'name' => $canonical_domain_name, // Domain name WITH trailing dot
                 'kind' => $domain_data['kind'] ?? 'Native',
                 'rrsets' => $rrsets, // Include rrsets in domain creation
                 'nameservers' => [], // Will use default nameservers
@@ -251,20 +251,20 @@ class Template {
         foreach ($applied_records as $record) {
             $key = $record['name'] . '|' . $record['type'];
             if (!isset($grouped_records[$key])) {
-                // Fix record name resolution - avoid double domain names
+                // Fix record name resolution - ensure canonical names with trailing dots
                 $record_name = $record['name'];
                 if ($record_name === '@') {
-                    // @ should become the domain name itself
-                    $final_name = rtrim($domain_name, '.');
-                } elseif ($record_name === rtrim($domain_name, '.') || $record_name === $domain_name) {
-                    // If record name is already the domain name, use as-is
-                    $final_name = rtrim($domain_name, '.');
+                    // @ should become the domain name itself (canonical)
+                    $final_name = $domain_name; // domain_name already has trailing dot
+                } elseif ($record_name === rtrim($domain_name, '.')) {
+                    // If record name matches domain without dot, use canonical domain
+                    $final_name = $domain_name; // domain_name already has trailing dot
                 } elseif (strpos($record_name, '.') === false) {
-                    // If record name has no dots, it's a subdomain - append domain
-                    $final_name = $record_name . '.' . rtrim($domain_name, '.');
+                    // If record name has no dots, it's a subdomain - append domain and ensure trailing dot
+                    $final_name = $record_name . '.' . rtrim($domain_name, '.') . '.';
                 } else {
-                    // Record name already contains dots - use as-is
-                    $final_name = $record_name;
+                    // Record name already contains dots - ensure it has trailing dot
+                    $final_name = rtrim($record_name, '.') . '.';
                 }
                 
                 $grouped_records[$key] = [
