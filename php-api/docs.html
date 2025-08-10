@@ -2,61 +2,40 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-        .swagger-language-toggle {
-            position: fixed !important;
-            top: 20px !important;
-            right: 20px !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            z-index: 999999 !important; /* Even higher z-index */
-            background: white !important;
-            padding: 8px 12px !important;
-            border-radius: 6px !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
-            border: 1px solid #e5e7eb !important;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
-        }viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDNSAdmin PHP API Documentation</title>
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
     <style>
-        html {
-            box-sizing: border-box;
-            overflow: -moz-scrollbars-vertical;
-            overflow-y: scroll;
-        }
-        
-        *, *:before, *:after {
-            box-sizing: inherit;
-        }
-        
         body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             margin: 0;
-            background: #fafafa;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 0;
+            line-height: 1.6;
+            color: #333;
         }
         
         .header {
-            background: #1f2937;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px 0;
+            padding: 40px 20px;
             text-align: center;
-            margin-bottom: 20px;
         }
         
         .header h1 {
             margin: 0;
-            font-size: 2em;
+            font-size: 2.5rem;
+            font-weight: 300;
         }
         
         .header p {
-            margin: 10px 0 0 0;
-            opacity: 0.8;
+            margin: 10px 0 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
         }
         
         .nav-links {
-            background: white;
-            padding: 15px;
+            background: #f8f9fa;
+            padding: 15px 0;
             margin-bottom: 20px;
             border-bottom: 1px solid #e5e7eb;
             text-align: center;
@@ -73,12 +52,84 @@
             text-decoration: underline;
         }
         
-        /* Custom Swagger UI language toggle styles */
-        .swagger-ui .topbar {
-            background: #fafafa !important;
-            border-bottom: 1px solid #e5e7eb !important;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
         
+        .info-section {
+            background: white;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .info-content {
+            padding: 30px;
+        }
+        
+        .info-content h2 {
+            color: #2d3748;
+            margin-top: 0;
+            font-size: 1.8rem;
+        }
+        
+        .info-content p {
+            color: #4a5568;
+            margin: 15px 0;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .feature-card {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .feature-card h3 {
+            color: #2d3748;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .feature-card p {
+            color: #4a5568;
+            margin-bottom: 0;
+        }
+        
+        .notes-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .notes-section h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+        
+        .notes-section ul {
+            color: #856404;
+        }
+        
+        .notes-section li {
+            margin: 8px 0;
+        }
+        
+        /* Language Toggle Styles */
         .swagger-language-toggle {
             position: fixed !important;
             top: 20px !important;
@@ -94,7 +145,7 @@
             border: 1px solid #e5e7eb !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
         }
-        
+
         .swagger-toggle-switch {
             position: relative !important;
             width: 50px !important;
@@ -129,95 +180,82 @@
             font-size: 14px !important;
             font-weight: 500 !important;
             color: #374151 !important;
+            cursor: pointer !important;
         }
         
         .swagger-language-label.inactive {
             opacity: 0.5 !important;
         }
         
-        .info-section {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+        /* Swagger UI Customizations */
+        .swagger-ui .topbar {
+            background: #fafafa !important;
+            border-bottom: 1px solid #e5e7eb !important;
         }
-        
-        .info-content {
-            padding: 30px;
-        }
-        
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }
-        
-        .feature-card {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 6px;
-            border-left: 4px solid #3b82f6;
-        }
-        
-        .feature-card h3 {
-            margin: 0 0 10px 0;
-            color: #1f2937;
-        }
-        
-    /* Endpoint reference section removed */
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>PDNSAdmin PHP API</h1>
         <p>Documentation and Interactive API Explorer</p>
     </div>
-    
+
     <div class="nav-links">
         <a href="#overview">Overview</a>
         <a href="#features">Features</a>
         <a href="#swagger-ui">Interactive API</a>
-        <a href="/openapi">OpenAPI Spec (JSON)</a>
-        <a href="/openapi.yaml">OpenAPI Spec (YAML)</a>
+        <a href="/openapi.json" target="_blank">OpenAPI Spec (JSON)</a>
+        <a href="/openapi.yaml" target="_blank">OpenAPI Spec (YAML)</a>
     </div>
-    
-    <div class="info-section" id="overview">
-        <div class="info-content">
-            <h2>Overview</h2>
-            <p>The PDNSAdmin PHP API is a comprehensive wrapper for PowerDNS Admin that provides local database storage and extended functionality for managing DNS accounts and domains.</p>
-            
-            <h3 id="features">Key Features</h3>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <h3>🏢 Account Management</h3>
-                    <p>Create, read, update, and delete accounts with IP address storage (local only)</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🌐 Domain Management</h3>
-                    <p>Manage domains with automatic PDNSAdmin synchronization (creation and updates only)</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🔗 Domain-Account Links</h3>
-                    <p>Associate domains with accounts, automatically updating both local DB and PDNSAdmin</p>
-                </div>
-                <div class="feature-card">
-                    <h3>📡 Data Synchronization</h3>
-                    <p>Sync domains and accounts from PDNSAdmin API for offline access</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🗄️ Local Database</h3>
-                    <p>Store data locally for better performance and extended functionality</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🔒 Safety Features</h3>
-                    <p>Domain deletion disabled, comprehensive validation, and error handling</p>
+
+    <div class="container">
+        <div class="info-section" id="overview">
+            <div class="info-content">
+                <h2>Overview</h2>
+                <p>The PDNSAdmin PHP API is a comprehensive wrapper for PowerDNS Admin that provides local database storage and extended functionality for managing DNS accounts and domains.</p>
+            </div>
+        </div>
+
+        <div class="info-section" id="features">
+            <div class="info-content">
+                <h2>Key Features</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>🏢 Account Management</h3>
+                        <p>Create, read, update, and delete accounts with IP address storage (local only)</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>🌐 Domain Management</h3>
+                        <p>Manage domains with automatic PDNSAdmin synchronization (creation and updates only)</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>🔗 Domain-Account Links</h3>
+                        <p>Associate domains with accounts, automatically updating both local DB and PDNSAdmin</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>📡 Data Synchronization</h3>
+                        <p>Sync domains and accounts from PDNSAdmin API for offline access</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>🗄️ Local Database</h3>
+                        <p>Store data locally for better performance and extended functionality</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>🔒 Safety Features</h3>
+                        <p>Domain deletion disabled, comprehensive validation, and error handling</p>
+                    </div>
                 </div>
             </div>
-            
+        </div>
+
+        <div class="notes-section">
             <h3>Important Notes</h3>
             <ul>
                 <li><strong>IP Addresses:</strong> Stored locally only, not sent to PDNSAdmin</li>
@@ -226,20 +264,18 @@
                 <li><strong>Domain Assignment:</strong> Domain-account assignments update both local DB and PDNSAdmin</li>
             </ul>
         </div>
-    </div>
-    
-    <!-- Endpoint reference section removed -->
-    
-    <div class="info-section">
-        <div class="info-content">
-            <h2 id="swagger-ui">Interactive API Documentation</h2>
-            <p>Use the interactive API explorer below to test endpoints and view detailed request/response schemas.</p>
+
+        <div class="info-section" id="swagger-ui">
+            <div class="info-content">
+                <h2>Interactive API Documentation</h2>
+                <p>Use the interactive API explorer below to test endpoints and view detailed request/response schemas.</p>
+            </div>
         </div>
     </div>
-    
+
     <div id="swagger-ui"></div>
     
-    <!-- Language Toggle (always visible) -->
+    <!-- Language Toggle -->
     <div class="swagger-language-toggle" id="language-toggle-container">
         <span class="swagger-language-label" id="lang-en">🇺🇸 EN</span>
         <div class="swagger-toggle-switch" id="language-toggle" onclick="switchLanguage()">
@@ -257,8 +293,9 @@
 
         // Switch language function (called by onclick in HTML)
         function switchLanguage() {
-            console.log('Language toggle clicked!');
+            console.log('Language toggle clicked! Current:', currentLang);
             currentLang = currentLang === 'en' ? 'nl' : 'en';
+            console.log('Switching to:', currentLang);
             localStorage.setItem('swagger-language', currentLang);
             
             // Update toggle visual state
@@ -270,6 +307,7 @@
 
         // Update toggle visual state
         function updateToggleState() {
+            console.log('Updating toggle state for language:', currentLang);
             const toggle = document.getElementById('language-toggle');
             const enLabel = document.getElementById('lang-en');
             const nlLabel = document.getElementById('lang-nl');
@@ -278,10 +316,12 @@
                 toggle.classList.add('active');
                 enLabel.classList.add('inactive');
                 nlLabel.classList.remove('inactive');
+                console.log('Toggle state: Dutch active');
             } else {
                 toggle.classList.remove('active');
                 enLabel.classList.remove('inactive');
                 nlLabel.classList.add('inactive');
+                console.log('Toggle state: English active');
             }
         }
 
@@ -290,41 +330,67 @@
             console.log('Loading Swagger UI for language:', currentLang);
             
             // Clear existing content
-            document.getElementById('swagger-ui').innerHTML = '';
+            document.getElementById('swagger-ui').innerHTML = '<p>Loading API documentation...</p>';
             
-            // Build OpenAPI URL
-            const baseUrl = window.location.origin + window.location.pathname.replace('/docs.html', '');
+            // Build OpenAPI URL - make it more robust
+            let baseUrl = window.location.origin;
+            let pathname = window.location.pathname;
+            
+            // Remove docs.html from path if present
+            if (pathname.includes('/docs.html')) {
+                baseUrl += pathname.replace('/docs.html', '');
+            } else {
+                baseUrl += pathname.replace(/\/$/, ''); // Remove trailing slash
+            }
+            
             const openApiUrl = currentLang === 'en' 
                 ? baseUrl + '/openapi'
                 : baseUrl + '/openapi-i18n.php?lang=' + currentLang;
             
+            console.log('Base URL:', baseUrl);
             console.log('OpenAPI URL:', openApiUrl);
             
             // Initialize Swagger UI
-            swaggerUI = SwaggerUIBundle({
-                url: openApiUrl,
-                dom_id: '#swagger-ui',
-                deepLinking: true,
-                presets: [
-                    SwaggerUIBundle.presets.apis,
-                    SwaggerUIStandalonePreset
-                ],
-                plugins: [
-                    SwaggerUIBundle.plugins.DownloadUrl
-                ],
-                layout: "StandaloneLayout",
-                tryItOutEnabled: true,
-                supportedSubmitMethods: ['get', 'post', 'put', 'delete'],
-                docExpansion: 'list',
-                filter: true,
-                showRequestHeaders: true,
-                showCommonExtensions: true
-            });
+            try {
+                swaggerUI = SwaggerUIBundle({
+                    url: openApiUrl,
+                    dom_id: '#swagger-ui',
+                    deepLinking: true,
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIStandalonePreset
+                    ],
+                    plugins: [
+                        SwaggerUIBundle.plugins.DownloadUrl
+                    ],
+                    layout: "StandaloneLayout",
+                    tryItOutEnabled: true,
+                    supportedSubmitMethods: ['get', 'post', 'put', 'delete'],
+                    docExpansion: 'list',
+                    filter: true,
+                    showRequestHeaders: true,
+                    showCommonExtensions: true,
+                    onComplete: function() {
+                        console.log('Swagger UI loaded successfully');
+                    },
+                    onFailure: function(error) {
+                        console.error('Swagger UI failed to load:', error);
+                        document.getElementById('swagger-ui').innerHTML = 
+                            '<div style="padding: 20px; color: red; border: 1px solid red; margin: 20px; border-radius: 5px;">' +
+                            '<strong>Error loading API documentation:</strong><br>' +
+                            'URL: ' + openApiUrl + '<br>' +
+                            'Error: ' + JSON.stringify(error) +
+                            '</div>';
+                    }
+                });
+            } catch (error) {
+                console.error('Error initializing Swagger UI:', error);
+            }
         }
 
         // Initialize on page load
         window.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, initializing...');
+            console.log('Page loaded, initializing with language:', currentLang);
             updateToggleState();
             loadSwaggerUI();
         });
