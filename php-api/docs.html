@@ -331,9 +331,40 @@
         function loadSwaggerUI() {
             console.log('Loading Swagger UI for language:', currentLang);
             
-            // Clear existing content
-            document.getElementById('swagger-ui').innerHTML = '<p>Loading API documentation...</p>';
+            // Properly dispose of existing Swagger UI instance
+            if (swaggerUI && typeof swaggerUI.getSystem === 'function') {
+                try {
+                    // Try to cleanly unmount the existing instance
+                    const system = swaggerUI.getSystem();
+                    if (system && system.fn && system.fn.componentDidCatch) {
+                        // Clear any existing error states
+                        system.errActions.clear();
+                    }
+                } catch (e) {
+                    console.log('Note: Error during Swagger UI cleanup (normal during language switch):', e.message);
+                }
+            }
             
+            // Clear the container more safely
+            const swaggerContainer = document.getElementById('swagger-ui');
+            if (swaggerContainer) {
+                // Create a completely new container to avoid React DOM issues
+                const newContainer = document.createElement('div');
+                newContainer.id = 'swagger-ui';
+                swaggerContainer.parentNode.replaceChild(newContainer, swaggerContainer);
+                
+                // Show loading message
+                newContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><p>Loading API documentation...</p></div>';
+            }
+            
+            // Small delay to ensure DOM cleanup is complete
+            setTimeout(() => {
+                initializeSwaggerUIInstance();
+            }, 100);
+        }
+
+        // Initialize new Swagger UI instance
+        function initializeSwaggerUIInstance() {
             // Build OpenAPI URL - make it more robust
             let baseUrl = window.location.origin;
             let pathname = window.location.pathname;
@@ -352,7 +383,7 @@
             console.log('Base URL:', baseUrl);
             console.log('OpenAPI URL:', openApiUrl);
             
-            // Initialize Swagger UI
+            // Initialize Swagger UI with better error handling
             try {
                 swaggerUI = SwaggerUIBundle({
                     url: openApiUrl,
@@ -373,21 +404,41 @@
                     showRequestHeaders: true,
                     showCommonExtensions: true,
                     validatorUrl: null, // Disable validator to avoid CSP issues
+                    requestInterceptor: (req) => {
+                        // Ensure clean requests
+                        return req;
+                    },
                     onComplete: function() {
-                        console.log('Swagger UI loaded successfully');
+                        console.log('Swagger UI loaded successfully for language:', currentLang);
                     },
                     onFailure: function(error) {
                         console.error('Swagger UI failed to load:', error);
-                        document.getElementById('swagger-ui').innerHTML = 
-                            '<div style="padding: 20px; color: red; border: 1px solid red; margin: 20px; border-radius: 5px;">' +
-                            '<strong>Error loading API documentation:</strong><br>' +
-                            'URL: ' + openApiUrl + '<br>' +
-                            'Error: ' + JSON.stringify(error) +
-                            '</div>';
+                        const container = document.getElementById('swagger-ui');
+                        if (container) {
+                            container.innerHTML = 
+                                '<div style="padding: 20px; color: red; border: 1px solid red; margin: 20px; border-radius: 5px;">' +
+                                '<strong>Error loading API documentation:</strong><br>' +
+                                'URL: ' + openApiUrl + '<br>' +
+                                'Language: ' + currentLang + '<br>' +
+                                'Error: ' + JSON.stringify(error) +
+                                '</div>';
+                        }
                     }
                 });
+                
+                console.log('Swagger UI instance created for language:', currentLang);
+                
             } catch (error) {
                 console.error('Error initializing Swagger UI:', error);
+                const container = document.getElementById('swagger-ui');
+                if (container) {
+                    container.innerHTML = 
+                        '<div style="padding: 20px; color: red; border: 1px solid red; margin: 20px; border-radius: 5px;">' +
+                        '<strong>JavaScript Error:</strong><br>' +
+                        error.message + '<br><br>' +
+                        '<em>Please try refreshing the page or switching languages again.</em>' +
+                        '</div>';
+                }
             }
         }
 
