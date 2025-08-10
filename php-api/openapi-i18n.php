@@ -17,7 +17,7 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=utf-8');
 
 // Handle preflight OPTIONS requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
@@ -71,37 +71,13 @@ if ($lang === 'en') {
     }
 }
 
-// For Dutch, load the complete YAML and translate it
-$yamlFile = __DIR__ . '/openapi.yaml';
-if (!file_exists($yamlFile)) {
-    http_response_code(404);
-    echo json_encode(['error' => 'OpenAPI specification not found']);
-    exit;
-}
-
-// Load and parse the complete OpenAPI spec
-if (function_exists('yaml_parse_file')) {
-    $openapi = yaml_parse_file($yamlFile);
-} else {
-    $yamlContent = file_get_contents($yamlFile);
-    $jsonContent = convertYamlToJson($yamlContent);
-    $openapi = json_decode($jsonContent, true);
-}
-
-if (!$openapi) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Failed to parse OpenAPI specification']);
-    exit;
-}
-
 // Get translations for Dutch
 $translations = getTranslations($lang);
 
-// Translate the OpenAPI specification
-$openapi = translateOpenAPI($openapi, $translations);
+// For Dutch, use the manual translation system (complete coverage)
+// For English, could load YAML in future, but for now use manual system for consistency
 
-// Return translated OpenAPI spec
-echo json_encode($openapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+// Manual comprehensive OpenAPI specification with complete Dutch translations
 
 /**
  * Simple YAML to JSON converter (basic implementation)
@@ -184,8 +160,7 @@ $openapi = [
     ],
     'servers' => [
         [
-            'url' => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . 
-                     '://' . $_SERVER['HTTP_HOST'] . '/',
+            'url' => 'https://pdnsapi.avant.nl/',
             'description' => $translations['server_description']
         ]
     ],
