@@ -46,6 +46,7 @@ $api_settings = [
         'debug-auth.php', // Temporary debug endpoint
         'env-check.php',  // Temporary env check endpoint
         'env-debug.php',  // Temporary env debug endpoint
+        'simple-env-check.php', // Simple env check
         // Note: All actual API endpoints (/accounts, /domains, etc.) still require authentication
     ]
 ];
