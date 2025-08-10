@@ -43,15 +43,6 @@ $api_settings = [
         'swagger',    // Swagger UI alternate
         'openapi',    // OpenAPI spec
         'health',     // Basic health check endpoint
-        'debug-auth.php', // Temporary debug endpoint
-        'env-check.php',  // Temporary env check endpoint
-        'env-debug.php',  // Temporary env debug endpoint
-        'simple-env-check.php', // Simple env check
-        'config-test.php', // Config loading test
-        'json-debug.php', // JSON POST debug
-        'route-debug.php', // Routing debug
-        'ip-allowlist-debug.php', // IP allowlist debug
-        'routing-debug.php', // Routing debug
         // Note: All actual API endpoints (/accounts, /domains, etc.) still require authentication
     ]
 ];

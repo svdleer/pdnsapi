@@ -43,7 +43,7 @@ try {
         echo "   ✓ Database connection successful\n";
         
         // Check if tables exist
-        $tables = ['users', 'domains', 'api_logs', 'domain_sync'];
+        $tables = ['user_metadata', 'domains', 'api_logs', 'domain_sync', 'ip_allowlist'];
         foreach ($tables as $table) {
             $stmt = $db->query("SHOW TABLES LIKE '{$table}'");
             if ($stmt->rowCount() > 0) {
