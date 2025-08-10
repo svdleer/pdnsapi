@@ -37,12 +37,13 @@ $api_settings = [
     ],
     'exempt_endpoints' => [
         // Allow access to documentation without API key for easier development
-        '',           // Root endpoint 
-        'index',      // Documentation endpoint
-        'docs',       // Swagger UI
-        'swagger',    // Swagger UI alternate
-        'openapi',    // OpenAPI spec
-        'health',     // Basic health check endpoint
+        '',               // Root endpoint 
+        'index',          // Documentation endpoint
+        'docs',           // Swagger UI
+        'swagger',        // Swagger UI alternate
+        'openapi',        // OpenAPI spec
+        'openapi-i18n.php', // Localized OpenAPI spec
+        'health',         // Basic health check endpoint
         // Note: All actual API endpoints (/accounts, /domains, etc.) still require authentication
     ]
 ];

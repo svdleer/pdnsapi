@@ -86,11 +86,17 @@ if (preg_match('/^(api\/)?templates\/(\d+)\/create-domain$/', $path, $matches)) 
             readfile('openapi.yaml');
             break;
             
+        case 'openapi-i18n.php':
+            // Serve localized OpenAPI specification
+            require_once 'openapi-i18n.php';
+            break;
+            
         case 'docs':
         case 'swagger':
         case 'swagger-ui':
-            // Serve Swagger UI (if you want to add it later)
-            serveSwaggerUI();
+            // Serve enhanced documentation page
+            header('Content-Type: text/html');
+            readfile('docs.html');
             break;
             
         case '':

@@ -130,6 +130,9 @@
         <a href="#swagger-ui">Interactive API</a>
         <a href="/openapi">OpenAPI Spec (JSON)</a>
         <a href="/openapi.yaml">OpenAPI Spec (YAML)</a>
+        <span style="margin-left: 20px;">|</span>
+        <a href="?lang=en" style="margin-left: 10px;">🇺🇸 English</a>
+        <a href="?lang=nl">🇳🇱 Nederlands</a>
     </div>
     
     <div class="info-section" id="overview">
@@ -228,8 +231,17 @@
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
     <script>
         window.onload = function() {
+            // Get language from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const lang = urlParams.get('lang') || 'en';
+            
+            // Update OpenAPI URL to use localized version
+            const openApiUrl = lang === 'en' 
+                ? window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi"
+                : window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi-i18n.php?lang=" + lang;
+            
             const ui = SwaggerUIBundle({
-                url: window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi",
+                url: openApiUrl,
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [
