@@ -106,11 +106,11 @@ class PDNSAdminClient {
         // This bypasses the API filtering that limits domains to user permissions
         
         try {
-            // Connect to PowerDNS Admin database directly
-            $host = '127.0.0.1';
-            $dbname = 'powerdnsadmin';
-            $username = 'powerdnsadmin';
-            $password = 'powerdnsadmin123';
+            // Connect to PowerDNS Admin database directly using correct credentials
+            $host = 'cora.avant.nl';
+            $dbname = 'pda';  // PowerDNS Admin database
+            $username = 'pdns_api_db';
+            $password = '8swoajKuchij]';
             
             $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
             $pdo = new PDO($dsn, $username, $password, [
