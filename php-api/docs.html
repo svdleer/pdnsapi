@@ -46,35 +46,40 @@
             margin-bottom: 20px;
             border-bottom: 1px solid #e5e7eb;
             text-align: center;
-            position: relative;
-            min-height: 50px;
         }
         
         .nav-links a {
-            margin: 0 10px;
+            margin: 0 15px;
             color: #3b82f6;
             text-decoration: none;
             font-weight: 500;
-            font-size: 14px;
         }
         
         .nav-links a:hover {
             text-decoration: underline;
         }
         
-        /* Language Toggle Styles */
-        .language-toggle {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 10;
+        /* Custom Swagger UI language toggle styles */
+        .swagger-ui .topbar {
+            background: #fafafa !important;
+            border-bottom: 1px solid #e5e7eb !important;
         }
         
-        .toggle-switch {
+        .swagger-language-toggle {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .swagger-toggle-switch {
             position: relative;
             width: 50px;
             height: 25px;
@@ -84,11 +89,11 @@
             transition: background-color 0.3s;
         }
         
-        .toggle-switch.active {
+        .swagger-toggle-switch.active {
             background: #3b82f6;
         }
         
-        .toggle-slider {
+        .swagger-toggle-slider {
             position: absolute;
             top: 2px;
             left: 2px;
@@ -100,51 +105,17 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
-        .toggle-switch.active .toggle-slider {
+        .swagger-toggle-switch.active .swagger-toggle-slider {
             transform: translateX(25px);
         }
         
-        .language-label {
-            font-size: 16px;
+        .swagger-language-label {
+            font-size: 14px;
             font-weight: 500;
-            min-width: 25px;
-            text-align: center;
         }
         
-        .language-label.inactive {
+        .swagger-language-label.inactive {
             opacity: 0.5;
-        }
-        
-        /* Responsive design for language toggle */
-        @media (max-width: 768px) {
-            .nav-links a {
-                margin: 0 5px;
-                font-size: 12px;
-            }
-            
-            .language-toggle {
-                right: 5px;
-                gap: 5px;
-            }
-            
-            .language-label {
-                font-size: 14px;
-                min-width: 20px;
-            }
-            
-            .toggle-switch {
-                width: 40px;
-                height: 20px;
-            }
-            
-            .toggle-slider {
-                width: 16px;
-                height: 16px;
-            }
-            
-            .toggle-switch.active .toggle-slider {
-                transform: translateX(20px);
-            }
         }
         
         .info-section {
@@ -195,15 +166,6 @@
         <a href="#swagger-ui">Interactive API</a>
         <a href="/openapi">OpenAPI Spec (JSON)</a>
         <a href="/openapi.yaml">OpenAPI Spec (YAML)</a>
-        
-        <!-- Language Toggle -->
-        <div class="language-toggle">
-            <span class="language-label" id="lang-en">🇺🇸</span>
-            <div class="toggle-switch" id="language-toggle">
-                <div class="toggle-slider"></div>
-            </div>
-            <span class="language-label" id="lang-nl">🇳🇱</span>
-        </div>
     </div>
     
     <div class="info-section" id="overview">
@@ -265,116 +227,81 @@
     <script>
         // Language management
         let currentLang = 'en';
+        let swaggerUI = null;
         
-        // Static content translations
-        const translations = {
-            'en': {
-                'page-title': 'PDNSAdmin PHP API Documentation',
-                'header-title': 'PDNSAdmin PHP API',
-                'header-subtitle': 'Documentation and Interactive API Explorer',
-                'nav-overview': 'Overview',
-                'nav-features': 'Features',
-                'nav-interactive': 'Interactive API',
-                'overview-title': 'Overview',
-                'overview-text': 'PHP API wrapper for PowerDNS Admin with local database storage for extended functionality.',
-                'features-title': 'Key Features',
-                'interactive-title': 'Interactive API Documentation',
-                'interactive-text': 'Use the interactive API explorer below to test endpoints and view detailed request/response schemas.'
-            },
-            'nl': {
-                'page-title': 'PDNSAdmin PHP API Documentatie',
-                'header-title': 'PDNSAdmin PHP API',
-                'header-subtitle': 'Documentatie en Interactieve API Explorer',
-                'nav-overview': 'Overzicht',
-                'nav-features': 'Functies',
-                'nav-interactive': 'Interactieve API',
-                'overview-title': 'Overzicht',
-                'overview-text': 'PHP API wrapper voor PowerDNS Admin met lokale database opslag voor uitgebreide functionaliteit.',
-                'features-title': 'Belangrijkste Functies',
-                'interactive-title': 'Interactieve API Documentatie',
-                'interactive-text': 'Gebruik de interactieve API explorer hieronder om endpoints te testen en gedetailleerde request/response schema\'s te bekijken.'
-            }
-        };
-        
-        // Update static content based on language
-        function updateStaticContent() {
-            const t = translations[currentLang];
-            
-            // Update page title
-            document.title = t['page-title'];
-            
-            // Update header
-            document.querySelector('.header h1').textContent = t['header-title'];
-            document.querySelector('.header p').textContent = t['header-subtitle'];
-            
-            // Update navigation
-            const navLinks = document.querySelectorAll('.nav-links a');
-            navLinks[0].textContent = t['nav-overview'];
-            navLinks[1].textContent = t['nav-features'];
-            navLinks[2].textContent = t['nav-interactive'];
-            
-            // Update content sections
-            document.querySelector('#overview + .info-content h2').textContent = t['overview-title'];
-            document.querySelector('#overview + .info-content p').textContent = t['overview-text'];
-            document.querySelector('#features').textContent = t['features-title'];
-            document.querySelector('#swagger-ui').previousElementSibling.querySelector('h2').textContent = t['interactive-title'];
-            document.querySelector('#swagger-ui').previousElementSibling.querySelector('p').textContent = t['interactive-text'];
-        }
-        
-        // Initialize language from URL or localStorage
+        // Initialize language from localStorage
         function initializeLanguage() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlLang = urlParams.get('lang');
-            const storedLang = localStorage.getItem('api-docs-language');
-            
-            currentLang = urlLang || storedLang || 'en';
-            updateToggleState();
-            
-            // Store the language preference
-            localStorage.setItem('api-docs-language', currentLang);
+            const storedLang = localStorage.getItem('swagger-language');
+            currentLang = storedLang || 'en';
         }
         
-        // Update toggle visual state
-        function updateToggleState() {
-            const toggle = document.getElementById('language-toggle');
-            const enLabel = document.getElementById('lang-en');
-            const nlLabel = document.getElementById('lang-nl');
-            
-            if (currentLang === 'nl') {
-                toggle.classList.add('active');
-                enLabel.classList.add('inactive');
-                nlLabel.classList.remove('inactive');
-            } else {
-                toggle.classList.remove('active');
-                enLabel.classList.remove('inactive');
-                nlLabel.classList.add('inactive');
-            }
+        // Create language toggle inside Swagger UI
+        function createSwaggerLanguageToggle() {
+            // Wait for Swagger UI to be fully loaded
+            setTimeout(() => {
+                const swaggerContainer = document.querySelector('.swagger-ui');
+                if (!swaggerContainer) {
+                    createSwaggerLanguageToggle(); // Retry
+                    return;
+                }
+                
+                // Remove existing toggle if present
+                const existingToggle = document.querySelector('.swagger-language-toggle');
+                if (existingToggle) {
+                    existingToggle.remove();
+                }
+                
+                // Create toggle HTML
+                const toggleHtml = `
+                    <div class="swagger-language-toggle">
+                        <span class="swagger-language-label ${currentLang === 'en' ? '' : 'inactive'}" id="swagger-lang-en">🇺🇸 EN</span>
+                        <div class="swagger-toggle-switch ${currentLang === 'nl' ? 'active' : ''}" id="swagger-language-toggle">
+                            <div class="swagger-toggle-slider"></div>
+                        </div>
+                        <span class="swagger-language-label ${currentLang === 'nl' ? '' : 'inactive'}" id="swagger-lang-nl">🇳🇱 NL</span>
+                    </div>
+                `;
+                
+                // Insert toggle into Swagger UI
+                swaggerContainer.insertAdjacentHTML('afterbegin', toggleHtml);
+                
+                // Add click handler
+                document.getElementById('swagger-language-toggle').addEventListener('click', switchSwaggerLanguage);
+                
+            }, 1000); // Give Swagger UI time to load
         }
         
-        // Switch language
-        function switchLanguage() {
+        // Switch language in Swagger UI
+        function switchSwaggerLanguage() {
             currentLang = currentLang === 'en' ? 'nl' : 'en';
             
             // Update localStorage
-            localStorage.setItem('api-docs-language', currentLang);
-            
-            // Update URL without page reload
-            const url = new URL(window.location);
-            if (currentLang === 'en') {
-                url.searchParams.delete('lang');
-            } else {
-                url.searchParams.set('lang', currentLang);
-            }
-            window.history.replaceState({}, '', url);
+            localStorage.setItem('swagger-language', currentLang);
             
             // Update toggle state
-            updateToggleState();
-            
-            // Update static content
-            updateStaticContent();
+            updateSwaggerToggleState();
             
             // Reload Swagger UI with new language
             initializeSwaggerUI();
+        }
+        
+        // Update toggle visual state
+        function updateSwaggerToggleState() {
+            const toggle = document.getElementById('swagger-language-toggle');
+            const enLabel = document.getElementById('swagger-lang-en');
+            const nlLabel = document.getElementById('swagger-lang-nl');
+            
+            if (!toggle) return; // Toggle not yet created
+            
+            if (currentLang === 'nl') {
+                toggle.classList.add('active');
+                enLabel?.classList.add('inactive');
+                nlLabel?.classList.remove('inactive');
+            } else {
+                toggle.classList.remove('active');
+                enLabel?.classList.remove('inactive');
+                nlLabel?.classList.add('inactive');
+            }
         }
         
         // Initialize Swagger UI
@@ -388,7 +315,7 @@
                 : window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi-i18n.php?lang=" + currentLang;
             
             // Initialize Swagger UI
-            const ui = SwaggerUIBundle({
+            swaggerUI = SwaggerUIBundle({
                 url: openApiUrl,
                 dom_id: '#swagger-ui',
                 deepLinking: true,
@@ -405,19 +332,17 @@
                 docExpansion: 'list',
                 filter: true,
                 showRequestHeaders: true,
-                showCommonExtensions: true
+                showCommonExtensions: true,
+                onComplete: function() {
+                    // Create language toggle after Swagger UI is loaded
+                    createSwaggerLanguageToggle();
+                }
             });
         }
         
         window.onload = function() {
             // Initialize language system
             initializeLanguage();
-            
-            // Update static content for initial language
-            updateStaticContent();
-            
-            // Setup toggle click handler
-            document.getElementById('language-toggle').addEventListener('click', switchLanguage);
             
             // Initialize Swagger UI
             initializeSwaggerUI();
