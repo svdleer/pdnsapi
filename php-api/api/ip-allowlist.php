@@ -1,6 +1,15 @@
 <?php
 /**
- * IP Allowlist Management API
+ * IP Allowlist// Log successful authenticated request
+logApiRequest('ip-allowlist', $_SERVER['REQUEST_METHOD'], 200);
+
+header('Content-Type: application/json');
+
+// DEBUG: Log PATH_INFO and routing
+error_log("IP-ALLOWLIST DEBUG - PATH_INFO: " . ($_SERVER['PATH_INFO'] ?? 'NOT SET'));
+error_log("IP-ALLOWLIST DEBUG - REQUEST_URI: " . ($_SERVER['REQUEST_URI'] ?? 'NOT SET'));
+
+// Database class should now be available through compatibility layerement API
  * 
  * Provides API endpoints for managing the global IP allowlist used for API security.
  */
