@@ -2,7 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        .swagger-language-toggle {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            z-index: 999999 !important; /* Even higher z-index */
+            background: white !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+            border: 1px solid #e5e7eb !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+        }viewport" content="width=device-width, initial-scale=1.0">
     <title>PDNSAdmin PHP API Documentation</title>
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
     <style>
@@ -66,56 +80,59 @@
         }
         
         .swagger-language-toggle {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 1000;
-            background: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            z-index: 999999 !important;
+            background: white !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+            border: 1px solid #e5e7eb !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
         }
         
         .swagger-toggle-switch {
-            position: relative;
-            width: 50px;
-            height: 25px;
-            background: #e5e7eb;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: background-color 0.3s;
+            position: relative !important;
+            width: 50px !important;
+            height: 25px !important;
+            background: #e5e7eb !important;
+            border-radius: 15px !important;
+            cursor: pointer !important;
+            transition: background-color 0.3s !important;
         }
         
         .swagger-toggle-switch.active {
-            background: #3b82f6;
+            background: #3b82f6 !important;
         }
         
         .swagger-toggle-slider {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 21px;
-            height: 21px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.3s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: absolute !important;
+            top: 2px !important;
+            left: 2px !important;
+            width: 21px !important;
+            height: 21px !important;
+            background: white !important;
+            border-radius: 50% !important;
+            transition: transform 0.3s !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
         }
         
         .swagger-toggle-switch.active .swagger-toggle-slider {
-            transform: translateX(25px);
+            transform: translateX(25px) !important;
         }
         
         .swagger-language-label {
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            color: #374151 !important;
         }
         
         .swagger-language-label.inactive {
-            opacity: 0.5;
+            opacity: 0.5 !important;
         }
         
         .info-section {
@@ -229,51 +246,74 @@
         let currentLang = 'en';
         let swaggerUI = null;
         
-        // Initialize language from localStorage
+        // Initialize language system
         function initializeLanguage() {
-            const storedLang = localStorage.getItem('swagger-language');
-            currentLang = storedLang || 'en';
-        }
-        
-        // Create language toggle inside Swagger UI
+            const savedLang = localStorage.getItem('swagger-language');
+            currentLang = savedLang || 'en';
+            console.log('Initialized language system, current language:', currentLang);
+        }        // Create language toggle inside Swagger UI
         function createSwaggerLanguageToggle() {
+            console.log('Attempting to create language toggle...');
+            
             // Wait for Swagger UI to be fully loaded
-            setTimeout(() => {
-                const swaggerContainer = document.querySelector('.swagger-ui');
-                if (!swaggerContainer) {
-                    createSwaggerLanguageToggle(); // Retry
-                    return;
-                }
-                
-                // Remove existing toggle if present
-                const existingToggle = document.querySelector('.swagger-language-toggle');
-                if (existingToggle) {
-                    existingToggle.remove();
-                }
-                
-                // Create toggle HTML
-                const toggleHtml = `
-                    <div class="swagger-language-toggle">
-                        <span class="swagger-language-label ${currentLang === 'en' ? '' : 'inactive'}" id="swagger-lang-en">🇺🇸 EN</span>
-                        <div class="swagger-toggle-switch ${currentLang === 'nl' ? 'active' : ''}" id="swagger-language-toggle">
-                            <div class="swagger-toggle-slider"></div>
-                        </div>
-                        <span class="swagger-language-label ${currentLang === 'nl' ? '' : 'inactive'}" id="swagger-lang-nl">🇳🇱 NL</span>
+            const swaggerContainer = document.querySelector('.swagger-ui');
+            if (!swaggerContainer) {
+                console.log('Swagger container not found, retrying...');
+                setTimeout(createSwaggerLanguageToggle, 500); // Retry more frequently
+                return;
+            }
+            
+            // Wait for Swagger UI content to be present
+            const swaggerContent = swaggerContainer.querySelector('.information-container') || 
+                                  swaggerContainer.querySelector('.scheme-container') ||
+                                  swaggerContainer.querySelector('.wrapper');
+            
+            if (!swaggerContent) {
+                console.log('Swagger content not ready, retrying...');
+                setTimeout(createSwaggerLanguageToggle, 500);
+                return;
+            }
+            
+            console.log('Swagger UI is ready, creating toggle...');
+            
+            // Remove existing toggle if present
+            const existingToggle = document.querySelector('.swagger-language-toggle');
+            if (existingToggle) {
+                console.log('Removing existing toggle...');
+                existingToggle.remove();
+            }
+            
+            // Create toggle HTML
+            const toggleHtml = `
+                <div class="swagger-language-toggle">
+                    <span class="swagger-language-label ${currentLang === 'en' ? '' : 'inactive'}" id="swagger-lang-en">🇺🇸 EN</span>
+                    <div class="swagger-toggle-switch ${currentLang === 'nl' ? 'active' : ''}" id="swagger-language-toggle">
+                        <div class="swagger-toggle-slider"></div>
                     </div>
-                `;
-                
-                // Insert toggle into Swagger UI
-                swaggerContainer.insertAdjacentHTML('afterbegin', toggleHtml);
-                
-                // Add click handler
-                document.getElementById('swagger-language-toggle').addEventListener('click', switchSwaggerLanguage);
-                
-            }, 1000); // Give Swagger UI time to load
+                    <span class="swagger-language-label ${currentLang === 'nl' ? '' : 'inactive'}" id="swagger-lang-nl">🇳🇱 NL</span>
+                </div>
+            `;
+            
+            // Insert toggle into body (fixed position will handle placement)
+            document.body.insertAdjacentHTML('beforeend', toggleHtml);
+            console.log('Toggle HTML inserted into body');
+            
+            // Add click handler
+            const toggleElement = document.getElementById('swagger-language-toggle');
+            if (toggleElement) {
+                toggleElement.addEventListener('click', switchSwaggerLanguage);
+                console.log('Click handler added to toggle');
+            } else {
+                console.error('Toggle element not found after insertion');
+            }
         }
         
         // Switch language in Swagger UI
         function switchSwaggerLanguage() {
+            console.log('Language toggle clicked, current language:', currentLang);
+            
             currentLang = currentLang === 'en' ? 'nl' : 'en';
+            console.log('Switching to language:', currentLang);
             
             // Update localStorage
             localStorage.setItem('swagger-language', currentLang);
@@ -306,6 +346,8 @@
         
         // Initialize Swagger UI
         function initializeSwaggerUI() {
+            console.log('Initializing Swagger UI with language:', currentLang);
+            
             // Clear existing Swagger UI
             document.getElementById('swagger-ui').innerHTML = '';
             
@@ -313,6 +355,8 @@
             const openApiUrl = currentLang === 'en' 
                 ? window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi"
                 : window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi-i18n.php?lang=" + currentLang;
+            
+            console.log('OpenAPI URL:', openApiUrl);
             
             // Initialize Swagger UI
             swaggerUI = SwaggerUIBundle({
@@ -334,6 +378,7 @@
                 showRequestHeaders: true,
                 showCommonExtensions: true,
                 onComplete: function() {
+                    console.log('Swagger UI loaded successfully');
                     // Create language toggle after Swagger UI is loaded
                     createSwaggerLanguageToggle();
                 }
