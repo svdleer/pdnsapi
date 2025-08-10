@@ -46,6 +46,7 @@
             margin-bottom: 20px;
             border-bottom: 1px solid #e5e7eb;
             text-align: center;
+            position: relative;
         }
         
         .nav-links a {
@@ -57,6 +58,58 @@
         
         .nav-links a:hover {
             text-decoration: underline;
+        }
+        
+        /* Language Toggle Styles */
+        .language-toggle {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: #3b82f6;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(30px);
+        }
+        
+        .language-label {
+            font-size: 18px;
+            font-weight: 500;
+            min-width: 30px;
+            text-align: center;
+        }
+        
+        .language-label.inactive {
+            opacity: 0.5;
         }
         
         .info-section {
@@ -104,10 +157,18 @@
     <div class="nav-links">
         <a href="#overview">Overview</a>
         <a href="#features">Features</a>
-        <a href="#endpoints">Quick Reference</a>
         <a href="#swagger-ui">Interactive API</a>
         <a href="/openapi">OpenAPI Spec (JSON)</a>
         <a href="/openapi.yaml">OpenAPI Spec (YAML)</a>
+        
+        <!-- Language Toggle -->
+        <div class="language-toggle">
+            <span class="language-label" id="lang-en">🇺🇸</span>
+            <div class="toggle-switch" id="language-toggle">
+                <div class="toggle-slider"></div>
+            </div>
+            <span class="language-label" id="lang-nl">🇳🇱</span>
+        </div>
     </div>
     
     <div class="info-section" id="overview">
@@ -167,9 +228,133 @@
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
     <script>
-        window.onload = function() {
+        // Language management
+        let currentLang = 'en';
+        
+        // Static content translations
+        const translations = {
+            'en': {
+                'page-title': 'PDNSAdmin PHP API Documentation',
+                'header-title': 'PDNSAdmin PHP API',
+                'header-subtitle': 'Documentation and Interactive API Explorer',
+                'nav-overview': 'Overview',
+                'nav-features': 'Features',
+                'nav-interactive': 'Interactive API',
+                'overview-title': 'Overview',
+                'overview-text': 'PHP API wrapper for PowerDNS Admin with local database storage for extended functionality.',
+                'features-title': 'Key Features',
+                'interactive-title': 'Interactive API Documentation',
+                'interactive-text': 'Use the interactive API explorer below to test endpoints and view detailed request/response schemas.'
+            },
+            'nl': {
+                'page-title': 'PDNSAdmin PHP API Documentatie',
+                'header-title': 'PDNSAdmin PHP API',
+                'header-subtitle': 'Documentatie en Interactieve API Explorer',
+                'nav-overview': 'Overzicht',
+                'nav-features': 'Functies',
+                'nav-interactive': 'Interactieve API',
+                'overview-title': 'Overzicht',
+                'overview-text': 'PHP API wrapper voor PowerDNS Admin met lokale database opslag voor uitgebreide functionaliteit.',
+                'features-title': 'Belangrijkste Functies',
+                'interactive-title': 'Interactieve API Documentatie',
+                'interactive-text': 'Gebruik de interactieve API explorer hieronder om endpoints te testen en gedetailleerde request/response schema\'s te bekijken.'
+            }
+        };
+        
+        // Update static content based on language
+        function updateStaticContent() {
+            const t = translations[currentLang];
+            
+            // Update page title
+            document.title = t['page-title'];
+            
+            // Update header
+            document.querySelector('.header h1').textContent = t['header-title'];
+            document.querySelector('.header p').textContent = t['header-subtitle'];
+            
+            // Update navigation
+            const navLinks = document.querySelectorAll('.nav-links a');
+            navLinks[0].textContent = t['nav-overview'];
+            navLinks[1].textContent = t['nav-features'];
+            navLinks[2].textContent = t['nav-interactive'];
+            
+            // Update content sections
+            document.querySelector('#overview + .info-content h2').textContent = t['overview-title'];
+            document.querySelector('#overview + .info-content p').textContent = t['overview-text'];
+            document.querySelector('#features').textContent = t['features-title'];
+            document.querySelector('#swagger-ui').previousElementSibling.querySelector('h2').textContent = t['interactive-title'];
+            document.querySelector('#swagger-ui').previousElementSibling.querySelector('p').textContent = t['interactive-text'];
+        }
+        
+        // Initialize language from URL or localStorage
+        function initializeLanguage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlLang = urlParams.get('lang');
+            const storedLang = localStorage.getItem('api-docs-language');
+            
+            currentLang = urlLang || storedLang || 'en';
+            updateToggleState();
+            
+            // Store the language preference
+            localStorage.setItem('api-docs-language', currentLang);
+        }
+        
+        // Update toggle visual state
+        function updateToggleState() {
+            const toggle = document.getElementById('language-toggle');
+            const enLabel = document.getElementById('lang-en');
+            const nlLabel = document.getElementById('lang-nl');
+            
+            if (currentLang === 'nl') {
+                toggle.classList.add('active');
+                enLabel.classList.add('inactive');
+                nlLabel.classList.remove('inactive');
+            } else {
+                toggle.classList.remove('active');
+                enLabel.classList.remove('inactive');
+                nlLabel.classList.add('inactive');
+            }
+        }
+        
+        // Switch language
+        function switchLanguage() {
+            currentLang = currentLang === 'en' ? 'nl' : 'en';
+            
+            // Update localStorage
+            localStorage.setItem('api-docs-language', currentLang);
+            
+            // Update URL without page reload
+            const url = new URL(window.location);
+            if (currentLang === 'en') {
+                url.searchParams.delete('lang');
+            } else {
+                url.searchParams.set('lang', currentLang);
+            }
+            window.history.replaceState({}, '', url);
+            
+            // Update toggle state
+            updateToggleState();
+            
+            // Update static content
+            updateStaticContent();
+            
+            // Reload Swagger UI with new language
+            initializeSwaggerUI();
+        }
+        
+        // Initialize Swagger UI
+        function initializeSwaggerUI() {
+            // Clear existing Swagger UI
+            document.getElementById('swagger-ui').innerHTML = '';
+            
+            // Determine OpenAPI URL based on language
+            const openApiUrl = currentLang === 'en' 
+                ? window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi"
+                : window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi-i18n.php?lang=" + currentLang;
+            
+            // Initialize Swagger UI
             const ui = SwaggerUIBundle({
-                url: window.location.origin + window.location.pathname.replace("/docs", "").replace("/swagger-ui", "") + "/openapi",
+                url: openApiUrl,
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [
@@ -187,6 +372,20 @@
                 showRequestHeaders: true,
                 showCommonExtensions: true
             });
+        }
+        
+        window.onload = function() {
+            // Initialize language system
+            initializeLanguage();
+            
+            // Update static content for initial language
+            updateStaticContent();
+            
+            // Setup toggle click handler
+            document.getElementById('language-toggle').addEventListener('click', switchLanguage);
+            
+            // Initialize Swagger UI
+            initializeSwaggerUI();
         };
     </script>
 </body>
