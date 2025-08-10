@@ -5,8 +5,8 @@ info:
     PHP API wrapper for PowerDNS Admin with local database storage.
     
     ## Authentication
-    Uses Basic Authentication with base64 encoded credentials.
-    Include `Authorization: Basic <base64-credentials>` header in requests.
+    Uses X-API-Key header authentication with global IP allowlist.
+    Include `X-API-Key: <your-api-key>` header in requests.
     
     **Admin API Key Required** - Single API key provides full administrative access.
     All API keys and configuration are loaded from environment variables (.env).
@@ -26,6 +26,7 @@ info:
     - DNS record management via PowerDNS Server API
     - Template-based domain creation
     - Local database caching and metadata storage
+    - IP allowlist security management
     - Secure environment-based configuration (no hardcoded credentials)
   version: 1.1.0
   contact:
@@ -1270,7 +1271,6 @@ paths:
         - Review descriptions and timestamps
         - Critical for security auditing and management
       tags:
-        - IP Allowlist
         - Security
       responses:
         '200':
@@ -1308,7 +1308,6 @@ paths:
         - All new IPs are enabled by default
         - Supports both IPv4 and IPv6 with CIDR notation
       tags:
-        - IP Allowlist
         - Security
       requestBody:
         required: true
@@ -1369,7 +1368,6 @@ paths:
         - Can enable/disable access without deletion
         - Changes take effect immediately
       tags:
-        - IP Allowlist
         - Security
       parameters:
         - name: id
@@ -1436,7 +1434,6 @@ paths:
         - May immediately block active connections from this IP
         - Use disable instead for temporary access removal
       tags:
-        - IP Allowlist
         - Security
       parameters:
         - name: id
@@ -1486,7 +1483,6 @@ paths:
         - Verify allowlist configuration
         - Useful for troubleshooting access issues
       tags:
-        - IP Allowlist
         - Security
         - Testing
       requestBody:
@@ -2402,9 +2398,7 @@ tags:
     description: Domain-account relationship management
   - name: Status
     description: API status, health checks, and synchronization
-  - name: IP Allowlist
-    description: IP allowlist management for API security
   - name: Security
-    description: Security-related operations and access control
+    description: Security-related operations including IP allowlist management and access control
   - name: Testing
     description: Testing and validation utilities
