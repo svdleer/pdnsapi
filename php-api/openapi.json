@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "PDNSAdmin PHP API",
-    "description": "PHP API wrapper for PowerDNS Admin with local database storage.\n\n## Authentication\nUses Basic Authentication with base64 encoded credentials.\nInclude `Authorization: Basic <base64-credentials>` header in requests.\n\n**Admin API Key Required** - Single API key provides full administrative access.\n\n## Core Features\n- Account and user management with PowerDNS Admin sync\n- Domain management with intelligent ID/name detection\n- DNS record management via PowerDNS Server API\n- Template-based domain creation\n- Local database caching and metadata storage\n",
-    "version": "1.0.9",
+    "description": "PHP API wrapper for PowerDNS Admin with local database storage.\n\n## Authentication\nUses Basic Authentication with base64 encoded credentials.\nInclude `Authorization: Basic <base64-credentials>` header in requests.\n\n**Admin API Key Required** - Single API key provides full administrative access.\nAll API keys and configuration are loaded from environment variables (.env).\n\n## Environment Configuration\nAll sensitive configuration (API keys, database credentials, hosts) is stored in `.env`:\n- `AVANT_API_KEY` - Admin API key for authentication\n- `PDNS_API_KEY` - PowerDNS Admin API key\n- `PDNS_SERVER_KEY` - PowerDNS Server API key\n- `API_DB_HOST`, `API_DB_NAME`, `API_DB_USER`, `API_DB_PASS` - Local business logic database\n- `PDNS_ADMIN_DB_HOST`, `PDNS_ADMIN_DB_NAME`, `PDNS_ADMIN_DB_USER`, `PDNS_ADMIN_DB_PASS` - PowerDNS Admin database\n- IP allowlist and other security settings\n\n## Core Features\n- Account and user management with PowerDNS Admin sync\n- Domain management with intelligent ID/name detection\n- DNS record management via PowerDNS Server API\n- Template-based domain creation\n- Local database caching and metadata storage\n- Secure environment-based configuration (no hardcoded credentials)\n",
+    "version": "1.1.0",
     "contact": {
       "name": "API Support - Silvester van der Leer",
       "email": "silvester@avant.nl"

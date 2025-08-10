@@ -9,6 +9,16 @@ info:
     Include `Authorization: Basic <base64-credentials>` header in requests.
     
     **Admin API Key Required** - Single API key provides full administrative access.
+    All API keys and configuration are loaded from environment variables (.env).
+    
+    ## Environment Configuration
+    All sensitive configuration (API keys, database credentials, hosts) is stored in `.env`:
+    - `AVANT_API_KEY` - Admin API key for authentication
+    - `PDNS_API_KEY` - PowerDNS Admin API key
+    - `PDNS_SERVER_KEY` - PowerDNS Server API key
+    - `API_DB_HOST`, `API_DB_NAME`, `API_DB_USER`, `API_DB_PASS` - Local business logic database
+    - `PDNS_ADMIN_DB_HOST`, `PDNS_ADMIN_DB_NAME`, `PDNS_ADMIN_DB_USER`, `PDNS_ADMIN_DB_PASS` - PowerDNS Admin database
+    - IP allowlist and other security settings
     
     ## Core Features
     - Account and user management with PowerDNS Admin sync
@@ -16,7 +26,8 @@ info:
     - DNS record management via PowerDNS Server API
     - Template-based domain creation
     - Local database caching and metadata storage
-  version: 1.0.9
+    - Secure environment-based configuration (no hardcoded credentials)
+  version: 1.1.0
   contact:
     name: API Support - Silvester van der Leer
     email: silvester@avant.nl
