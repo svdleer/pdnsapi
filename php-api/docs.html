@@ -239,127 +239,65 @@
     
     <div id="swagger-ui"></div>
     
+    <!-- Language Toggle (always visible) -->
+    <div class="swagger-language-toggle" id="language-toggle-container">
+        <span class="swagger-language-label" id="lang-en">🇺🇸 EN</span>
+        <div class="swagger-toggle-switch" id="language-toggle" onclick="switchLanguage()">
+            <div class="swagger-toggle-slider"></div>
+        </div>
+        <span class="swagger-language-label inactive" id="lang-nl">🇳🇱 NL</span>
+    </div>
+    
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
     <script>
-        // Language management
-        let currentLang = 'en';
-        let swaggerUI = null;
-        
-        // Initialize language system
-        function initializeLanguage() {
-            const savedLang = localStorage.getItem('swagger-language');
-            currentLang = savedLang || 'en';
-            console.log('Initialized language system, current language:', currentLang);
-        }        // Create language toggle inside Swagger UI
-        function createSwaggerLanguageToggle() {
-            console.log('Attempting to create language toggle...');
-            
-            // Wait for Swagger UI to be fully loaded
-            const swaggerContainer = document.querySelector('.swagger-ui');
-            if (!swaggerContainer) {
-                console.log('Swagger container not found, retrying...');
-                setTimeout(createSwaggerLanguageToggle, 500); // Retry more frequently
-                return;
-            }
-            
-            // Wait for Swagger UI content to be present
-            const swaggerContent = swaggerContainer.querySelector('.information-container') || 
-                                  swaggerContainer.querySelector('.scheme-container') ||
-                                  swaggerContainer.querySelector('.wrapper');
-            
-            if (!swaggerContent) {
-                console.log('Swagger content not ready, retrying...');
-                setTimeout(createSwaggerLanguageToggle, 500);
-                return;
-            }
-            
-            console.log('Swagger UI is ready, creating toggle...');
-            
-            // Remove existing toggle if present
-            const existingToggle = document.querySelector('.swagger-language-toggle');
-            if (existingToggle) {
-                console.log('Removing existing toggle...');
-                existingToggle.remove();
-            }
-            
-            // Create toggle HTML
-            const toggleHtml = `
-                <div class="swagger-language-toggle">
-                    <span class="swagger-language-label ${currentLang === 'en' ? '' : 'inactive'}" id="swagger-lang-en">🇺🇸 EN</span>
-                    <div class="swagger-toggle-switch ${currentLang === 'nl' ? 'active' : ''}" id="swagger-language-toggle">
-                        <div class="swagger-toggle-slider"></div>
-                    </div>
-                    <span class="swagger-language-label ${currentLang === 'nl' ? '' : 'inactive'}" id="swagger-lang-nl">🇳🇱 NL</span>
-                </div>
-            `;
-            
-            // Insert toggle into body (fixed position will handle placement)
-            document.body.insertAdjacentHTML('beforeend', toggleHtml);
-            console.log('Toggle HTML inserted into body');
-            
-            // Add click handler
-            const toggleElement = document.getElementById('swagger-language-toggle');
-            if (toggleElement) {
-                toggleElement.addEventListener('click', switchSwaggerLanguage);
-                console.log('Click handler added to toggle');
-            } else {
-                console.error('Toggle element not found after insertion');
-            }
-        }
-        
-        // Switch language in Swagger UI
-        function switchSwaggerLanguage() {
-            console.log('Language toggle clicked, current language:', currentLang);
-            
+        // Simple language switching system
+        let currentLang = localStorage.getItem('swagger-language') || 'en';
+        let swaggerUI;
+
+        // Switch language function (called by onclick in HTML)
+        function switchLanguage() {
+            console.log('Language toggle clicked!');
             currentLang = currentLang === 'en' ? 'nl' : 'en';
-            console.log('Switching to language:', currentLang);
-            
-            // Update localStorage
             localStorage.setItem('swagger-language', currentLang);
             
-            // Update toggle state
-            updateSwaggerToggleState();
+            // Update toggle visual state
+            updateToggleState();
             
             // Reload Swagger UI with new language
-            initializeSwaggerUI();
+            loadSwaggerUI();
         }
-        
+
         // Update toggle visual state
-        function updateSwaggerToggleState() {
-            const toggle = document.getElementById('swagger-language-toggle');
-            const enLabel = document.getElementById('swagger-lang-en');
-            const nlLabel = document.getElementById('swagger-lang-nl');
-            
-            if (!toggle) return; // Toggle not yet created
+        function updateToggleState() {
+            const toggle = document.getElementById('language-toggle');
+            const enLabel = document.getElementById('lang-en');
+            const nlLabel = document.getElementById('lang-nl');
             
             if (currentLang === 'nl') {
                 toggle.classList.add('active');
-                enLabel?.classList.add('inactive');
-                nlLabel?.classList.remove('inactive');
+                enLabel.classList.add('inactive');
+                nlLabel.classList.remove('inactive');
             } else {
                 toggle.classList.remove('active');
-                enLabel?.classList.remove('inactive');
-                nlLabel?.classList.add('inactive');
+                enLabel.classList.remove('inactive');
+                nlLabel.classList.add('inactive');
             }
         }
-        
-        // Initialize Swagger UI
-        function initializeSwaggerUI() {
-            console.log('Initializing Swagger UI with language:', currentLang);
+
+        // Load Swagger UI
+        function loadSwaggerUI() {
+            console.log('Loading Swagger UI for language:', currentLang);
             
-            // Clear existing Swagger UI
+            // Clear existing content
             document.getElementById('swagger-ui').innerHTML = '';
             
-            // Determine OpenAPI URL based on language  
-            // Get current directory path from the URL
-            const currentPath = window.location.pathname.replace(/\/[^\/]*$/, '');
-            const baseUrl = window.location.origin + currentPath;
+            // Build OpenAPI URL
+            const baseUrl = window.location.origin + window.location.pathname.replace('/docs.html', '');
             const openApiUrl = currentLang === 'en' 
                 ? baseUrl + '/openapi'
                 : baseUrl + '/openapi-i18n.php?lang=' + currentLang;
             
-            console.log('Base URL:', baseUrl);
             console.log('OpenAPI URL:', openApiUrl);
             
             // Initialize Swagger UI
@@ -380,22 +318,16 @@
                 docExpansion: 'list',
                 filter: true,
                 showRequestHeaders: true,
-                showCommonExtensions: true,
-                onComplete: function() {
-                    console.log('Swagger UI loaded successfully');
-                    // Create language toggle after Swagger UI is loaded
-                    createSwaggerLanguageToggle();
-                }
+                showCommonExtensions: true
             });
         }
-        
-        window.onload = function() {
-            // Initialize language system
-            initializeLanguage();
-            
-            // Initialize Swagger UI
-            initializeSwaggerUI();
-        };
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing...');
+            updateToggleState();
+            loadSwaggerUI();
+        });
     </script>
 </body>
 </html>
