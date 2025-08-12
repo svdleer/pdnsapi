@@ -188,15 +188,15 @@ $responseTranslationMap = [
 function translateStrings(&$data, $translations, $pathMap, $responseMap) {
     if (is_array($data)) {
         foreach ($data as $key => &$value) {
-            if ($key === 'summary' && isset($pathMap[$value])) {
+            if ($key === 'summary' && is_string($value) && isset($pathMap[$value])) {
                 $value = $pathMap[$value];
-            } elseif ($key === 'description') {
+            } elseif ($key === 'description' && is_string($value)) {
                 if (isset($responseMap[$value])) {
                     $value = $responseMap[$value];
                 } elseif (isset($pathMap[$value])) {
                     $value = $pathMap[$value];
                 }
-            } elseif (is_array($value) && isset($value[0]) && isset($pathMap[$value[0]])) {
+            } elseif (is_array($value) && isset($value[0]) && is_string($value[0]) && isset($pathMap[$value[0]])) {
                 // Handle tags arrays
                 $value[0] = $pathMap[$value[0]] ?? $value[0];
             } else {
