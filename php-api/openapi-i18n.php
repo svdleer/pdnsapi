@@ -215,6 +215,56 @@ function translateStrings($data, $translations, $parameterTranslations, $example
 // Apply translations
 $translatedOpenapi = translateStrings($openapi, $translations, $parameterTranslations, $exampleTranslations);
 
+// Ensure tags are properly translated (sometimes the recursive function misses them)
+if (isset($translatedOpenapi['tags']) && is_array($translatedOpenapi['tags'])) {
+    error_log("DEBUG: Processing " . count($translatedOpenapi['tags']) . " tags for translation");
+    foreach ($translatedOpenapi['tags'] as $index => $tag) {
+        if (isset($tag['name'])) {
+            error_log("DEBUG: Processing tag: " . $tag['name']);
+            // Direct mapping of English tag names to Dutch
+            $tagTranslations = [
+                'Documentation' => 'Documentatie',
+                'Accounts' => 'Accounts', 
+                'Domains' => 'Domeinen',
+                'Domain Search' => 'Domein Zoeken',
+                'Domain Management' => 'Domein Beheer',
+                'Templates' => 'Sjablonen',
+                'Domain-Account' => 'Domein-Account',
+                'Status' => 'Status',
+                'IP Allowlist' => 'IP Toegestane Lijst',
+                'Security' => 'Beveiliging',
+                'Testing' => 'Testen'
+            ];
+            
+            if (isset($tagTranslations[$tag['name']])) {
+                error_log("DEBUG: Translating tag '{$tag['name']}' to '{$tagTranslations[$tag['name']]}'");
+                $translatedOpenapi['tags'][$index]['name'] = $tagTranslations[$tag['name']];
+            }
+        }
+        
+        if (isset($tag['description'])) {
+            // Direct mapping of tag descriptions to Dutch
+            $descTranslations = [
+                'API documentation and information' => 'API documentatie en informatie',
+                'Account management operations with IP address support' => 'Account beheer operaties met IP-adres ondersteuning',
+                'Smart domain management with ID/name detection, DNS records, and PowerDNS Server API integration' => 'Domein beheer met ID/naam detectie, DNS records en PowerDNS Server API integratie',
+                'Intelligent domain search by ID, name, pattern, or contains matching' => 'Intelligente domein zoeken op ID, naam, patroon of bevat overeenkomst',
+                'Advanced domain operations including updates, deletion and DNS record management' => 'Geavanceerde domein operaties inclusief updates, verwijdering en DNS record beheer',
+                'Domain template management operations' => 'Domein sjabloon beheer operaties',
+                'Domain-account relationship management' => 'Domein-account relatie beheer',
+                'API status, health checks, and synchronization' => 'API status, health checks en synchronisatie',
+                'IP allowlist management for API security' => 'IP toegestane lijst beheer voor API beveiliging',
+                'Security-related operations and access control' => 'Beveiliging-gerelateerde operaties en toegangscontrole',
+                'Testing and validation utilities' => 'Test en validatie hulpmiddelen'
+            ];
+            
+            if (isset($descTranslations[$tag['description']])) {
+                $translatedOpenapi['tags'][$index]['description'] = $descTranslations[$tag['description']];
+            }
+        }
+    }
+}
+
 // Output the translated specification
 echo json_encode($translatedOpenapi, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 ?>
