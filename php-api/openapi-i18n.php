@@ -73,6 +73,32 @@ $translations = getTranslations($lang);
 
 // Complete parameter and example translations for Dutch
 $parameterTranslations = [
+    // Tag/Chapter names - using the exact English names from OpenAPI spec
+    'Documentation' => $translations['tag_documentation'] ?? 'Documentatie',
+    'Accounts' => $translations['tag_accounts'] ?? 'Accounts', 
+    'Domains' => $translations['tag_domains'] ?? 'Domeinen',
+    'Domain Search' => 'Domein Zoeken',
+    'Domain Management' => 'Domein Beheer', 
+    'Templates' => $translations['tag_templates'] ?? 'Sjablonen',
+    'Domain-Account' => $translations['tag_assignments'] ?? 'Domein-Account',
+    'Status' => $translations['tag_system'] ?? 'Status',
+    'IP Allowlist' => $translations['tag_ip_allowlist'] ?? 'IP Toegestane Lijst',
+    'Security' => 'Beveiliging',
+    'Testing' => 'Testen',
+    
+    // Tag descriptions - using translations.php values
+    'API documentation and information' => $translations['tag_documentation_description'] ?? 'API documentatie en informatie',
+    'Account management operations with IP address support' => $translations['tag_accounts_description'] ?? 'Account beheer operaties met IP-adres ondersteuning', 
+    'Smart domain management with ID/name detection, DNS records, and PowerDNS Server API integration' => $translations['tag_domains_description'] ?? 'Slimme domein beheer met ID/naam detectie, DNS records, en PowerDNS Server API integratie',
+    'Intelligent domain search by ID, name, pattern, or contains matching' => 'Intelligente domein zoeken op ID, naam, patroon, of bevat overeenkomst',
+    'Advanced domain operations including updates, deletion and DNS record management' => 'Geavanceerde domein operaties inclusief updates, verwijdering en DNS record beheer',
+    'Domain template management operations' => $translations['tag_templates_description'] ?? 'Domein sjabloon beheer operaties',
+    'Domain-account relationship management' => $translations['tag_assignments_description'] ?? 'Domein-account relatie beheer', 
+    'API status, health checks, and synchronization' => $translations['tag_system_description'] ?? 'API status, health checks, en synchronisatie',
+    'IP allowlist management for API security' => $translations['tag_ip_allowlist_description'] ?? 'IP toegestane lijst beheer voor API beveiliging',
+    'Security-related operations and access control' => 'Beveiliging-gerelateerde operaties en toegangscontrole',
+    'Testing and validation utilities' => 'Test en validatie hulpmiddelen',
+    
     // Account parameters
     'Filter by account ID (can combine with other filters for validation)' => 'Filteren op account ID (combineerbaar met andere filters voor validatie)',
     'Filter by username (can combine with ID for validation)' => 'Filteren op gebruikersnaam (combineerbaar met ID voor validatie)', 
@@ -172,8 +198,14 @@ function translateStrings($data, $translations, $parameterTranslations, $example
         }
         
         // Debug: Log untranslated strings to error log for debugging
-        if (strpos($data, 'Filter by') === 0 || strpos($data, 'Search query') === 0) {
-            error_log("DEBUG: Untranslated parameter description: '$data'");
+        if (in_array($data, ['Documentation', 'Accounts', 'Domains', 'Templates', 'Status'])) {
+            error_log("DEBUG: Processing tag name: '$data'");
+            if (isset($parameterTranslations[$data])) {
+                error_log("DEBUG: Translating '$data' to '{$parameterTranslations[$data]}'");
+                return $parameterTranslations[$data];
+            } else {
+                error_log("DEBUG: No translation found for tag: '$data'");
+            }
         }
     }
     
