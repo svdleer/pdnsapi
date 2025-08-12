@@ -279,18 +279,18 @@
     
     <!-- Language Toggle -->
     <div class="swagger-language-toggle" id="language-toggle-container">
-        <span class="swagger-language-label" id="lang-en">🇺🇸 EN</span>
-        <div class="swagger-toggle-switch" id="language-toggle" onclick="switchLanguage()">
+        <span class="swagger-language-label inactive" id="lang-en">🇺🇸 EN</span>
+        <div class="swagger-toggle-switch active" id="language-toggle" onclick="switchLanguage()">
             <div class="swagger-toggle-slider"></div>
         </div>
-        <span class="swagger-language-label inactive" id="lang-nl">🇳🇱 NL</span>
+        <span class="swagger-language-label" id="lang-nl">🇳🇱 NL</span>
     </div>
     
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
     <script>
         // Simple language switching system
-        let currentLang = localStorage.getItem('swagger-language') || 'en';
+        let currentLang = localStorage.getItem('swagger-language') || 'nl';
         let swaggerUI;
 
         // Page content translations
