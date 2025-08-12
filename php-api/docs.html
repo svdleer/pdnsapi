@@ -289,15 +289,16 @@
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
     <script>
-        // Simple language switching system
+        // Enhanced language switching system with proper state management
         let currentLang = localStorage.getItem('swagger-language') || 'nl';
         let swaggerUI;
+        let isLoading = false; // Prevent multiple simultaneous loads
 
         // Page content translations
         const pageTranslations = {
             en: {
                 'page-title': 'PowerDNS Admin API Documentation',
-                'page-description': 'A security-enhanced API for managing PowerDNS Admin operations with local database caching and metadata storage.',
+                'page-description': 'Documentation and Interactive API Explorer',
                 'key-features': 'Key Features',
                 'account-management': 'Account Management',
                 'account-management-desc': 'Create, read, update, and delete accounts with IP address storage (local only)',
@@ -349,12 +350,12 @@
         function translatePage() {
             const translations = pageTranslations[currentLang];
             
-            // Update header title and description
+            // Update header title and description using translation system
             const headerTitle = document.querySelector('.header h1');
             if (headerTitle) headerTitle.textContent = translations['page-title'];
             
             const headerDesc = document.querySelector('.header p');
-            if (headerDesc) headerDesc.textContent = 'Documentatie en Interactieve API Verkenner';
+            if (headerDesc) headerDesc.textContent = translations['page-description'];
             
             // Update overview section
             const overviewTitle = document.querySelector('#overview h2');
@@ -459,8 +460,22 @@
         }
 
         // Load Swagger UI
+        // Enhanced Swagger UI loading with better cleanup
         function loadSwaggerUI() {
+            if (isLoading) {
+                console.log('Swagger UI already loading, skipping...');
+                return;
+            }
+            
+            isLoading = true;
             console.log('Loading Swagger UI for language:', currentLang);
+            
+            // Disable language toggle during loading
+            const toggle = document.getElementById('language-toggle');
+            if (toggle) {
+                toggle.style.pointerEvents = 'none';
+                toggle.style.opacity = '0.6';
+            }
             
             // Properly dispose of existing Swagger UI instance
             if (swaggerUI && typeof swaggerUI.getSystem === 'function') {
@@ -475,26 +490,49 @@
                     console.log('Note: Error during Swagger UI cleanup (normal during language switch):', e.message);
                 }
             }
-            
-            // Clear the container more safely
+
+            // Clear the container more thoroughly
             const swaggerContainer = document.getElementById('swagger-ui');
             if (swaggerContainer) {
-                // Create a completely new container to avoid React DOM issues
-                const newContainer = document.createElement('div');
-                newContainer.id = 'swagger-ui';
-                swaggerContainer.parentNode.replaceChild(newContainer, swaggerContainer);
+                // More thorough cleanup
+                swaggerContainer.innerHTML = '';
+                while (swaggerContainer.firstChild) {
+                    swaggerContainer.removeChild(swaggerContainer.firstChild);
+                }
                 
-                // Show loading message
-                newContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><p>Loading API documentation...</p></div>';
+                // Add loading indicator with better styling
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'swagger-loading';
+                loadingDiv.style.cssText = `
+                    padding: 40px 20px;
+                    text-align: center;
+                    background: #f8f9fa;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    margin: 20px;
+                `;
+                loadingDiv.innerHTML = `
+                    <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #3b82f6; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; margin-right: 10px;"></div>
+                    <p style="margin: 10px 0 0; color: #6b7280;">Loading API documentation...</p>
+                `;
+                swaggerContainer.appendChild(loadingDiv);
+                
+                // Add CSS animation for spinner
+                if (!document.getElementById('spinner-css')) {
+                    const style = document.createElement('style');
+                    style.id = 'spinner-css';
+                    style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+                    document.head.appendChild(style);
+                }
             }
             
-            // Small delay to ensure DOM cleanup is complete
+            // Increased delay for more reliable cleanup (300ms instead of 100ms)
             setTimeout(() => {
                 initializeSwaggerUIInstance();
-            }, 100);
+            }, 300);
         }
 
-        // Initialize new Swagger UI instance
+        // Enhanced Swagger UI initialization with comprehensive error handling
         function initializeSwaggerUIInstance() {
             // Build OpenAPI URL - make it more robust
             let baseUrl = window.location.origin;
@@ -514,7 +552,7 @@
             console.log('Base URL:', baseUrl);
             console.log('OpenAPI URL:', openApiUrl);
             
-            // Initialize Swagger UI with better error handling
+            // Initialize Swagger UI with enhanced error handling
             try {
                 swaggerUI = SwaggerUIBundle({
                     url: openApiUrl,
@@ -541,18 +579,59 @@
                     },
                     onComplete: function() {
                         console.log('Swagger UI loaded successfully for language:', currentLang);
+                        
+                        // Re-enable language toggle and reset loading state
+                        isLoading = false;
+                        const toggle = document.getElementById('language-toggle');
+                        if (toggle) {
+                            toggle.style.pointerEvents = 'auto';
+                            toggle.style.opacity = '1';
+                        }
                     },
                     onFailure: function(error) {
                         console.error('Swagger UI failed to load:', error);
+                        isLoading = false;
+                        
+                        // Re-enable language toggle
+                        const toggle = document.getElementById('language-toggle');
+                        if (toggle) {
+                            toggle.style.pointerEvents = 'auto';
+                            toggle.style.opacity = '1';
+                        }
+                        
                         const container = document.getElementById('swagger-ui');
                         if (container) {
-                            container.innerHTML = 
-                                '<div style="padding: 20px; color: red; border: 1px solid red; margin: 20px; border-radius: 5px;">' +
-                                '<strong>Error loading API documentation:</strong><br>' +
-                                'URL: ' + openApiUrl + '<br>' +
-                                'Language: ' + currentLang + '<br>' +
-                                'Error: ' + JSON.stringify(error) +
-                                '</div>';
+                            let errorMsg = 'Failed to load API documentation';
+                            if (error instanceof Error) {
+                                errorMsg = error.message;
+                            } else if (typeof error === 'string') {
+                                errorMsg = error;
+                            }
+                            
+                            container.innerHTML = `
+                                <div class="swagger-error" style="
+                                    padding: 20px;
+                                    margin: 20px;
+                                    background: #fff0f0;
+                                    border: 1px solid #ffcccc;
+                                    border-radius: 8px;
+                                    color: #cc0000;
+                                ">
+                                    <h3 style="margin: 0 0 10px; color: #cc0000;">⚠️ Error Loading Documentation</h3>
+                                    <p style="margin: 10px 0;"><strong>Error:</strong> ${errorMsg}</p>
+                                    <p style="margin: 10px 0;"><strong>URL:</strong> ${openApiUrl}</p>
+                                    <p style="margin: 10px 0;"><strong>Language:</strong> ${currentLang}</p>
+                                    <button onclick="loadSwaggerUI()" style="
+                                        background: #cc0000;
+                                        color: white;
+                                        border: none;
+                                        padding: 8px 16px;
+                                        border-radius: 4px;
+                                        cursor: pointer;
+                                        margin-top: 10px;
+                                    ">🔄 Retry</button>
+                                </div>
+                            `;
                         }
                     }
                 });
@@ -561,14 +640,52 @@
                 
             } catch (error) {
                 console.error('Error initializing Swagger UI:', error);
+                isLoading = false;
+                
+                // Re-enable language toggle
+                const toggle = document.getElementById('language-toggle');
+                if (toggle) {
+                    toggle.style.pointerEvents = 'auto';
+                    toggle.style.opacity = '1';
+                }
+                
                 const container = document.getElementById('swagger-ui');
                 if (container) {
-                    container.innerHTML = 
-                        '<div style="padding: 20px; color: red; border: 1px solid red; margin: 20px; border-radius: 5px;">' +
-                        '<strong>JavaScript Error:</strong><br>' +
-                        error.message + '<br><br>' +
-                        '<em>Please try refreshing the page or switching languages again.</em>' +
-                        '</div>';
+                    container.innerHTML = `
+                        <div class="swagger-error" style="
+                            padding: 20px;
+                            margin: 20px;
+                            background: #fff0f0;
+                            border: 1px solid #ffcccc;
+                            border-radius: 8px;
+                            color: #cc0000;
+                        ">
+                            <h3 style="margin: 0 0 10px; color: #cc0000;">⚠️ JavaScript Error</h3>
+                            <p style="margin: 10px 0;"><strong>Error:</strong> ${error.message}</p>
+                            <p style="margin: 10px 0;"><strong>Language:</strong> ${currentLang}</p>
+                            <button onclick="window.location.reload()" style="
+                                background: #cc0000;
+                                color: white;
+                                border: none;
+                                padding: 8px 16px;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                margin: 10px 10px 0 0;
+                            ">🔄 Refresh Page</button>
+                            <button onclick="loadSwaggerUI()" style="
+                                background: #666;
+                                color: white;
+                                border: none;
+                                padding: 8px 16px;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                margin-top: 10px;
+                            ">↻ Try Again</button>
+                            <p style="margin: 15px 0 0; font-size: 0.9em; color: #666;">
+                                <em>Try refreshing the page or switching languages if the problem persists.</em>
+                            </p>
+                        </div>
+                    `;
                 }
             }
         }
