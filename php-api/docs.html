@@ -132,63 +132,6 @@
         }
         
         /* Language Toggle Styles */
-        .swagger-language-toggle {
-            position: fixed !important;
-            top: 20px !important;
-            right: 20px !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            z-index: 999999 !important;
-            background: white !important;
-            padding: 8px 12px !important;
-            border-radius: 6px !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
-            border: 1px solid #e5e7eb !important;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
-        }
-
-        .swagger-toggle-switch {
-            position: relative !important;
-            width: 50px !important;
-            height: 25px !important;
-            background: #e5e7eb !important;
-            border-radius: 15px !important;
-            cursor: pointer !important;
-            transition: background-color 0.3s !important;
-        }
-        
-        .swagger-toggle-switch.active {
-            background: #3b82f6 !important;
-        }
-        
-        .swagger-toggle-slider {
-            position: absolute !important;
-            top: 2px !important;
-            left: 2px !important;
-            width: 21px !important;
-            height: 21px !important;
-            background: white !important;
-            border-radius: 50% !important;
-            transition: transform 0.3s !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-        }
-        
-        .swagger-toggle-switch.active .swagger-toggle-slider {
-            transform: translateX(25px) !important;
-        }
-        
-        .swagger-language-label {
-            font-size: 14px !important;
-            font-weight: 500 !important;
-            color: #374151 !important;
-            cursor: pointer !important;
-        }
-        
-        .swagger-language-label.inactive {
-            opacity: 0.5 !important;
-        }
-        
         /* Swagger UI Customizations */
         .swagger-ui .topbar {
             background: #fafafa !important;
@@ -277,190 +220,14 @@
 
     <div id="swagger-ui"></div>
     
-    <!-- Language Toggle -->
-    <div class="swagger-language-toggle" id="language-toggle-container">
-        <span class="swagger-language-label inactive" id="lang-en">🇺🇸 EN</span>
-        <div class="swagger-toggle-switch active" id="language-toggle" onclick="switchLanguage()">
-            <div class="swagger-toggle-slider"></div>
-        </div>
-        <span class="swagger-language-label" id="lang-nl">🇳🇱 NL</span>
-    </div>
-    
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
     <script>
-        // Enhanced language switching system with proper state management
-        let currentLang = localStorage.getItem('swagger-language') || 'nl';
+        // Simple English-only Swagger UI
         let swaggerUI;
         let isLoading = false; // Prevent multiple simultaneous loads
 
-        // Page content translations
-        const pageTranslations = {
-            en: {
-                'page-title': 'PowerDNS Admin API Documentation',
-                'page-description': 'Documentation and Interactive API Explorer',
-                'key-features': 'Key Features',
-                'account-management': 'Account Management',
-                'account-management-desc': 'Create, read, update, and delete accounts with IP address storage (local only)',
-                'domain-management': 'Domain Management', 
-                'domain-management-desc': 'Manage domains with automatic PDNSAdmin synchronization (creation and updates only)',
-                'domain-account-links': 'Domain-Account Links',
-                'domain-account-links-desc': 'Associate domains with accounts, automatically updating both local DB and PDNSAdmin',
-                'data-synchronization': 'Data Synchronization',
-                'data-synchronization-desc': 'Sync domains and accounts from PDNSAdmin API for offline access',
-                'local-database': 'Local Database',
-                'local-database-desc': 'Store data locally for better performance and extended functionality',
-                'safety-features': 'Safety Features',
-                'safety-features-desc': 'Domain deletion disabled, comprehensive validation, and error handling',
-                'important-notes': 'Important Notes',
-                'ip-addresses-note': 'IP Addresses: Stored locally only, not sent to PDNSAdmin',
-                'domain-deletion-note': 'Domain Deletion: Disabled for safety - domains can only be created and updated',
-                'account-sync-note': 'Account Sync: Account changes automatically sync with PDNSAdmin',
-                'domain-assignment-note': 'Domain Assignment: Domain-account assignments update both local DB and PDNSAdmin',
-                'interactive-api-docs': 'Interactive API Documentation',
-                'interactive-api-desc': 'Use the interactive API explorer below to test endpoints and view detailed request/response schemas.'
-            },
-            nl: {
-                'page-title': 'PowerDNS Admin API Documentatie',
-                'page-description': 'Een beveiliging-verbeterde API voor het beheren van PowerDNS Admin operaties met lokale database caching en metadata opslag.',
-                'key-features': 'Belangrijkste Functies',
-                'account-management': 'Account Beheer',
-                'account-management-desc': 'Accounts aanmaken, lezen, bijwerken en verwijderen met IP-adres opslag (alleen lokaal)',
-                'domain-management': 'Domein Beheer',
-                'domain-management-desc': 'Domeinen beheren met automatische PDNSAdmin synchronisatie (alleen aanmaken en bijwerken)',
-                'domain-account-links': 'Domein-Account Koppelingen',
-                'domain-account-links-desc': 'Domeinen koppelen aan accounts, automatisch bijwerken van zowel lokale DB als PDNSAdmin',
-                'data-synchronization': 'Data Synchronisatie',
-                'data-synchronization-desc': 'Domeinen en accounts synchroniseren vanuit PDNSAdmin API voor offline toegang',
-                'local-database': 'Lokale Database',
-                'local-database-desc': 'Data lokaal opslaan voor betere prestaties en uitgebreide functionaliteit',
-                'safety-features': 'Veiligheidsfuncties',
-                'safety-features-desc': 'Domein verwijdering uitgeschakeld, uitgebreide validatie en foutafhandeling',
-                'important-notes': 'Belangrijke Opmerkingen',
-                'ip-addresses-note': 'IP-Adressen: Alleen lokaal opgeslagen, niet naar PDNSAdmin verzonden',
-                'domain-deletion-note': 'Domein Verwijdering: Uitgeschakeld voor veiligheid - domeinen kunnen alleen aangemaakt en bijgewerkt worden',
-                'account-sync-note': 'Account Synchronisatie: Account wijzigingen synchroniseren automatisch met PDNSAdmin',
-                'domain-assignment-note': 'Domein Toewijzing: Domein-account toewijzingen updaten zowel lokale DB als PDNSAdmin',
-                'interactive-api-docs': 'Interactieve API Documentatie',
-                'interactive-api-desc': 'Gebruik de interactieve API verkenner hieronder om endpoints te testen en gedetailleerde request/response schemas te bekijken.'
-            }
-        };
-
-        // Translate page content
-        function translatePage() {
-            const translations = pageTranslations[currentLang];
-            
-            // Update header title and description using translation system
-            const headerTitle = document.querySelector('.header h1');
-            if (headerTitle) headerTitle.textContent = translations['page-title'];
-            
-            const headerDesc = document.querySelector('.header p');
-            if (headerDesc) headerDesc.textContent = translations['page-description'];
-            
-            // Update overview section
-            const overviewTitle = document.querySelector('#overview h2');
-            if (overviewTitle) overviewTitle.textContent = currentLang === 'en' ? 'Overview' : 'Overzicht';
-            
-            const overviewDesc = document.querySelector('#overview p');
-            if (overviewDesc) {
-                overviewDesc.textContent = currentLang === 'en' 
-                    ? 'The PDNSAdmin PHP API is a comprehensive wrapper for PowerDNS Admin that provides local database storage and extended functionality for managing DNS accounts and domains.'
-                    : 'De PDNSAdmin PHP API is een uitgebreide wrapper voor PowerDNS Admin die lokale database opslag en uitgebreide functionaliteit biedt voor het beheren van DNS accounts en domeinen.';
-            }
-            
-            // Update Key Features section
-            const keyFeaturesTitle = document.querySelector('#features h2');
-            if (keyFeaturesTitle) keyFeaturesTitle.textContent = translations['key-features'];
-            
-            // Update feature cards
-            const featureCards = document.querySelectorAll('.feature-card');
-            if (featureCards.length >= 6) {
-                featureCards[0].querySelector('h3').innerHTML = '🏢 ' + translations['account-management'];
-                featureCards[0].querySelector('p').textContent = translations['account-management-desc'];
-                
-                featureCards[1].querySelector('h3').innerHTML = '🌐 ' + translations['domain-management'];
-                featureCards[1].querySelector('p').textContent = translations['domain-management-desc'];
-                
-                featureCards[2].querySelector('h3').innerHTML = '🔗 ' + translations['domain-account-links'];
-                featureCards[2].querySelector('p').textContent = translations['domain-account-links-desc'];
-                
-                featureCards[3].querySelector('h3').innerHTML = '📡 ' + translations['data-synchronization'];
-                featureCards[3].querySelector('p').textContent = translations['data-synchronization-desc'];
-                
-                featureCards[4].querySelector('h3').innerHTML = '🗄️ ' + translations['local-database'];
-                featureCards[4].querySelector('p').textContent = translations['local-database-desc'];
-                
-                featureCards[5].querySelector('h3').innerHTML = '🔒 ' + translations['safety-features'];
-                featureCards[5].querySelector('p').textContent = translations['safety-features-desc'];
-            }
-            
-            // Update Important Notes
-            const importantNotesTitle = document.querySelector('.notes-section h3');
-            if (importantNotesTitle) importantNotesTitle.textContent = translations['important-notes'];
-            
-            const notesList = document.querySelectorAll('.notes-section li');
-            if (notesList.length >= 4) {
-                notesList[0].innerHTML = '<strong>' + translations['ip-addresses-note'].split(':')[0] + ':</strong> ' + translations['ip-addresses-note'].split(':')[1];
-                notesList[1].innerHTML = '<strong>' + translations['domain-deletion-note'].split(':')[0] + ':</strong> ' + translations['domain-deletion-note'].split(':')[1];
-                notesList[2].innerHTML = '<strong>' + translations['account-sync-note'].split(':')[0] + ':</strong> ' + translations['account-sync-note'].split(':')[1];
-                notesList[3].innerHTML = '<strong>' + translations['domain-assignment-note'].split(':')[0] + ':</strong> ' + translations['domain-assignment-note'].split(':')[1];
-            }
-            
-            // Update Interactive API Documentation section
-            const apiDocsTitle = document.querySelector('#swagger-ui').previousElementSibling.querySelector('h2');
-            if (apiDocsTitle) apiDocsTitle.textContent = translations['interactive-api-docs'];
-            
-            const apiDocsDesc = document.querySelector('#swagger-ui').previousElementSibling.querySelector('p');
-            if (apiDocsDesc) apiDocsDesc.textContent = translations['interactive-api-desc'];
-            
-            // Update navigation links
-            const navLinks = document.querySelectorAll('.nav-links a');
-            if (navLinks.length >= 3) {
-                navLinks[0].textContent = currentLang === 'en' ? 'Overview' : 'Overzicht';
-                navLinks[1].textContent = currentLang === 'en' ? 'Features' : 'Functies';
-                navLinks[2].textContent = currentLang === 'en' ? 'Interactive API' : 'Interactieve API';
-            }
-        }
-
-        // Switch language function (called by onclick in HTML)
-        function switchLanguage() {
-            console.log('Language toggle clicked! Current:', currentLang);
-            currentLang = currentLang === 'en' ? 'nl' : 'en';
-            console.log('Switching to:', currentLang);
-            localStorage.setItem('swagger-language', currentLang);
-            
-            // Update toggle visual state
-            updateToggleState();
-            
-            // Translate page content
-            translatePage();
-            
-            // Reload Swagger UI with new language
-            loadSwaggerUI();
-        }
-
-        // Update toggle visual state
-        function updateToggleState() {
-            console.log('Updating toggle state for language:', currentLang);
-            const toggle = document.getElementById('language-toggle');
-            const enLabel = document.getElementById('lang-en');
-            const nlLabel = document.getElementById('lang-nl');
-            
-            if (currentLang === 'nl') {
-                toggle.classList.add('active');
-                enLabel.classList.add('inactive');
-                nlLabel.classList.remove('inactive');
-                console.log('Toggle state: Dutch active');
-            } else {
-                toggle.classList.remove('active');
-                enLabel.classList.remove('inactive');
-                nlLabel.classList.add('inactive');
-                console.log('Toggle state: English active');
-            }
-        }
-
-        // Load Swagger UI
-        // Enhanced Swagger UI loading with better cleanup
+        // Simple Swagger UI loading
         function loadSwaggerUI() {
             if (isLoading) {
                 console.log('Swagger UI already loading, skipping...');
@@ -468,14 +235,7 @@
             }
             
             isLoading = true;
-            console.log('Loading Swagger UI for language:', currentLang);
-            
-            // Disable language toggle during loading
-            const toggle = document.getElementById('language-toggle');
-            if (toggle) {
-                toggle.style.pointerEvents = 'none';
-                toggle.style.opacity = '0.6';
-            }
+            console.log('Loading Swagger UI...');
             
             // Properly dispose of existing Swagger UI instance
             if (swaggerUI && typeof swaggerUI.getSystem === 'function') {
@@ -487,20 +247,19 @@
                         system.errActions.clear();
                     }
                 } catch (e) {
-                    console.log('Note: Error during Swagger UI cleanup (normal during language switch):', e.message);
+                    console.log('Note: Error during Swagger UI cleanup (normal during reload):', e.message);
                 }
             }
 
-            // Clear the container more thoroughly
             const swaggerContainer = document.getElementById('swagger-ui');
             if (swaggerContainer) {
-                // More thorough cleanup
+                // Clear and show loading
                 swaggerContainer.innerHTML = '';
                 while (swaggerContainer.firstChild) {
                     swaggerContainer.removeChild(swaggerContainer.firstChild);
                 }
                 
-                // Add loading indicator with better styling
+                // Add loading indicator
                 const loadingDiv = document.createElement('div');
                 loadingDiv.className = 'swagger-loading';
                 loadingDiv.style.cssText = `
@@ -526,15 +285,15 @@
                 }
             }
             
-            // Increased delay for more reliable cleanup (300ms instead of 100ms)
+            // Initialize Swagger UI
             setTimeout(() => {
                 initializeSwaggerUIInstance();
-            }, 300);
+            }, 100);
         }
 
-        // Enhanced Swagger UI initialization with comprehensive error handling
+        // Initialize Swagger UI instance
         function initializeSwaggerUIInstance() {
-            // Build OpenAPI URL - make it more robust
+            // Build OpenAPI URL
             let baseUrl = window.location.origin;
             let pathname = window.location.pathname;
             
@@ -545,14 +304,12 @@
                 baseUrl += pathname.replace(/\/$/, ''); // Remove trailing slash
             }
             
-            const openApiUrl = currentLang === 'en' 
-                ? baseUrl + '/openapi'
-                : baseUrl + '/openapi-i18n.php?lang=' + currentLang;
+            const openApiUrl = baseUrl + '/openapi';
             
             console.log('Base URL:', baseUrl);
             console.log('OpenAPI URL:', openApiUrl);
             
-            // Initialize Swagger UI with enhanced error handling
+            // Initialize Swagger UI
             try {
                 swaggerUI = SwaggerUIBundle({
                     url: openApiUrl,
@@ -578,26 +335,12 @@
                         return req;
                     },
                     onComplete: function() {
-                        console.log('Swagger UI loaded successfully for language:', currentLang);
-                        
-                        // Re-enable language toggle and reset loading state
+                        console.log('Swagger UI loaded successfully');
                         isLoading = false;
-                        const toggle = document.getElementById('language-toggle');
-                        if (toggle) {
-                            toggle.style.pointerEvents = 'auto';
-                            toggle.style.opacity = '1';
-                        }
                     },
                     onFailure: function(error) {
                         console.error('Swagger UI failed to load:', error);
                         isLoading = false;
-                        
-                        // Re-enable language toggle
-                        const toggle = document.getElementById('language-toggle');
-                        if (toggle) {
-                            toggle.style.pointerEvents = 'auto';
-                            toggle.style.opacity = '1';
-                        }
                         
                         const container = document.getElementById('swagger-ui');
                         if (container) {
@@ -620,7 +363,6 @@
                                     <h3 style="margin: 0 0 10px; color: #cc0000;">⚠️ Error Loading Documentation</h3>
                                     <p style="margin: 10px 0;"><strong>Error:</strong> ${errorMsg}</p>
                                     <p style="margin: 10px 0;"><strong>URL:</strong> ${openApiUrl}</p>
-                                    <p style="margin: 10px 0;"><strong>Language:</strong> ${currentLang}</p>
                                     <button onclick="loadSwaggerUI()" style="
                                         background: #cc0000;
                                         color: white;
@@ -636,18 +378,11 @@
                     }
                 });
                 
-                console.log('Swagger UI instance created for language:', currentLang);
+                console.log('Swagger UI instance created');
                 
             } catch (error) {
                 console.error('Error initializing Swagger UI:', error);
                 isLoading = false;
-                
-                // Re-enable language toggle
-                const toggle = document.getElementById('language-toggle');
-                if (toggle) {
-                    toggle.style.pointerEvents = 'auto';
-                    toggle.style.opacity = '1';
-                }
                 
                 const container = document.getElementById('swagger-ui');
                 if (container) {
@@ -662,7 +397,6 @@
                         ">
                             <h3 style="margin: 0 0 10px; color: #cc0000;">⚠️ JavaScript Error</h3>
                             <p style="margin: 10px 0;"><strong>Error:</strong> ${error.message}</p>
-                            <p style="margin: 10px 0;"><strong>Language:</strong> ${currentLang}</p>
                             <button onclick="window.location.reload()" style="
                                 background: #cc0000;
                                 color: white;
@@ -681,9 +415,6 @@
                                 cursor: pointer;
                                 margin-top: 10px;
                             ">↻ Try Again</button>
-                            <p style="margin: 15px 0 0; font-size: 0.9em; color: #666;">
-                                <em>Try refreshing the page or switching languages if the problem persists.</em>
-                            </p>
                         </div>
                     `;
                 }
@@ -692,9 +423,7 @@
 
         // Initialize on page load
         window.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, initializing with language:', currentLang);
-            updateToggleState();
-            translatePage(); // Translate page content on load
+            console.log('Page loaded, initializing Swagger UI...');
             loadSwaggerUI();
         });
     </script>
