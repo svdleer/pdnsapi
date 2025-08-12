@@ -298,7 +298,58 @@ $translations = [
     'Load balancer' => 'Load balancer',
     'Web server' => 'Web server',
     'Mail server' => 'Mail server',
-    'DNS server' => 'DNS server'
+    'DNS server' => 'DNS server',
+    
+    // Multi-line description phrases for partial replacement - CRITICAL ADDITION
+    'Retrieve accounts from local database with PowerDNS Admin synchronization.' => 'Haal accounts op uit lokale database met PowerDNS Admin synchronisatie.',
+    '**🔑 Requires Admin API Key**' => '**🔑 Vereist Admin API Sleutel**',
+    '**Filter Logic (AND conditions):**' => '**Filter Logica (EN condities):**',
+    'Single parameter: Direct lookup' => 'Enkele parameter: Directe opzoeking',
+    'Multiple parameters: Must ALL match (validation)' => 'Meerdere parameters: Moeten ALLE overeenkomen (validatie)',
+    'returns user only if ID 14 has username' => 'geeft gebruiker alleen terug als ID 14 gebruikersnaam heeft',
+    'Returns 404 if parameters don\'t match the same user' => 'Geeft 404 terug als parameters niet overeenkomen met dezelfde gebruiker',
+    'Search and retrieve domain information with intelligent search capabilities.' => 'Zoek en haal domein informatie op met intelligente zoekmogelijkheden.',
+    '**Smart Search Features:**' => '**Slimme Zoek Functies:**',
+    'Auto-detects ID vs name vs pattern vs contains' => 'Detecteert automatisch ID vs naam vs patroon vs bevat',
+    'Supports wildcards (*) and partial matching' => 'Ondersteunt wildcards (*) en gedeeltelijke overeenkomsten',
+    'Case-insensitive search for domain names' => 'Hoofdletter-ongevoelige zoeken voor domeinnamen',
+    'Returns domains with full metadata' => 'Geeft domeinen terug met volledige metadata',
+    'Get detailed information about a specific domain including DNS records.' => 'Haal gedetailleerde informatie op over een specifiek domein inclusief DNS records.',
+    'Update domain configuration and settings in PowerDNS Admin.' => 'Werk domein configuratie en instellingen bij in PowerDNS Admin.',
+    '**SECURITY VALIDATION:**' => '**BEVEILIGING VALIDATIE:**',
+    'Record names must belong to the domain being updated' => 'Record namen moeten behoren tot het domein dat wordt bijgewerkt',
+    'DNS record content validated for proper format' => 'DNS record inhoud gevalideerd op juist formaat',
+    'Dangerous record types (NS, SOA) require additional verification' => 'Gevaarlijke record types (NS, SOA) vereisen extra verificatie',
+    'Maximum 100 records per update to prevent abuse' => 'Maximum 100 records per update om misbruik te voorkomen',
+    'Remove domain from PowerDNS Admin (use with caution).' => 'Verwijder domein uit PowerDNS Admin (gebruik met voorzichtigheid).',
+    'Get current API status, health information, and system diagnostics.' => 'Haal huidige API status, gezondheids informatie en systeem diagnostiek op.',
+    'List all available domain templates for creating standardized domains.' => 'Toon alle beschikbare domein sjablonen voor het maken van gestandaardiseerde domeinen.',
+    'Create a new domain template with predefined DNS records.' => 'Maak een nieuw domein sjabloon aan met voorgedefinieerde DNS records.',
+    'Update an existing domain template configuration.' => 'Werk een bestaande domein sjabloon configuratie bij.',
+    'Delete a domain template (does not affect domains created from it).' => 'Verwijder een domein sjabloon (heeft geen invloed op domeinen gemaakt hiervan).',
+    'Create a new domain based on a template with customizable parameters.' => 'Maak een nieuw domein aan gebaseerd op een sjabloon met aanpasbare parameters.',
+    'Associate a domain with an account for management purposes.' => 'Koppel een domein aan een account voor beheersdoeleinden.',
+    'Remove the association between a domain and an account.' => 'Verwijder de koppeling tussen een domein en een account.',
+    'List all domains associated with a specific account.' => 'Toon alle domeinen gekoppeld aan een specifiek account.',
+    'Get the current IP allowlist for API access control.' => 'Haal de huidige IP toegestane lijst op voor API toegangscontrole.',
+    'Add a new IP address or range to the allowlist.' => 'Voeg een nieuw IP-adres of bereik toe aan de toegestane lijst.',
+    'Update an existing IP allowlist entry.' => 'Werk een bestaand IP toegestane lijst item bij.',
+    'Remove an IP address from the allowlist.' => 'Verwijder een IP-adres van de toegestane lijst.',
+    'Test if a specific IP address would be allowed by the current allowlist.' => 'Test of een specifiek IP-adres zou worden toegestaan door de huidige toegestane lijst.',
+    '**TESTING & DEBUGGING:**' => '**TESTEN & DEBUGGEN:**',
+    'Validate IP access before making changes' => 'Valideer IP toegang voordat wijzigingen worden gemaakt',
+    'Test CIDR range matching' => 'Test CIDR bereik overeenkomsten',
+    'Verify allowlist configuration' => 'Verifieer toegestane lijst configuratie',
+    'Useful for troubleshooting access issues' => 'Nuttig voor het oplossen van toegangsproblemen',
+    'This endpoint provides comprehensive API documentation and examples.' => 'Dit endpoint biedt uitgebreide API documentatie en voorbeelden.',
+    'Create new account in both local database and PowerDNS Admin.' => 'Maak nieuw account aan in zowel lokale database als PowerDNS Admin.',
+    'Update account information in local database and PowerDNS Admin.' => 'Werk account informatie bij in lokale database en PowerDNS Admin.',
+    'Delete account from both local database and PowerDNS Admin.' => 'Verwijder account uit zowel lokale database als PowerDNS Admin.',
+    'List of domains/zones' => 'Lijst van domeinen/zones',
+    'Domain information' => 'Domein informatie',
+    'API status information' => 'API status informatie',
+    'List of templates' => 'Lijst van sjablonen',
+    'Template information' => 'Sjabloon informatie'
 ];
 
 // Apply translations to tags first
@@ -313,7 +364,7 @@ if (isset($spec['tags']) && is_array($spec['tags'])) {
     }
 }
 
-// Simple recursive translation function for other content
+// Enhanced recursive translation function with partial string replacement
 function translateContent($data, $translations) {
     if (is_array($data)) {
         $result = [];
@@ -323,8 +374,20 @@ function translateContent($data, $translations) {
         return $result;
     }
     
-    if (is_string($data) && isset($translations[$data])) {
-        return $translations[$data];
+    if (is_string($data)) {
+        // First try exact match
+        if (isset($translations[$data])) {
+            return $translations[$data];
+        }
+        
+        // If no exact match, try partial replacements for multi-line descriptions
+        $translated = $data;
+        foreach ($translations as $english => $dutch) {
+            if (strlen($english) > 10) { // Only apply partial replacement for longer strings
+                $translated = str_replace($english, $dutch, $translated);
+            }
+        }
+        return $translated;
     }
     
     return $data;
