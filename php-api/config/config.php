@@ -297,15 +297,24 @@ function ipInRange($ip, $range) {
         return false;
     }
     
-    // IPv6 support
-    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+    // Determine IP type and validate both IP and subnet match
+    $ipIsIPv4 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+    $ipIsIPv6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+    $subnetIsIPv4 = filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+    $subnetIsIPv6 = filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+    
+    // IPv4 support - both IP and subnet must be IPv4
+    if ($ipIsIPv4 && $subnetIsIPv4) {
+        return ipv4InRange($ip, $subnet, $mask);
+    }
+    
+    // IPv6 support - both IP and subnet must be IPv6
+    if ($ipIsIPv6 && $subnetIsIPv6) {
         return ipv6InRange($ip, $subnet, $mask);
     }
     
-    // IPv4 support
-    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-        return ipv4InRange($ip, $subnet, $mask);
-    }
+    // IP and subnet types don't match - return false
+    // (IPv4 client can't match IPv6 subnet and vice versa)
     
     return false;
 }

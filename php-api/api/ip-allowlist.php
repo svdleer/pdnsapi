@@ -38,7 +38,7 @@ if (!class_exists('Database')) {
 }
 
 // Initialize database connection
-$db = Database::getInstance();
+$db = new Database();
 $conn = $db->getConnection();
 
 if (!$conn) {
