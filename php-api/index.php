@@ -66,6 +66,11 @@ if (preg_match('/^(api\/)?templates\/(\d+)\/create-domain$/', $path, $matches)) 
             require_once 'api/templates.php';
             break;
             
+        case 'api-keys':
+        case 'api/api-keys':
+            require_once 'api/api-keys.php';
+            break;
+            
         case 'status':
         case 'api/status':
             require_once 'api/status.php';

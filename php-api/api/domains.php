@@ -60,6 +60,11 @@ if (!empty($input)) {
 
 switch($request_method) {
     case 'GET':
+        // Check read permission for account-scoped keys
+        if (!hasPermission('domains', 'r')) {
+            sendError(403, "Insufficient permissions to read domains");
+        }
+        
         if ($sync === 'true') {
             syncDomainsFromPDNS($domain, $pdns_client);
         } elseif ($json_data && isset($json_data['id'])) {
@@ -76,14 +81,26 @@ switch($request_method) {
         break;
         
     case 'POST':
+        // Check create permission for account-scoped keys
+        if (!hasPermission('create_domains')) {
+            sendError(403, "Insufficient permissions to create domains");
+        }
+        
         if (isset($_GET['action']) && $_GET['action'] === 'add_to_account') {
             addDomainToAccount($domain, $_POST);
+        } elseif ($json_data) {
+            createDomain($domain, $json_data);
         } else {
-            sendError(405, "Domain creation is not supported. Use sync action to import domains from PowerDNS Admin.");
+            sendError(400, "Domain data required in JSON format");
         }
         break;
         
     case 'PUT':
+        // Check write permission for account-scoped keys
+        if (!hasPermission('domains', 'w')) {
+            sendError(403, "Insufficient permissions to update domains");
+        }
+        
         if ($json_data && isset($json_data['id'])) {
             updateDomain($domain, $json_data['id']);
         } elseif ($domain_id) {
@@ -93,11 +110,16 @@ switch($request_method) {
         }
         break;
         
-    case 'PUT':
+    case 'DELETE':
+        // Check delete permission for account-scoped keys
+        if (!hasPermission('delete_domains')) {
+            sendError(403, "Insufficient permissions to delete domains");
+        }
+        
         if ($domain_id) {
-            updateDomain($domain, $domain_id);
+            deleteDomain($domain, $domain_id);
         } else {
-            sendError(400, "Domain ID required for update");
+            sendError(400, "Domain ID required for deletion");
         }
         break;
         
@@ -107,7 +129,17 @@ switch($request_method) {
 }
 
 function getAllDomains($domain) {
-    $stmt = $domain->read();
+    // For account-scoped API keys, filter by account_id
+    $api_account_id = getApiKeyAccountId();
+    
+    if ($api_account_id !== null) {
+        // Account-scoped key - only return domains belonging to this account
+        $stmt = $domain->readByAccountId($api_account_id);
+    } else {
+        // Admin key - return all domains
+        $stmt = $domain->read();
+    }
+    
     $num = $stmt->rowCount();
     
     if($num > 0) {
@@ -141,6 +173,12 @@ function getAllDomains($domain) {
 }
 
 function getDomain($domain, $domain_id) {
+    // For account-scoped API keys, verify domain access
+    if (!canAccessDomain($domain_id)) {
+        sendError(403, "Access denied: Domain does not belong to your account");
+        return;
+    }
+    
     $domain->id = $domain_id;
     
     if($domain->readOne()) {
@@ -415,6 +453,13 @@ function syncAccountFromPDNSAdmin($pdns_account_id, $account_name, $account_data
                 
 function updateDomain($domain, $domain_id) {
     global $pdns_client, $db;
+    
+    // For account-scoped API keys, verify domain access
+    if (!canAccessDomain($domain_id)) {
+        sendError(403, "Access denied: Domain does not belong to your account");
+        return;
+    }
+    
     $data = json_decode(file_get_contents("php://input"));
     
     $domain->id = $domain_id;
@@ -471,6 +516,120 @@ function updateDomain($domain, $domain_id) {
         }
     } else {
         sendError(404, "Domain not found");
+    }
+}
+
+function createDomain($domain, $data) {
+    global $pdns_client, $db;
+    
+    // Validate required fields
+    if (empty($data['name'])) {
+        sendError(400, "Domain name is required");
+        return;
+    }
+    
+    $domain_name = $data['name'];
+    
+    // For account-scoped API keys, set account_id automatically
+    $api_account_id = getApiKeyAccountId();
+    if ($api_account_id !== null) {
+        // Account-scoped key - automatically assign to the key's account
+        $account_id = $api_account_id;
+    } else {
+        // Admin key - use provided account_id or default to admin (1)
+        $account_id = $data['account_id'] ?? 1;
+    }
+    
+    // Validate account exists
+    $account = new Account($db);
+    $account->id = $account_id;
+    if (!$account->readOne()) {
+        sendError(404, "Account not found");
+        return;
+    }
+    
+    // Create domain via PowerDNS Admin API
+    $kind = $data['kind'] ?? 'Native';
+    $nameservers = $data['nameservers'] ?? [];
+    
+    $pdns_data = [
+        'name' => rtrim($domain_name, '.') . '.', // Ensure trailing dot
+        'kind' => $kind,
+        'nameservers' => $nameservers,
+        'account' => $account->username // Use account username
+    ];
+    
+    // Create zone in PowerDNS
+    $pdns_response = $pdns_client->makeRequest("/servers/localhost/zones", 'POST', $pdns_data);
+    
+    if ($pdns_response['status_code'] !== 201 && $pdns_response['status_code'] !== 200) {
+        $error_msg = $pdns_response['data']['error'] ?? 'Failed to create domain in PowerDNS';
+        sendError($pdns_response['status_code'], $error_msg);
+        return;
+    }
+    
+    // Store in local database
+    $domain->name = $domain_name;
+    $domain->type = 'Zone';
+    $domain->account_id = $account_id;
+    $domain->kind = $kind;
+    $domain->pdns_zone_id = $pdns_response['data']['id'] ?? $domain_name;
+    $domain->account = $account->username;
+    
+    if ($domain->create()) {
+        sendResponse(201, [
+            'id' => $domain->id,
+            'name' => $domain->name,
+            'account_id' => $domain->account_id,
+            'kind' => $domain->kind,
+            'created_at' => date('Y-m-d H:i:s')
+        ], "Domain created successfully");
+    } else {
+        // Domain created in PowerDNS but failed to store locally - log warning
+        error_log("Warning: Domain {$domain_name} created in PowerDNS but failed to store in local database");
+        sendResponse(201, [
+            'name' => $domain_name,
+            'warning' => 'Domain created in PowerDNS but not stored locally'
+        ], "Domain created with warnings");
+    }
+}
+
+function deleteDomain($domain, $domain_id) {
+    global $pdns_client;
+    
+    // For account-scoped API keys, verify domain access
+    if (!canAccessDomain($domain_id)) {
+        sendError(403, "Access denied: Domain does not belong to your account");
+        return;
+    }
+    
+    $domain->id = $domain_id;
+    
+    if (!$domain->readOne()) {
+        sendError(404, "Domain not found");
+        return;
+    }
+    
+    $domain_name = $domain->name;
+    $pdns_zone_id = $domain->pdns_zone_id ?? $domain_name;
+    
+    // Delete from PowerDNS
+    $canonical_name = rtrim($domain_name, '.') . '.';
+    $pdns_response = $pdns_client->makeRequest("/servers/localhost/zones/{$canonical_name}", 'DELETE');
+    
+    if ($pdns_response['status_code'] !== 204 && $pdns_response['status_code'] !== 200 && $pdns_response['status_code'] !== 404) {
+        $error_msg = $pdns_response['data']['error'] ?? 'Failed to delete domain from PowerDNS';
+        sendError($pdns_response['status_code'], $error_msg);
+        return;
+    }
+    
+    // Delete from local database
+    if ($domain->delete()) {
+        sendResponse(200, null, "Domain deleted successfully");
+    } else {
+        // Deleted from PowerDNS but failed to delete locally
+        error_log("Warning: Domain {$domain_name} deleted from PowerDNS but failed to delete from local database");
+        sendResponse(200, null, "Domain deleted from PowerDNS (local cleanup may be needed)");
     }
 }
 
