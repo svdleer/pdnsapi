@@ -251,6 +251,78 @@
                     "type": "boolean",
                     "description": "Enable/disable DNSSEC signing",
                     "example": true
+                  },
+                  "rrsets": {
+                    "type": "array",
+                    "description": "DNS record updates. Add, update, or delete DNS records.\n\n**Record Types:**\n- **A**: IPv4 address (192.168.1.100)\n- **AAAA**: IPv6 address (2001:db8::1)\n- **CNAME**: Alias to another domain\n- **MX**: Mail server (priority + domain)\n- **TXT**: Text data (SPF, DKIM, verification)\n- **SRV**: Service discovery\n",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "type",
+                        "changetype"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Record name (must end with .)",
+                          "example": "www.example.com."
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "A",
+                            "AAAA",
+                            "CNAME",
+                            "MX",
+                            "TXT",
+                            "SRV",
+                            "PTR",
+                            "NS"
+                          ],
+                          "description": "DNS record type",
+                          "example": "A"
+                        },
+                        "changetype": {
+                          "type": "string",
+                          "enum": [
+                            "REPLACE",
+                            "DELETE"
+                          ],
+                          "description": "Operation: REPLACE to add/update, DELETE to remove",
+                          "example": "REPLACE"
+                        },
+                        "ttl": {
+                          "type": "integer",
+                          "description": "Time to live in seconds (default 3600)",
+                          "example": 3600
+                        },
+                        "records": {
+                          "type": "array",
+                          "description": "Record data (required for REPLACE)",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "content": {
+                                "type": "string",
+                                "description": "Record value",
+                                "example": "192.168.1.100"
+                              },
+                              "disabled": {
+                                "type": "boolean",
+                                "default": false
+                              }
+                            }
+                          },
+                          "example": [
+                            {
+                              "content": "192.168.1.100",
+                              "disabled": false
+                            }
+                          ]
+                        }
+                      }
+                    }
                   }
                 }
               },
@@ -294,6 +366,139 @@
                     "masters": [
                       "10.0.0.5",
                       "10.0.0.6"
+                    ]
+                  }
+                },
+                "add_a_record": {
+                  "summary": "Add A record (IPv4 address)",
+                  "description": "Point www subdomain to an IP address",
+                  "value": {
+                    "rrsets": [
+                      {
+                        "name": "www.yourdomain.com.",
+                        "type": "A",
+                        "changetype": "REPLACE",
+                        "ttl": 3600,
+                        "records": [
+                          {
+                            "content": "192.168.1.100"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "add_mx_records": {
+                  "summary": "Configure mail servers",
+                  "description": "Set up MX records for email delivery",
+                  "value": {
+                    "rrsets": [
+                      {
+                        "name": "yourdomain.com.",
+                        "type": "MX",
+                        "changetype": "REPLACE",
+                        "ttl": 3600,
+                        "records": [
+                          {
+                            "content": "10 mail.yourdomain.com."
+                          },
+                          {
+                            "content": "20 mail2.yourdomain.com."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "add_txt_spf": {
+                  "summary": "Add SPF record",
+                  "description": "Configure email sender policy",
+                  "value": {
+                    "rrsets": [
+                      {
+                        "name": "yourdomain.com.",
+                        "type": "TXT",
+                        "changetype": "REPLACE",
+                        "ttl": 3600,
+                        "records": [
+                          {
+                            "content": "\"v=spf1 mx a -all\""
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "add_cname": {
+                  "summary": "Create subdomain alias",
+                  "description": "Point blog subdomain to another server",
+                  "value": {
+                    "rrsets": [
+                      {
+                        "name": "blog.yourdomain.com.",
+                        "type": "CNAME",
+                        "changetype": "REPLACE",
+                        "ttl": 3600,
+                        "records": [
+                          {
+                            "content": "hosting.example.com."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "delete_record": {
+                  "summary": "Delete a DNS record",
+                  "description": "Remove a specific record completely",
+                  "value": {
+                    "rrsets": [
+                      {
+                        "name": "old.yourdomain.com.",
+                        "type": "A",
+                        "changetype": "DELETE"
+                      }
+                    ]
+                  }
+                },
+                "full_dns_config": {
+                  "summary": "Complete DNS configuration",
+                  "description": "Set up web, mail, and verification records at once",
+                  "value": {
+                    "rrsets": [
+                      {
+                        "name": "www.yourdomain.com.",
+                        "type": "A",
+                        "changetype": "REPLACE",
+                        "ttl": 3600,
+                        "records": [
+                          {
+                            "content": "192.168.1.100"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "yourdomain.com.",
+                        "type": "MX",
+                        "changetype": "REPLACE",
+                        "ttl": 3600,
+                        "records": [
+                          {
+                            "content": "10 mail.yourdomain.com."
+                          }
+                        ]
+                      },
+                      {
+                        "name": "yourdomain.com.",
+                        "type": "TXT",
+                        "changetype": "REPLACE",
+                        "ttl": 3600,
+                        "records": [
+                          {
+                            "content": "\"v=spf1 mx -all\""
+                          }
+                        ]
+                      }
                     ]
                   }
                 },

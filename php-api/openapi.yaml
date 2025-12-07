@@ -496,16 +496,142 @@ paths:
                 value:
                   name: "example.com"
                   account_id: 2
-              update_dns_records:
-                summary: Update DNS records by name
+              add_a_record:
+                summary: Add/Update A record
+                description: Set an A record for www subdomain
                 value:
                   name: "example.com"
                   rrsets:
                     - name: "www.example.com."
                       type: "A"
                       changetype: "REPLACE"
+                      ttl: 3600
                       records:
                         - content: "192.168.1.100"
+                          disabled: false
+              add_multiple_a_records:
+                summary: Add multiple A records (round-robin)
+                description: Multiple IPs for load balancing
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "web.example.com."
+                      type: "A"
+                      changetype: "REPLACE"
+                      ttl: 300
+                      records:
+                        - content: "192.168.1.10"
+                          disabled: false
+                        - content: "192.168.1.11"
+                          disabled: false
+                        - content: "192.168.1.12"
+                          disabled: false
+              add_aaaa_record:
+                summary: Add IPv6 (AAAA) record
+                description: Set IPv6 address for domain
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "ipv6.example.com."
+                      type: "AAAA"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "2001:db8::1"
+                          disabled: false
+              add_cname_record:
+                summary: Add CNAME record
+                description: Create alias to another domain
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "blog.example.com."
+                      type: "CNAME"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "wordpress.example.com."
+                          disabled: false
+              add_mx_records:
+                summary: Add MX (mail) records
+                description: Configure mail servers with priority
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "example.com."
+                      type: "MX"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "10 mail1.example.com."
+                          disabled: false
+                        - content: "20 mail2.example.com."
+                          disabled: false
+              add_txt_record:
+                summary: Add TXT record
+                description: Add SPF, DKIM, or verification record
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "example.com."
+                      type: "TXT"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: '"v=spf1 mx a ip4:192.168.1.0/24 -all"'
+                          disabled: false
+              add_srv_record:
+                summary: Add SRV (service) record
+                description: Configure service discovery
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "_sip._tcp.example.com."
+                      type: "SRV"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "10 60 5060 sipserver.example.com."
+                          disabled: false
+              delete_record:
+                summary: Delete DNS record
+                description: Remove a record completely
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "old.example.com."
+                      type: "A"
+                      changetype: "DELETE"
+              update_multiple_records:
+                summary: Update multiple record types at once
+                description: Batch update different record types
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "www.example.com."
+                      type: "A"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "192.168.1.100"
+                    - name: "mail.example.com."
+                      type: "A"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "192.168.1.50"
+                    - name: "example.com."
+                      type: "MX"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "10 mail.example.com."
+                    - name: "example.com."
+                      type: "TXT"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: '"v=spf1 mx -all"'
       responses:
         '200':
           description: Domain updated successfully
@@ -2449,33 +2575,80 @@ components:
 
     RRSet:
       type: object
-      description: DNS Resource Record Set
+      description: |
+        DNS Resource Record Set - A collection of DNS records of the same type and name.
+        
+        **Common Record Types:**
+        - **A**: IPv4 address (e.g., 192.168.1.100)
+        - **AAAA**: IPv6 address (e.g., 2001:db8::1)
+        - **CNAME**: Alias to another domain (e.g., target.example.com.)
+        - **MX**: Mail server (e.g., 10 mail.example.com.)
+        - **TXT**: Text data (e.g., SPF, DKIM, verification)
+        - **SRV**: Service discovery (e.g., 10 60 5060 server.example.com.)
       properties:
         name:
           type: string
-          description: Record name (FQDN with trailing dot)
+          description: |
+            Record name (FQDN with trailing dot).
+            - Must end with a dot (.)
+            - Must be within or match the zone name
+            - Examples: "www.example.com.", "example.com.", "mail.example.com."
+          example: "www.example.com."
         type:
           type: string
+          enum: ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS", "CAA"]
           description: DNS record type
+          example: "A"
         ttl:
           type: integer
-          description: Time to live in seconds
+          description: |
+            Time to live in seconds (how long to cache).
+            - Common values: 300 (5 min), 3600 (1 hour), 86400 (1 day)
+            - Lower TTL = faster updates, higher DNS traffic
+            - Higher TTL = better performance, slower updates
+          example: 3600
         records:
           type: array
-          description: DNS records in this set
+          description: |
+            DNS records in this set.
+            - Multiple records create round-robin / load balancing
+            - All records must be same type
           items:
             $ref: '#/components/schemas/DNSRecord'
+          example:
+            - content: "192.168.1.100"
+              disabled: false
 
     DNSRecord:
       type: object
-      description: Individual DNS record
+      description: |
+        Individual DNS record within a record set.
+        
+        **Content Format by Type:**
+        - **A**: IPv4 address → "192.168.1.100"
+        - **AAAA**: IPv6 address → "2001:db8::1"
+        - **CNAME**: Target domain → "target.example.com."
+        - **MX**: Priority + domain → "10 mail.example.com."
+        - **TXT**: Quoted text → '"v=spf1 mx -all"'
+        - **SRV**: Priority weight port target → "10 60 5060 server.example.com."
       properties:
         content:
           type: string
-          description: Record content/value
+          description: |
+            Record content/value (format depends on record type).
+            - Must be valid for the record type
+            - MX/SRV: Include priority/weight
+            - TXT: Must be quoted
+            - Domains: Must end with dot (.)
+          example: "192.168.1.100"
         disabled:
           type: boolean
-          description: Whether record is disabled
+          description: |
+            Whether this record is disabled.
+            - false: Record is active (default)
+            - true: Record exists but not served in DNS responses
+          default: false
+          example: false
 
     RRSetUpdate:
       type: object
@@ -2487,6 +2660,59 @@ components:
         - DNS record content validated for proper format
         - Dangerous record types (NS, SOA) require additional verification
         - Maximum 100 records per update to prevent abuse
+        
+        **Common Operations:**
+        - **REPLACE**: Add or update records (creates if doesn't exist)
+        - **DELETE**: Remove all records of this type and name
+        
+        **Examples by Record Type:**
+        
+        **A Record (IPv4):**
+        ```json
+        {
+          "name": "www.example.com.",
+          "type": "A",
+          "changetype": "REPLACE",
+          "ttl": 3600,
+          "records": [{"content": "192.168.1.100"}]
+        }
+        ```
+        
+        **AAAA Record (IPv6):**
+        ```json
+        {
+          "name": "ipv6.example.com.",
+          "type": "AAAA",
+          "changetype": "REPLACE",
+          "ttl": 3600,
+          "records": [{"content": "2001:db8::1"}]
+        }
+        ```
+        
+        **MX Record (Mail):**
+        ```json
+        {
+          "name": "example.com.",
+          "type": "MX",
+          "changetype": "REPLACE",
+          "ttl": 3600,
+          "records": [
+            {"content": "10 mail1.example.com."},
+            {"content": "20 mail2.example.com."}
+          ]
+        }
+        ```
+        
+        **TXT Record (SPF/DKIM):**
+        ```json
+        {
+          "name": "example.com.",
+          "type": "TXT",
+          "changetype": "REPLACE",
+          "ttl": 3600,
+          "records": [{"content": "\"v=spf1 mx -all\""}]
+        }
+        ```
       required:
         - name
         - type
@@ -2494,22 +2720,65 @@ components:
       properties:
         name:
           type: string
-          description: Record name (FQDN with trailing dot) - must be subdomain of zone
+          description: |
+            Record name (FQDN with trailing dot).
+            - Must be subdomain of zone or zone itself
+            - Must end with dot (.)
+            - Example: "www.example.com." or "example.com."
           pattern: "^[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*\\.$"
+          example: "www.example.com."
         type:
           type: string
-          description: DNS record type (A, AAAA, CNAME, MX, TXT, SRV)
-          enum: ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS"]
+          description: |
+            DNS record type.
+            - A: IPv4 address
+            - AAAA: IPv6 address
+            - CNAME: Alias
+            - MX: Mail server
+            - TXT: Text data
+            - SRV: Service discovery
+          enum: ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS", "CAA"]
+          example: "A"
+        ttl:
+          type: integer
+          description: |
+            Time to live in seconds (optional, defaults to zone default).
+            - 300: 5 minutes (frequent changes)
+            - 3600: 1 hour (standard)
+            - 86400: 1 day (stable records)
+          minimum: 0
+          maximum: 2147483647
+          default: 3600
+          example: 3600
         changetype:
           type: string
           enum: ["REPLACE", "DELETE"]
-          description: Operation type
+          description: |
+            Operation type:
+            - REPLACE: Add/update records (overwrites existing)
+            - DELETE: Remove all records of this name/type
+          example: "REPLACE"
         records:
           type: array
-          description: Records for REPLACE operations (omit for DELETE)
+          description: |
+            Records for REPLACE operations.
+            - Required for REPLACE
+            - Omit for DELETE
+            - Multiple records = round-robin/load balancing
           maxItems: 100
           items:
             $ref: '#/components/schemas/DNSRecord'
+          example:
+            - content: "192.168.1.100"
+              disabled: false
+      example:
+        name: "www.example.com."
+        type: "A"
+        changetype: "REPLACE"
+        ttl: 3600
+        records:
+          - content: "192.168.1.100"
+            disabled: false
 
     DomainAccountAdd:
       type: object
