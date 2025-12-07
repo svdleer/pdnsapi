@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com; font-src 'self' https://unpkg.com; connect-src 'self';">
-    <title>PowerDNS User API Documentation</title>
+    <title>PowerDNS Gebruikers API Documentatie</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T///////8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAAAF0lEQVRIx2NgGAWjYBSMglEwCkbBSAcACBAAAeaR9cIAAAAASUVORK5CYII=">
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
     <style>
@@ -110,17 +110,17 @@
 </head>
 <body>
     <div class="header">
-        <h1>🔐 PowerDNS User API</h1>
-        <p>Manage your domains with account-scoped access</p>
+        <h1>🔐 PowerDNS Gebruikers API</h1>
+        <p>Beheer uw domeinen met account-gebonden toegang</p>
     </div>
     
     <div class="info-banner">
-        <h3>👤 User API - Account-Scoped Access</h3>
-        <p><strong>🔑 Authentication:</strong> Use your account-scoped API key</p>
-        <p><strong>📋 Scope:</strong> This API only shows operations available to account-scoped API keys</p>
-        <p><strong>🔒 Restrictions:</strong> You can only access domains belonging to your account</p>
-        <p><strong>💡 Example:</strong> <code>curl -H "X-API-Key: your_key" https://pdnsapi.avant.nl/api/domains</code></p>
-        <p><strong>❓ Questions?</strong> Contact your administrator for API key assistance</p>
+        <h3>👤 Gebruikers API - Account-Gebonden Toegang</h3>
+        <p><strong>🔑 Authenticatie:</strong> Gebruik uw account-gebonden API sleutel</p>
+        <p><strong>📋 Bereik:</strong> Deze API toont alleen bewerkingen die beschikbaar zijn voor account-gebonden API sleutels</p>
+        <p><strong>🔒 Beperkingen:</strong> U heeft alleen toegang tot domeinen die bij uw account horen</p>
+        <p><strong>💡 Voorbeeld:</strong> <code>curl -H "X-API-Key: uw_sleutel" https://pdnsapi.avant.nl/api/domains</code></p>
+        <p><strong>❓ Vragen?</strong> Neem contact op met uw beheerder voor hulp bij API sleutels</p>
     </div>
     
     <div id="swagger-ui"></div>
@@ -155,7 +155,7 @@
                     return request;
                 },
                 onComplete: () => {
-                    console.log('User API Documentation loaded successfully');
+                    console.log('Gebruikers API documentatie succesvol geladen');
                 }
             });
             
