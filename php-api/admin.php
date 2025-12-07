@@ -199,6 +199,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'IP status updated';
                 $message_type = 'success';
                 break;
+                
+            case 'edit_ip_description':
+                $description = trim($_POST['description']);
+                $stmt = $db->prepare("UPDATE ip_allowlist SET description = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$description, $_POST['ip_id']]);
+                $message = 'IP description updated successfully';
+                $message_type = 'success';
+                break;
         }
     }
 }
@@ -493,6 +501,40 @@ $recent_keys = $db->query("
             font-weight: 600;
         }
         
+        .edit-form {
+            display: none;
+        }
+        
+        .edit-form.active {
+            display: block;
+        }
+        
+        .edit-description-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 2px solid #667eea;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #38a169;
+        }
+        
+        .btn-secondary {
+            background: #a0aec0;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #718096;
+        }
+        
         .recent-activity {
             padding: 1.5rem;
         }
@@ -676,9 +718,26 @@ $recent_keys = $db->query("
                     </thead>
                     <tbody>
                         <?php foreach ($ip_allowlist as $ip): ?>
-                            <tr>
+                            <tr id="ip-row-<?php echo $ip['id']; ?>">
                                 <td><span class="code"><?php echo htmlspecialchars($ip['ip_address']); ?></span></td>
-                                <td><?php echo htmlspecialchars($ip['description']); ?></td>
+                                <td>
+                                    <div class="description-view" id="desc-view-<?php echo $ip['id']; ?>">
+                                        <?php echo htmlspecialchars($ip['description']); ?>
+                                    </div>
+                                    <div class="edit-form" id="desc-edit-<?php echo $ip['id']; ?>">
+                                        <form method="POST">
+                                            <input type="hidden" name="action" value="edit_ip_description">
+                                            <input type="hidden" name="ip_id" value="<?php echo $ip['id']; ?>">
+                                            <input type="text" name="description" class="edit-description-input" 
+                                                   value="<?php echo htmlspecialchars($ip['description']); ?>" required>
+                                            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+                                                <button type="submit" class="btn btn-success btn-small">Save</button>
+                                                <button type="button" class="btn btn-secondary btn-small" 
+                                                        onclick="cancelEdit(<?php echo $ip['id']; ?>)">Cancel</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </td>
                                 <td>
                                     <?php if ($ip['enabled']): ?>
                                         <span class="badge badge-success">Enabled</span>
@@ -689,6 +748,8 @@ $recent_keys = $db->query("
                                 <td><?php echo htmlspecialchars($ip['created_at']); ?></td>
                                 <td>
                                     <div class="action-buttons">
+                                        <button type="button" class="btn btn-primary btn-small" 
+                                                onclick="editDescription(<?php echo $ip['id']; ?>)">Edit</button>
                                         <form method="POST" style="display:inline;">
                                             <input type="hidden" name="action" value="toggle_ip">
                                             <input type="hidden" name="ip_id" value="<?php echo $ip['id']; ?>">
@@ -710,5 +771,17 @@ $recent_keys = $db->query("
             </div>
         </div>
     </div>
+    
+    <script>
+        function editDescription(ipId) {
+            document.getElementById('desc-view-' + ipId).style.display = 'none';
+            document.getElementById('desc-edit-' + ipId).classList.add('active');
+        }
+        
+        function cancelEdit(ipId) {
+            document.getElementById('desc-view-' + ipId).style.display = 'block';
+            document.getElementById('desc-edit-' + ipId).classList.remove('active');
+        }
+    </script>
 </body>
 </html>
