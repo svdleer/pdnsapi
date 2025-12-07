@@ -119,8 +119,16 @@ if (preg_match('/^(api\/)?templates\/(\d+)\/create-domain$/', $path, $matches)) 
         case 'docs':
         case 'swagger':
         case 'swagger-ui':
-            // Serve Swagger UI (if you want to add it later)
-            serveSwaggerUI();
+            // Serve Admin Swagger UI
+            header('Content-Type: text/html');
+            readfile('docs.html');
+            break;
+            
+        case 'docs-user':
+        case 'user-docs':
+            // Serve User Swagger UI
+            header('Content-Type: text/html');
+            readfile('docs-user.html');
             break;
             
         case '':

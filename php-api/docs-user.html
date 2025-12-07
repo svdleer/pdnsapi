@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com; font-src 'self' https://unpkg.com; connect-src 'self';">
+    <title>PowerDNS User API Documentation</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T///////8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAAAF0lEQVRIx2NgGAWjYBSMglEwCkbBSAcACBAAAeaR9cIAAAAASUVORK5CYII=">
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .info-banner {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 1200px;
+            border-radius: 4px;
+        }
+        
+        .info-banner h3 {
+            margin: 0 0 10px 0;
+            color: #1e40af;
+        }
+        
+        .info-banner p {
+            margin: 5px 0;
+            color: #1e3a8a;
+        }
+        
+        .info-banner code {
+            background: #bfdbfe;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .nav-links {
+            background: #f8f9fa;
+            padding: 15px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+        }
+        
+        .nav-links a {
+            margin: 0 15px;
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        
+        .nav-links a:hover {
+            background: #dbeafe;
+        }
+        
+        .nav-links a.active {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        #swagger-ui {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .swagger-ui .topbar {
+            display: none;
+        }
+        
+        /* Custom styling for user-focused UI */
+        .swagger-ui .info .title {
+            color: #1e40af;
+        }
+        
+        .swagger-ui .scheme-container {
+            background: #dbeafe;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔐 PowerDNS User API</h1>
+        <p>Manage your domains with account-scoped access</p>
+    </div>
+    
+    <div class="nav-links">
+        <a href="docs.html">Admin API</a>
+        <a href="docs-user.html" class="active">User API</a>
+        <a href="admin.php">Admin Panel</a>
+    </div>
+    
+    <div class="info-banner">
+        <h3>👤 User API - Account-Scoped Access</h3>
+        <p><strong>🔑 Authentication:</strong> Use your account-scoped API key</p>
+        <p><strong>📋 Scope:</strong> This API only shows operations available to account-scoped API keys</p>
+        <p><strong>🔒 Restrictions:</strong> You can only access domains belonging to your account</p>
+        <p><strong>💡 Example:</strong> <code>curl -H "X-API-Key: your_key" https://pdnsapi.avant.nl/api/domains</code></p>
+        <p><strong>📚 Need admin access?</strong> See the <a href="docs.html" style="color: #3b82f6;">Admin API Documentation</a></p>
+    </div>
+    
+    <div id="swagger-ui"></div>
+    
+    <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            const ui = SwaggerUIBundle({
+                url: "openapi-user.json",
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout",
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+                docExpansion: "list",
+                filter: true,
+                showRequestHeaders: true,
+                supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+                validatorUrl: null,
+                persistAuthorization: true,
+                tryItOutEnabled: true,
+                requestInterceptor: (request) => {
+                    // Add custom header or modify request if needed
+                    return request;
+                },
+                onComplete: () => {
+                    console.log('User API Documentation loaded successfully');
+                }
+            });
+            
+            window.ui = ui;
+        };
+    </script>
+</body>
+</html>
