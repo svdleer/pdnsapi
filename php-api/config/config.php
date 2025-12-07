@@ -224,6 +224,12 @@ function getClientIpAddress() {
 function getIpAllowlist() {
     global $pdo;
     
+    // Initialize PDO if not set
+    if (!isset($pdo)) {
+        $database = new Database();
+        $pdo = $database->getConnection();
+    }
+    
     static $cached_ips = null;
     
     // Return cached IPs if already loaded
@@ -472,6 +478,12 @@ function getAllRequestHeaders() {
 function isValidApiKey($provided_key) {
     global $api_settings, $pdo;
     
+    // Initialize PDO if not set
+    if (!isset($pdo)) {
+        $database = new Database();
+        $pdo = $database->getConnection();
+    }
+    
     // Check if it's an admin key from config
     if (array_key_exists($provided_key, $api_settings['api_keys'])) {
         return [
@@ -602,6 +614,12 @@ function isAdminApiKey() {
  */
 function canAccessDomain($domain_id) {
     global $current_api_key_info, $pdo;
+    
+    // Initialize PDO if not set
+    if (!isset($pdo)) {
+        $database = new Database();
+        $pdo = $database->getConnection();
+    }
     
     if (!isset($current_api_key_info)) {
         return false;
