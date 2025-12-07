@@ -1,0 +1,396 @@
+openapi: 3.0.3
+info:
+  title: PowerDNS API - User Guide
+  description: |
+    User-focused API documentation for managing your domains with account-scoped API keys.
+    
+    ## 🔐 Authentication
+    
+    Use your account-scoped API key in requests:
+    
+    ```bash
+    # Using X-API-Key header (recommended)
+    curl -H "X-API-Key: your_api_key_here" https://pdnsapi.avant.nl/api/domains
+    
+    # Using Authorization header
+    curl -H "Authorization: Bearer your_api_key_here" https://pdnsapi.avant.nl/api/domains
+    ```
+    
+    ## 🎯 Account Scope
+    
+    Your API key is restricted to **your account's domains only**. You can:
+    - ✅ View domains belonging to your account
+    - ✅ Create new domains (if permitted)
+    - ✅ Update your domains (if permitted)
+    - ❌ Access domains from other accounts
+    
+    ## 🔒 IP Restrictions
+    
+    Your API key may be restricted to specific IP addresses:
+    - **Global Allowlist** - Your IP must be in the system allowlist
+    - **Key-Specific IPs** - Your key may have additional IP restrictions
+    - If blocked, contact your administrator to add your IP
+    
+    ## 📝 Permissions
+    
+    Your API key has specific permissions:
+    - **domains: "r"** - Read-only access to domains
+    - **domains: "rw"** - Read and write access
+    - **create_domains** - Can create new domains
+    - **delete_domains** - Can delete domains (rarely granted)
+    
+    Contact your administrator to change permissions.
+    
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@avant.nl
+
+servers:
+  - url: https://pdnsapi.avant.nl/
+    description: Production API Server
+
+security:
+  - AccountApiKey: []
+
+paths:
+  /api/domains:
+    get:
+      summary: List your domains
+      description: |
+        Get all domains belonging to your account.
+        
+        **🔐 Account Scope:** Only shows domains from your account.
+      tags:
+        - Domains
+      responses:
+        '200':
+          description: List of your domains
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Domain'
+              example:
+                data:
+                  - id: 821
+                    name: "example.com"
+                    type: "Native"
+                    account_id: 5
+                    account_name: "your_account"
+                    kind: "Native"
+                    dnssec: false
+                    created_at: "2025-08-05 01:55:34"
+        '401':
+          description: Unauthorized - Invalid or missing API key
+        '403':
+          description: Forbidden - IP address not allowed
+        '500':
+          description: Server error
+    
+    post:
+      summary: Create a new domain
+      description: |
+        Create a new domain under your account.
+        
+        **🔐 Permission Required:** `create_domains: true`
+        
+        **📋 Domain will be automatically assigned to your account.**
+      tags:
+        - Domains
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Domain name
+                  example: "newdomain.com"
+                kind:
+                  type: string
+                  enum: [Native, Master, Slave]
+                  default: Native
+                  description: Domain type
+                nameservers:
+                  type: array
+                  items:
+                    type: string
+                  description: Nameserver list
+                  example: ["ns1.example.com", "ns2.example.com"]
+      responses:
+        '201':
+          description: Domain created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Domain'
+        '400':
+          description: Bad request - Invalid domain name or data
+        '401':
+          description: Unauthorized - Invalid or missing API key
+        '403':
+          description: Forbidden - Permission denied or IP not allowed
+        '500':
+          description: Server error
+
+  /api/domains/{id}:
+    get:
+      summary: Get domain details
+      description: |
+        Get details for a specific domain.
+        
+        **🔐 Account Scope:** Only accessible if domain belongs to your account.
+      tags:
+        - Domains
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Domain ID
+      responses:
+        '200':
+          description: Domain details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Domain'
+        '401':
+          description: Unauthorized - Invalid or missing API key
+        '403':
+          description: Forbidden - Domain does not belong to your account
+        '404':
+          description: Not found - Domain does not exist
+        '500':
+          description: Server error
+    
+    put:
+      summary: Update domain
+      description: |
+        Update an existing domain.
+        
+        **🔐 Account Scope:** Only accessible if domain belongs to your account.
+        **🔐 Permission Required:** `domains: "w"` or `domains: "rw"`
+      tags:
+        - Domains
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Domain ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum: [Native, Master, Slave]
+                  description: Domain type
+                masters:
+                  type: array
+                  items:
+                    type: string
+                  description: Master servers (for slave zones)
+                dnssec:
+                  type: boolean
+                  description: Enable DNSSEC
+      responses:
+        '200':
+          description: Domain updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Domain'
+        '400':
+          description: Bad request - Invalid data
+        '401':
+          description: Unauthorized - Invalid or missing API key
+        '403':
+          description: Forbidden - Insufficient permissions or wrong account
+        '404':
+          description: Not found - Domain does not exist
+        '500':
+          description: Server error
+    
+    delete:
+      summary: Delete domain
+      description: |
+        Delete a domain from your account.
+        
+        **🔐 Account Scope:** Only accessible if domain belongs to your account.
+        **🔐 Permission Required:** `delete_domains: true`
+        
+        **⚠️ WARNING:** This permanently deletes the domain and all its records.
+      tags:
+        - Domains
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Domain ID
+      responses:
+        '200':
+          description: Domain deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized - Invalid or missing API key
+        '403':
+          description: Forbidden - Insufficient permissions or wrong account
+        '404':
+          description: Not found - Domain does not exist
+        '500':
+          description: Server error
+
+  /api/status:
+    get:
+      summary: API Status
+      description: Check if the API is operational
+      tags:
+        - Status
+      security: []
+      responses:
+        '200':
+          description: API is operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      api_version:
+                        type: string
+                      timestamp:
+                        type: string
+
+components:
+  securitySchemes:
+    AccountApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        **Account-Scoped API Key Authentication**
+        
+        Your API key provides secure access to your account's domains.
+        
+        **How to use:**
+        ```bash
+        curl -H "X-API-Key: your_key_here" https://pdnsapi.avant.nl/api/domains
+        ```
+        
+        **Security:**
+        - Your key is restricted to your account only
+        - May have IP address restrictions
+        - Has specific permissions (read, write, create, delete)
+        - Never share your API key
+        - Contact support if your key is compromised
+
+  schemas:
+    Domain:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Domain ID
+          example: 821
+        name:
+          type: string
+          description: Domain name
+          example: "example.com"
+        type:
+          type: string
+          description: Domain type
+          example: "Native"
+        account_id:
+          type: integer
+          description: Your account ID
+          example: 5
+        account_name:
+          type: string
+          description: Your account name
+          example: "customer_account"
+        pdns_zone_id:
+          type: string
+          description: PowerDNS zone ID
+          example: "example.com."
+        kind:
+          type: string
+          enum: [Native, Master, Slave]
+          description: Zone kind
+          example: "Native"
+        masters:
+          type: string
+          description: Master servers (for slave zones)
+          example: ""
+        dnssec:
+          type: boolean
+          description: DNSSEC enabled
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2025-08-05 01:55:34"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2025-08-10 12:45:15"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        errors:
+          type: array
+          items:
+            type: string
+          description: Detailed errors
+
+tags:
+  - name: Domains
+    description: Manage your domains
+  - name: Status
+    description: API health and status

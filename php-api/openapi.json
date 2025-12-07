@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "PDNSAdmin PHP API",
-    "description": "PHP API wrapper for PowerDNS Admin with local database storage.\n\n## Authentication\nUses Basic Authentication with base64 encoded credentials.\nInclude `Authorization: Basic <base64-credentials>` header in requests.\n\n**Admin API Key Required** - Single API key provides full administrative access.\nAll API keys and configuration are loaded from environment variables (.env).\n\n## Environment Configuration\nAll sensitive configuration (API keys, database credentials, hosts) is stored in `.env`:\n- `AVANT_API_KEY` - Admin API key for authentication\n- `PDNS_API_KEY` - PowerDNS Admin API key\n- `PDNS_SERVER_KEY` - PowerDNS Server API key\n- `API_DB_HOST`, `API_DB_NAME`, `API_DB_USER`, `API_DB_PASS` - Local business logic database\n- `PDNS_ADMIN_DB_HOST`, `PDNS_ADMIN_DB_NAME`, `PDNS_ADMIN_DB_USER`, `PDNS_ADMIN_DB_PASS` - PowerDNS Admin database\n- IP allowlist and other security settings\n\n## Core Features\n- Account and user management with PowerDNS Admin sync\n- Domain management with intelligent ID/name detection\n- DNS record management via PowerDNS Server API\n- Template-based domain creation\n- Local database caching and metadata storage\n- Secure environment-based configuration (no hardcoded credentials)\n",
+    "title": "PowerDNS Admin API - Administrator Documentation",
+    "description": "**Administrator API** - Full system access for PowerDNS management and configuration.\n\nFor user-focused documentation, see `/openapi-user.yaml`\n\n## Authentication\n\n**Admin API Key Required** - Single API key provides full administrative access.\nInclude `X-API-Key` or `Authorization: Bearer` header in requests.\n\n**Dual Authentication:**\n1. **Valid Admin API Key** - From AVANT_API_KEY environment variable\n2. **Global IP Allowlist** - Client IP must be in allowlist\n\n## Account-Scoped API Keys (New)\n\nCreate and manage account-scoped API keys for customers/users:\n- Restrict access to specific account's domains\n- Granular permissions (read, write, create, delete)\n- Optional per-key IP restrictions\n- Expiration dates and usage tracking\n- See `/api/api-keys` endpoints below\n\n## Environment Configuration\nAll sensitive configuration (API keys, database credentials, hosts) is stored in `.env`:\n- `AVANT_API_KEY` - Admin API key for authentication\n- `PDNS_API_KEY` - PowerDNS Admin API key\n- `PDNS_SERVER_KEY` - PowerDNS Server API key\n- `API_DB_HOST`, `API_DB_NAME`, `API_DB_USER`, `API_DB_PASS` - Local business logic database\n- `PDNS_ADMIN_DB_HOST`, `PDNS_ADMIN_DB_NAME`, `PDNS_ADMIN_DB_USER`, `PDNS_ADMIN_DB_PASS` - PowerDNS Admin database\n- IP allowlist and other security settings\n\n## Core Features\n- Account and user management with PowerDNS Admin sync\n- Domain management with intelligent ID/name detection\n- DNS record management via PowerDNS Server API\n- Template-based domain creation\n- Local database caching and metadata storage\n- Secure environment-based configuration (no hardcoded credentials)\n",
     "version": "1.1.0",
     "contact": {
       "name": "API Support - Silvester van der Leer",
@@ -50,7 +50,7 @@
     "/accounts": {
       "get": {
         "summary": "Get accounts with smart filtering",
-        "description": "Retrieve accounts from local database with PowerDNS Admin synchronization.\n\n**🔑 Requires Admin API Key**\n\n**Filter Logic (AND conditions):**\n- Single parameter: Direct lookup\n- Multiple parameters: Must ALL match (validation)\n- `?id=14&username=admin` returns user only if ID 14 has username \"admin\"\n- Returns 404 if parameters don't match the same user\n",
+        "description": "Retrieve accounts from local database with PowerDNS Admin synchronization.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**Filter Logic (AND conditions):**\n- Single parameter: Direct lookup\n- Multiple parameters: Must ALL match (validation)\n- `?id=14&username=admin` returns user only if ID 14 has username \"admin\"\n- Returns 404 if parameters don't match the same user\n",
         "tags": [
           "Accounts"
         ],
@@ -180,7 +180,7 @@
       },
       "post": {
         "summary": "Create a new account",
-        "description": "Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.\n\n**� Requires Admin API Key**\n",
+        "description": "Create a new account with optional IP addresses. The account is created in both PDNSAdmin and local database.\n\n**\ufffd Requires Admin API Key**\n",
         "tags": [
           "Accounts"
         ],
@@ -243,7 +243,7 @@
       },
       "put": {
         "summary": "Update account",
-        "description": "Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).\n\n**� Requires Admin API Key**\n\n**JSON Payload (Required):**\n- Include account identifier (`id` or `username`)\n- Include fields to update\n- IP addresses are stored locally only\n",
+        "description": "Update an existing account using JSON input. Changes are synced with PDNSAdmin (except IP addresses).\n\n**\ufffd Requires Admin API Key**\n\n**JSON Payload (Required):**\n- Include account identifier (`id` or `username`)\n- Include fields to update\n- IP addresses are stored locally only\n",
         "tags": [
           "Accounts"
         ],
@@ -307,7 +307,7 @@
       },
       "delete": {
         "summary": "Delete account",
-        "description": "Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.\n\n**� Requires Admin API Key**\n**⚠️ Warning:** This action cannot be undone.\n\n**JSON Payload (Required):**\n- Use `{\"id\": 94}` to delete account by ID\n- Use `{\"username\": \"johndoe\"}` to delete account by username\n\n**Important:** This operation only deletes from PowerDNS Admin. The local database is updated through \nautomatic synchronization, ensuring the API remains the authoritative source for account management.\n",
+        "description": "Delete an account from PowerDNS Admin using JSON input. The local database is automatically synced after deletion.\n\n**\ufffd Requires Admin API Key**\n**\u26a0\ufe0f Warning:** This action cannot be undone.\n\n**JSON Payload (Required):**\n- Use `{\"id\": 94}` to delete account by ID\n- Use `{\"username\": \"johndoe\"}` to delete account by username\n\n**Important:** This operation only deletes from PowerDNS Admin. The local database is updated through \nautomatic synchronization, ensuring the API remains the authoritative source for account management.\n",
         "tags": [
           "Accounts"
         ],
@@ -506,7 +506,7 @@
       },
       "put": {
         "summary": "Update domain by ID or name",
-        "description": "Update domain settings and DNS records.\nSupports both ID and name-based updates with PowerDNS Admin and Server API integration.\n\n**🔑 Requires Admin API Key**\n\n**⚠️ SECURITY WARNINGS:**\n- **Domain Ownership:** Only domains owned by authenticated account can be modified\n- **DNS Record Validation:** All DNS records are validated before application\n- **Account Transfer:** Changing account_id requires ownership verification\n- **Zone Type Changes:** Changing kind/masters affects DNS resolution - use with caution\n\n**🛡️ VALIDATION ENFORCED:**\n- DNS record content validated (A/AAAA/CNAME/MX formats)\n- Master server IPs validated for Slave zones\n- Account ownership verified before transfers\n- DNSSEC changes require additional validation\n",
+        "description": "Update domain settings and DNS records.\nSupports both ID and name-based updates with PowerDNS Admin and Server API integration.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\u26a0\ufe0f SECURITY WARNINGS:**\n- **Domain Ownership:** Only domains owned by authenticated account can be modified\n- **DNS Record Validation:** All DNS records are validated before application\n- **Account Transfer:** Changing account_id requires ownership verification\n- **Zone Type Changes:** Changing kind/masters affects DNS resolution - use with caution\n\n**\ud83d\udee1\ufe0f VALIDATION ENFORCED:**\n- DNS record content validated (A/AAAA/CNAME/MX formats)\n- Master server IPs validated for Slave zones\n- Account ownership verified before transfers\n- DNSSEC changes require additional validation\n",
         "tags": [
           "Domains",
           "Domain Management"
@@ -704,7 +704,7 @@
       },
       "delete": {
         "summary": "Delete domain by ID or name",
-        "description": "**🚨 DESTRUCTIVE OPERATION** - Delete domain permanently.\n\n**🔑 Requires Admin API Key**\n\n**⚠️ CRITICAL SECURITY WARNINGS:**\n- **Irreversible Action:** Domain deletion cannot be undone\n- **Ownership Verification:** Only domains owned by authenticated account can be deleted  \n- **DNS Resolution Impact:** Domain will immediately stop resolving\n- **Cascade Effects:** All DNS records will be permanently lost\n- **Zone Dependencies:** Check for dependent subdomains before deletion\n\n**🛡️ SAFETY MEASURES:**\n- Domain ownership verified before deletion\n- Audit logging with administrator details\n- PowerDNS Admin and local database automatically synced\n",
+        "description": "**\ud83d\udea8 DESTRUCTIVE OPERATION** - Delete domain permanently.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\u26a0\ufe0f CRITICAL SECURITY WARNINGS:**\n- **Irreversible Action:** Domain deletion cannot be undone\n- **Ownership Verification:** Only domains owned by authenticated account can be deleted  \n- **DNS Resolution Impact:** Domain will immediately stop resolving\n- **Cascade Effects:** All DNS records will be permanently lost\n- **Zone Dependencies:** Check for dependent subdomains before deletion\n\n**\ud83d\udee1\ufe0f SAFETY MEASURES:**\n- Domain ownership verified before deletion\n- Audit logging with administrator details\n- PowerDNS Admin and local database automatically synced\n",
         "tags": [
           "Domains",
           "Domain Management"
@@ -882,7 +882,7 @@
       },
       "put": {
         "summary": "Update domain by ID (path parameter)",
-        "description": "Update a specific domain using path parameter for ID.\nAlternative to PUT /domains with JSON payload.\n\n**🔐 SECURITY REQUIREMENTS:**\n- Admin API key required for ALL modifications\n- Ownership validation enforced (can only modify domains you own)\n- Input validation prevents DNS record injection attacks\n- All changes logged for audit trails\n",
+        "description": "Update a specific domain using path parameter for ID.\nAlternative to PUT /domains with JSON payload.\n\n**\ud83d\udd10 SECURITY REQUIREMENTS:**\n- Admin API key required for ALL modifications\n- Ownership validation enforced (can only modify domains you own)\n- Input validation prevents DNS record injection attacks\n- All changes logged for audit trails\n",
         "tags": [
           "Domains"
         ],
@@ -976,7 +976,7 @@
       },
       "delete": {
         "summary": "Delete domain by ID",
-        "description": "Delete a domain from both local database and PowerDNS Admin.\n\n**⚠️ DANGER: IRREVERSIBLE OPERATION**\n- Permanently deletes domain and ALL DNS records\n- Cannot be undone - ensure you have backups\n- Requires admin API key with full privileges\n\n**🔐 SECURITY REQUIREMENTS:**\n- Admin API key required for ALL deletions\n- Ownership validation enforced (can only delete domains you own)\n- Domain must be in \"inactive\" state before deletion\n- All operations logged for audit trails\n",
+        "description": "Delete a domain from both local database and PowerDNS Admin.\n\n**\u26a0\ufe0f DANGER: IRREVERSIBLE OPERATION**\n- Permanently deletes domain and ALL DNS records\n- Cannot be undone - ensure you have backups\n- Requires admin API key with full privileges\n\n**\ud83d\udd10 SECURITY REQUIREMENTS:**\n- Admin API key required for ALL deletions\n- Ownership validation enforced (can only delete domains you own)\n- Domain must be in \"inactive\" state before deletion\n- All operations logged for audit trails\n",
         "tags": [
           "Domains"
         ],
@@ -1044,7 +1044,7 @@
     "/templates": {
       "get": {
         "summary": "Get all domain templates",
-        "description": "Retrieve all available domain templates from PowerDNS Admin.\nTemplates can be used to create domains with predefined settings.\n\n**🔑 Requires Admin API Key**\n",
+        "description": "Retrieve all available domain templates from PowerDNS Admin.\nTemplates can be used to create domains with predefined settings.\n\n**\ud83d\udd11 Requires Admin API Key**\n",
         "tags": [
           "Templates"
         ],
@@ -1087,7 +1087,7 @@
       },
       "post": {
         "summary": "Create new domain template",
-        "description": "Create a new domain template in PowerDNS Admin.\n\n**🔑 Requires Admin API Key**\n\n**🔐 SECURITY CONSIDERATIONS:**\n- Template content validated for DNS record injection\n- Template names must be unique and follow naming conventions\n- All template creation logged for audit trails\n- Input sanitization prevents malicious template content\n",
+        "description": "Create a new domain template in PowerDNS Admin.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\ud83d\udd10 SECURITY CONSIDERATIONS:**\n- Template content validated for DNS record injection\n- Template names must be unique and follow naming conventions\n- All template creation logged for audit trails\n- Input sanitization prevents malicious template content\n",
         "tags": [
           "Templates"
         ],
@@ -1369,7 +1369,7 @@
     "/domain-account": {
       "post": {
         "summary": "Domain-Account operations",
-        "description": "Perform operations to manage domain-account relationships.\n\n**🔑 Requires Admin API Key**\n\n**⚠️ CRITICAL SECURITY WARNINGS:**\n- **DOMAIN HIJACKING RISK:** Can reassign domains between accounts\n- **OWNERSHIP VALIDATION:** Must verify current account owns domain before changes\n- **AUDIT TRAIL:** All domain reassignments logged with timestamps and user info\n- **IRREVERSIBLE:** Domain reassignments cannot be easily undone\n\n**🔐 SECURITY REQUIREMENTS:**\n- Admin API key required for ALL operations\n- Domain ownership verified before any modifications\n- Account permissions checked before assignments\n- Rate limiting enforced to prevent abuse\n",
+        "description": "Perform operations to manage domain-account relationships.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\u26a0\ufe0f CRITICAL SECURITY WARNINGS:**\n- **DOMAIN HIJACKING RISK:** Can reassign domains between accounts\n- **OWNERSHIP VALIDATION:** Must verify current account owns domain before changes\n- **AUDIT TRAIL:** All domain reassignments logged with timestamps and user info\n- **IRREVERSIBLE:** Domain reassignments cannot be easily undone\n\n**\ud83d\udd10 SECURITY REQUIREMENTS:**\n- Admin API key required for ALL operations\n- Domain ownership verified before any modifications\n- Account permissions checked before assignments\n- Rate limiting enforced to prevent abuse\n",
         "tags": [
           "Domain-Account"
         ],
@@ -1507,7 +1507,7 @@
     "/status": {
       "get": {
         "summary": "API status and health check",
-        "description": "Get API status and health information.\n\n**🔑 Requires Admin API Key**\n\n**ℹ️ INFORMATION SECURITY:**\n- System status information restricted to admins only\n- Health checks reveal internal system state\n- Connection tests may expose backend configuration\n- All status requests logged for security monitoring\n",
+        "description": "Get API status and health information.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\u2139\ufe0f INFORMATION SECURITY:**\n- System status information restricted to admins only\n- Health checks reveal internal system state\n- Connection tests may expose backend configuration\n- All status requests logged for security monitoring\n",
         "tags": [
           "Status"
         ],
@@ -1569,7 +1569,7 @@
     "/ip-allowlist": {
       "get": {
         "summary": "List IP allowlist entries",
-        "description": "Retrieve all IP addresses in the global allowlist.\n\n**🔑 Requires Admin API Key**\n\n**🛡️ SECURITY MANAGEMENT:**\n- View all allowed IP addresses and CIDR ranges\n- Check enabled/disabled status\n- Review descriptions and timestamps\n- Critical for security auditing and management\n",
+        "description": "Retrieve all IP addresses in the global allowlist.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\ud83d\udee1\ufe0f SECURITY MANAGEMENT:**\n- View all allowed IP addresses and CIDR ranges\n- Check enabled/disabled status\n- Review descriptions and timestamps\n- Critical for security auditing and management\n",
         "tags": [
           "IP Allowlist",
           "Security"
@@ -1611,7 +1611,7 @@
       },
       "post": {
         "summary": "Add IP to allowlist",
-        "description": "Add a new IP address or CIDR range to the global allowlist.\n\n**🔑 Requires Admin API Key**\n\n**🛡️ SECURITY IMPACT:**\n- Grants API access to specified IP/range\n- Takes effect immediately\n- All new IPs are enabled by default\n- Supports both IPv4 and IPv6 with CIDR notation\n",
+        "description": "Add a new IP address or CIDR range to the global allowlist.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\ud83d\udee1\ufe0f SECURITY IMPACT:**\n- Grants API access to specified IP/range\n- Takes effect immediately\n- All new IPs are enabled by default\n- Supports both IPv4 and IPv6 with CIDR notation\n",
         "tags": [
           "IP Allowlist",
           "Security"
@@ -1688,7 +1688,7 @@
     "/ip-allowlist/{id}": {
       "put": {
         "summary": "Update IP allowlist entry",
-        "description": "Update an existing IP allowlist entry.\n\n**🔑 Requires Admin API Key**\n\n**🛡️ SECURITY IMPACT:**\n- Modify existing IP access permissions\n- Can enable/disable access without deletion\n- Changes take effect immediately\n",
+        "description": "Update an existing IP allowlist entry.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\ud83d\udee1\ufe0f SECURITY IMPACT:**\n- Modify existing IP access permissions\n- Can enable/disable access without deletion\n- Changes take effect immediately\n",
         "tags": [
           "IP Allowlist",
           "Security"
@@ -1773,7 +1773,7 @@
       },
       "delete": {
         "summary": "Remove IP from allowlist",
-        "description": "Remove an IP address from the global allowlist.\n\n**🔑 Requires Admin API Key**\n\n**⚠️ SECURITY WARNING:**\n- Permanently removes IP access\n- Cannot be undone without re-adding\n- May immediately block active connections from this IP\n- Use disable instead for temporary access removal\n",
+        "description": "Remove an IP address from the global allowlist.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\u26a0\ufe0f SECURITY WARNING:**\n- Permanently removes IP access\n- Cannot be undone without re-adding\n- May immediately block active connections from this IP\n- Use disable instead for temporary access removal\n",
         "tags": [
           "IP Allowlist",
           "Security"
@@ -1834,7 +1834,7 @@
     "/ip-allowlist/test": {
       "post": {
         "summary": "Test IP allowlist access",
-        "description": "Test if a specific IP address would be allowed by the current allowlist.\n\n**🔑 Requires Admin API Key**\n\n**🔍 TESTING & DEBUGGING:**\n- Validate IP access before making changes\n- Test CIDR range matching\n- Verify allowlist configuration\n- Useful for troubleshooting access issues\n",
+        "description": "Test if a specific IP address would be allowed by the current allowlist.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\ud83d\udd0d TESTING & DEBUGGING:**\n- Validate IP access before making changes\n- Test CIDR range matching\n- Verify allowlist configuration\n- Useful for troubleshooting access issues\n",
         "tags": [
           "IP Allowlist",
           "Security",
@@ -1900,6 +1900,450 @@
           }
         }
       }
+    },
+    "/api/api-keys": {
+      "get": {
+        "summary": "List all API keys",
+        "description": "Retrieve all account-scoped API keys.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\ud83d\udd10 API KEY MANAGEMENT:**\n- View all account-scoped API keys\n- See key previews (first 12 characters)\n- Check account associations\n- Review permissions and IP restrictions\n- Monitor last usage timestamps\n- Note: Full API key is NEVER returned (only on creation)\n\n**SECURITY LAYERS:**\n1. **Global IP Allowlist** - All requests must pass this first\n2. **Per-Key IP Restrictions** - Optional additional IP filtering per key\n3. **Account Scope** - Keys restricted to specific account's domains\n4. **Permissions** - Granular read/write/create/delete control\n",
+        "tags": [
+          "API Keys",
+          "Security"
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter API keys by account ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of API keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ApiKey"
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "all_keys": {
+                    "summary": "All API keys",
+                    "value": {
+                      "data": [
+                        {
+                          "id": 3,
+                          "key_preview": "pdns_d0dbc9f...",
+                          "account_id": 5,
+                          "description": "Production key for customer",
+                          "permissions": {
+                            "domains": "rw",
+                            "create_domains": true,
+                            "delete_domains": false,
+                            "scope": "account"
+                          },
+                          "allowed_ips": [
+                            "192.168.1.0/24",
+                            "10.0.0.50"
+                          ],
+                          "enabled": true,
+                          "created_at": "2025-12-07 10:30:00",
+                          "last_used_at": "2025-12-07 15:45:00",
+                          "expires_at": null
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Valid Admin API Key required"
+          },
+          "403": {
+            "description": "Forbidden - Only admin API keys can manage API keys"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create account-scoped API key",
+        "description": "Create a new API key for a specific account with granular permissions.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\u26a0\ufe0f IMPORTANT: Full API key is ONLY shown once on creation!**\n\n**PERMISSION STRUCTURE:**\n```json\n{\n  \"domains\": \"rw\",           // \"r\" (read), \"w\" (write), \"rw\" (both)\n  \"create_domains\": true,    // Can create new domains\n  \"delete_domains\": false,   // Can delete domains\n  \"scope\": \"account\"         // Always \"account\" for scoped keys\n}\n```\n\n**IP RESTRICTIONS:**\n- `allowed_ips: null` - Uses global allowlist only\n- `allowed_ips: [...]` - Client IP must be in BOTH global AND key-specific lists\n- Supports single IPs: `\"192.168.1.100\"`\n- Supports CIDR ranges: `\"10.0.0.0/8\"`, `\"192.168.1.0/24\"`\n",
+        "tags": [
+          "API Keys",
+          "Security"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "account_id"
+                ],
+                "properties": {
+                  "account_id": {
+                    "type": "integer",
+                    "description": "Account ID this key will be restricted to",
+                    "example": 5
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Human-readable description of the key's purpose",
+                    "example": "Customer portal API access"
+                  },
+                  "permissions": {
+                    "type": "object",
+                    "description": "Granular permissions for this key",
+                    "properties": {
+                      "domains": {
+                        "type": "string",
+                        "enum": [
+                          "r",
+                          "w",
+                          "rw"
+                        ],
+                        "description": "Domain read/write permissions",
+                        "example": "rw"
+                      },
+                      "create_domains": {
+                        "type": "boolean",
+                        "description": "Allow creating new domains",
+                        "example": true
+                      },
+                      "delete_domains": {
+                        "type": "boolean",
+                        "description": "Allow deleting domains",
+                        "example": false
+                      }
+                    }
+                  },
+                  "allowed_ips": {
+                    "type": "array",
+                    "nullable": true,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Array of allowed IP addresses/CIDR ranges (null = no restriction)",
+                    "example": [
+                      "192.168.1.0/24",
+                      "10.0.0.50"
+                    ]
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable the key immediately",
+                    "default": true,
+                    "example": true
+                  },
+                  "expires_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true,
+                    "description": "Expiration timestamp (null = never expires)",
+                    "example": "2026-12-31 23:59:59"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "API key created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "API key created successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 4
+                        },
+                        "api_key": {
+                          "type": "string",
+                          "description": "\u26a0\ufe0f SAVE THIS! Full key only shown once",
+                          "example": "pdns_d0dbc9fd6f0cb69319c84e755dbf8d78e72f46720dfa9a2e..."
+                        },
+                        "account_id": {
+                          "type": "integer",
+                          "example": 5
+                        },
+                        "account_username": {
+                          "type": "string",
+                          "example": "customer_account"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Customer portal API access"
+                        },
+                        "permissions": {
+                          "type": "object"
+                        },
+                        "allowed_ips": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "expires_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "warning": {
+                          "type": "string",
+                          "example": "Save this API key securely. It will not be displayed again."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Missing required fields or invalid data"
+          },
+          "401": {
+            "description": "Unauthorized - Valid Admin API Key required"
+          },
+          "403": {
+            "description": "Forbidden - Only admin API keys can create API keys"
+          },
+          "404": {
+            "description": "Not found - Account does not exist"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/api-keys/{id}": {
+      "get": {
+        "summary": "Get API key details",
+        "description": "Retrieve details for a specific API key.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**Note:** Full API key is never returned, only preview (first 12 chars)\n",
+        "tags": [
+          "API Keys"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "API key ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API key details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ApiKey"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Valid Admin API Key required"
+          },
+          "403": {
+            "description": "Forbidden - Only admin API keys can view API keys"
+          },
+          "404": {
+            "description": "Not found - API key not found"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update API key",
+        "description": "Update an existing API key's permissions, description, or IP restrictions.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**UPDATABLE FIELDS:**\n- Description\n- Permissions (domains, create_domains, delete_domains)\n- IP restrictions (allowed_ips)\n- Enabled status\n- Expiration date\n\n**Note:** The API key itself cannot be changed\n",
+        "tags": [
+          "API Keys"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "API key ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "example": "Updated description"
+                  },
+                  "permissions": {
+                    "type": "object",
+                    "properties": {
+                      "domains": {
+                        "type": "string",
+                        "enum": [
+                          "r",
+                          "w",
+                          "rw"
+                        ]
+                      },
+                      "create_domains": {
+                        "type": "boolean"
+                      },
+                      "delete_domains": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "allowed_ips": {
+                    "type": "array",
+                    "nullable": true,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Set to [] or null to remove IP restrictions",
+                    "example": [
+                      "192.168.1.0/24"
+                    ]
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable or disable the key"
+                  },
+                  "expires_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "API key updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "API key updated successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Invalid data or no fields to update"
+          },
+          "401": {
+            "description": "Unauthorized - Valid Admin API Key required"
+          },
+          "403": {
+            "description": "Forbidden - Only admin API keys can update API keys"
+          },
+          "404": {
+            "description": "Not found - API key not found"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete API key",
+        "description": "Permanently delete an API key.\n\n**\ud83d\udd11 Requires Admin API Key**\n\n**\u26a0\ufe0f WARNING:**\n- Permanently removes the API key\n- Cannot be undone\n- Active sessions using this key will be invalidated\n- Consider disabling instead for temporary deactivation\n",
+        "tags": [
+          "API Keys"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "API key ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API key deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "API key deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Valid Admin API Key required"
+          },
+          "403": {
+            "description": "Forbidden - Only admin API keys can delete API keys"
+          },
+          "404": {
+            "description": "Not found - API key not found"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1908,7 +2352,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key",
-        "description": "**ADMIN API KEY + GLOBAL IP ALLOWLIST AUTHENTICATION**\n\n**DUAL AUTHENTICATION - SIMPLE & SECURE:**\n1. **Valid Admin API Key** - Single key for all administrative access  \n2. **Global IP Allowlist** - Same allowlist applies to ALL endpoints uniformly\n\n**📋 AUTHENTICATION REQUIREMENTS:**\n- **Swagger UI access** - No authentication required (for easy development)\n- **OpenAPI documentation** - No authentication required (for easy access)  \n- **ALL API endpoints** - Full authentication required (API key + IP allowlist)\n- **Health check** - No authentication required (monitoring)\n\n**API Key Format:** `X-API-Key: <your-api-key>`\n\n**Example:** \n```\nAuthorization: Basic NDZiM2Q3OGM1NTdjZDY2YTA0N2EzODg5NzkxNGQyMDNhYjVjMzU5NzE5MTYxZTgzNmVjY2U1NTA4ZTU3YjFhOTo=\n```\n\n**🛡️ GLOBAL IP ALLOWLIST - DATABASE-DRIVEN & DYNAMIC:**\n- Single allowlist applies to ALL API endpoints uniformly\n- **Stored in MySQL database** for persistence and easy management\n- No per-endpoint complexity - either you're allowed or you're not\n- Both IPv4 and IPv6 addresses supported with CIDR notation\n- **Enable/disable IPs** without deletion for temporary access control\n- Easy to manage via CLI tool and audit via database logs\n\n**Dynamic Management via CLI:**\n```bash\n# List all allowed IPs\nphp manage-ips-clean.php list\n\n# Add IPs with descriptions\nphp manage-ips-clean.php add \"203.0.113.25\" \"Admin home IP\"\nphp manage-ips-clean.php add \"192.168.1.0/24\" \"Office network\"\nphp manage-ips-clean.php add \"2001:db8::/32\" \"IPv6 network\"\n\n# Temporarily disable/enable IPs\nphp manage-ips-clean.php disable \"203.0.113.25\"\nphp manage-ips-clean.php enable \"203.0.113.25\"\n\n# Remove IPs permanently\nphp manage-ips-clean.php remove \"203.0.113.25\"\n\n# Test IP access\nphp manage-ips-clean.php test \"192.168.1.100\"\n```\n\n**Database Storage:**\n```sql\n-- IPs stored in ip_allowlist table\nSELECT ip_address, description, enabled \nFROM ip_allowlist \nWHERE enabled = 1;\n```\n\n**Security Benefits:**\n- **Defense in depth:** Both API key AND IP must be valid\n- **Zero complexity:** Same rules apply everywhere  \n- **Dynamic management:** Add/remove IPs without restarts\n- **Database persistence:** Changes survive server restarts\n- **Temporary control:** Enable/disable without deletion\n- **Complete protection:** API inaccessible from non-allowed IPs\n- **Performance:** In-memory caching with database fallback\n\n**Security Notes:**\n- **Dual authentication:** API key AND IP allowlist required\n- One API key for all administrative operations  \n- Full access to accounts, domains, templates, and DNS records\n- **Database-driven allowlist** prevents unauthorized access even with valid key\n- Should be rotated regularly and kept secure\n- **Update allowlist dynamically** via CLI tool when network changes\n- **Audit trail:** All IP changes tracked in database with timestamps\n"
+        "description": "**ADMIN API KEY + GLOBAL IP ALLOWLIST AUTHENTICATION**\n\n**DUAL AUTHENTICATION - SIMPLE & SECURE:**\n1. **Valid Admin API Key** - Single key for all administrative access  \n2. **Global IP Allowlist** - Same allowlist applies to ALL endpoints uniformly\n\n**\ud83d\udccb AUTHENTICATION REQUIREMENTS:**\n- **Swagger UI access** - No authentication required (for easy development)\n- **OpenAPI documentation** - No authentication required (for easy access)  \n- **ALL API endpoints** - Full authentication required (API key + IP allowlist)\n- **Health check** - No authentication required (monitoring)\n\n**API Key Format:** `X-API-Key: <your-api-key>`\n\n**Example:** \n```\nAuthorization: Basic NDZiM2Q3OGM1NTdjZDY2YTA0N2EzODg5NzkxNGQyMDNhYjVjMzU5NzE5MTYxZTgzNmVjY2U1NTA4ZTU3YjFhOTo=\n```\n\n**\ud83d\udee1\ufe0f GLOBAL IP ALLOWLIST - DATABASE-DRIVEN & DYNAMIC:**\n- Single allowlist applies to ALL API endpoints uniformly\n- **Stored in MySQL database** for persistence and easy management\n- No per-endpoint complexity - either you're allowed or you're not\n- Both IPv4 and IPv6 addresses supported with CIDR notation\n- **Enable/disable IPs** without deletion for temporary access control\n- Easy to manage via CLI tool and audit via database logs\n\n**Dynamic Management via CLI:**\n```bash\n# List all allowed IPs\nphp manage-ips-clean.php list\n\n# Add IPs with descriptions\nphp manage-ips-clean.php add \"203.0.113.25\" \"Admin home IP\"\nphp manage-ips-clean.php add \"192.168.1.0/24\" \"Office network\"\nphp manage-ips-clean.php add \"2001:db8::/32\" \"IPv6 network\"\n\n# Temporarily disable/enable IPs\nphp manage-ips-clean.php disable \"203.0.113.25\"\nphp manage-ips-clean.php enable \"203.0.113.25\"\n\n# Remove IPs permanently\nphp manage-ips-clean.php remove \"203.0.113.25\"\n\n# Test IP access\nphp manage-ips-clean.php test \"192.168.1.100\"\n```\n\n**Database Storage:**\n```sql\n-- IPs stored in ip_allowlist table\nSELECT ip_address, description, enabled \nFROM ip_allowlist \nWHERE enabled = 1;\n```\n\n**Security Benefits:**\n- **Defense in depth:** Both API key AND IP must be valid\n- **Zero complexity:** Same rules apply everywhere  \n- **Dynamic management:** Add/remove IPs without restarts\n- **Database persistence:** Changes survive server restarts\n- **Temporary control:** Enable/disable without deletion\n- **Complete protection:** API inaccessible from non-allowed IPs\n- **Performance:** In-memory caching with database fallback\n\n**Security Notes:**\n- **Dual authentication:** API key AND IP allowlist required\n- One API key for all administrative operations  \n- Full access to accounts, domains, templates, and DNS records\n- **Database-driven allowlist** prevents unauthorized access even with valid key\n- Should be rotated regularly and kept secure\n- **Update allowlist dynamically** via CLI tool when network changes\n- **Audit trail:** All IP changes tracked in database with timestamps\n"
       }
     },
     "responses": {
@@ -2423,7 +2867,7 @@
       },
       "RRSetUpdate": {
         "type": "object",
-        "description": "DNS record set update operation with security validation.\n\n**🛡️ SECURITY VALIDATION:**\n- Record names must belong to the domain being updated\n- DNS record content validated for proper format\n- Dangerous record types (NS, SOA) require additional verification\n- Maximum 100 records per update to prevent abuse\n",
+        "description": "DNS record set update operation with security validation.\n\n**\ud83d\udee1\ufe0f SECURITY VALIDATION:**\n- Record names must belong to the domain being updated\n- DNS record content validated for proper format\n- Dangerous record types (NS, SOA) require additional verification\n- Maximum 100 records per update to prevent abuse\n",
         "required": [
           "name",
           "type",
@@ -2867,6 +3311,119 @@
           }
         }
       },
+      "ApiKey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "API key ID",
+            "example": 3
+          },
+          "key_preview": {
+            "type": "string",
+            "description": "First 12 characters of API key (full key never returned)",
+            "example": "pdns_d0dbc9f..."
+          },
+          "account_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Account ID this key is restricted to (null = admin key)",
+            "example": 5
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description",
+            "example": "Production API key for customer portal"
+          },
+          "permissions": {
+            "type": "object",
+            "nullable": true,
+            "description": "Permission configuration (JSON)",
+            "properties": {
+              "domains": {
+                "type": "string",
+                "enum": [
+                  "r",
+                  "w",
+                  "rw"
+                ],
+                "description": "Domain access permissions"
+              },
+              "create_domains": {
+                "type": "boolean",
+                "description": "Can create new domains"
+              },
+              "delete_domains": {
+                "type": "boolean",
+                "description": "Can delete domains"
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "account",
+                  "admin"
+                ],
+                "description": "Access scope"
+              }
+            },
+            "example": {
+              "domains": "rw",
+              "create_domains": true,
+              "delete_domains": false,
+              "scope": "account"
+            }
+          },
+          "allowed_ips": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed IP addresses/CIDR ranges (null = no restriction)",
+            "example": [
+              "192.168.1.0/24",
+              "10.0.0.50"
+            ]
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the key is enabled",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp",
+            "example": "2025-12-07 10:30:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp",
+            "example": "2025-12-07 10:30:00"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Expiration timestamp (null = never expires)",
+            "example": null
+          },
+          "last_used_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Last usage timestamp",
+            "example": "2025-12-07 15:45:00"
+          },
+          "created_by": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Admin user who created this key",
+            "example": null
+          }
+        }
+      },
       "Error": {
         "type": "object",
         "properties": {
@@ -2893,6 +3450,10 @@
     {
       "name": "Accounts",
       "description": "Account management operations with IP address support"
+    },
+    {
+      "name": "API Keys",
+      "description": "Account-scoped API key management with granular permissions and IP restrictions"
     },
     {
       "name": "Domains",

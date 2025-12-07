@@ -1,15 +1,28 @@
 openapi: 3.0.3
 info:
-  title: PDNSAdmin PHP API
+  title: PowerDNS Admin API - Administrator Documentation
   description: |
-    PHP API wrapper for PowerDNS Admin with local database storage.
+    **Administrator API** - Full system access for PowerDNS management and configuration.
+    
+    For user-focused documentation, see `/openapi-user.yaml`
     
     ## Authentication
-    Uses Basic Authentication with base64 encoded credentials.
-    Include `Authorization: Basic <base64-credentials>` header in requests.
     
     **Admin API Key Required** - Single API key provides full administrative access.
-    All API keys and configuration are loaded from environment variables (.env).
+    Include `X-API-Key` or `Authorization: Bearer` header in requests.
+    
+    **Dual Authentication:**
+    1. **Valid Admin API Key** - From AVANT_API_KEY environment variable
+    2. **Global IP Allowlist** - Client IP must be in allowlist
+    
+    ## Account-Scoped API Keys (New)
+    
+    Create and manage account-scoped API keys for customers/users:
+    - Restrict access to specific account's domains
+    - Granular permissions (read, write, create, delete)
+    - Optional per-key IP restrictions
+    - Expiration dates and usage tracking
+    - See `/api/api-keys` endpoints below
     
     ## Environment Configuration
     All sensitive configuration (API keys, database credentials, hosts) is stored in `.env`:
@@ -1529,6 +1542,366 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /api/api-keys:
+    get:
+      summary: List all API keys
+      description: |
+        Retrieve all account-scoped API keys.
+        
+        **🔑 Requires Admin API Key**
+        
+        **🔐 API KEY MANAGEMENT:**
+        - View all account-scoped API keys
+        - See key previews (first 12 characters)
+        - Check account associations
+        - Review permissions and IP restrictions
+        - Monitor last usage timestamps
+        - Note: Full API key is NEVER returned (only on creation)
+        
+        **SECURITY LAYERS:**
+        1. **Global IP Allowlist** - All requests must pass this first
+        2. **Per-Key IP Restrictions** - Optional additional IP filtering per key
+        3. **Account Scope** - Keys restricted to specific account's domains
+        4. **Permissions** - Granular read/write/create/delete control
+      tags:
+        - API Keys
+        - Security
+      parameters:
+        - name: account_id
+          in: query
+          schema:
+            type: integer
+          description: Filter API keys by account ID
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiKey'
+              examples:
+                all_keys:
+                  summary: All API keys
+                  value:
+                    data:
+                      - id: 3
+                        key_preview: "pdns_d0dbc9f..."
+                        account_id: 5
+                        description: "Production key for customer"
+                        permissions:
+                          domains: "rw"
+                          create_domains: true
+                          delete_domains: false
+                          scope: "account"
+                        allowed_ips: ["192.168.1.0/24", "10.0.0.50"]
+                        enabled: true
+                        created_at: "2025-12-07 10:30:00"
+                        last_used_at: "2025-12-07 15:45:00"
+                        expires_at: null
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can manage API keys
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Create account-scoped API key
+      description: |
+        Create a new API key for a specific account with granular permissions.
+        
+        **🔑 Requires Admin API Key**
+        
+        **⚠️ IMPORTANT: Full API key is ONLY shown once on creation!**
+        
+        **PERMISSION STRUCTURE:**
+        ```json
+        {
+          "domains": "rw",           // "r" (read), "w" (write), "rw" (both)
+          "create_domains": true,    // Can create new domains
+          "delete_domains": false,   // Can delete domains
+          "scope": "account"         // Always "account" for scoped keys
+        }
+        ```
+        
+        **IP RESTRICTIONS:**
+        - `allowed_ips: null` - Uses global allowlist only
+        - `allowed_ips: [...]` - Client IP must be in BOTH global AND key-specific lists
+        - Supports single IPs: `"192.168.1.100"`
+        - Supports CIDR ranges: `"10.0.0.0/8"`, `"192.168.1.0/24"`
+      tags:
+        - API Keys
+        - Security
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - account_id
+              properties:
+                account_id:
+                  type: integer
+                  description: Account ID this key will be restricted to
+                  example: 5
+                description:
+                  type: string
+                  description: Human-readable description of the key's purpose
+                  example: "Customer portal API access"
+                permissions:
+                  type: object
+                  description: Granular permissions for this key
+                  properties:
+                    domains:
+                      type: string
+                      enum: ["r", "w", "rw"]
+                      description: Domain read/write permissions
+                      example: "rw"
+                    create_domains:
+                      type: boolean
+                      description: Allow creating new domains
+                      example: true
+                    delete_domains:
+                      type: boolean
+                      description: Allow deleting domains
+                      example: false
+                allowed_ips:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                  description: Array of allowed IP addresses/CIDR ranges (null = no restriction)
+                  example: ["192.168.1.0/24", "10.0.0.50"]
+                enabled:
+                  type: boolean
+                  description: Enable the key immediately
+                  default: true
+                  example: true
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Expiration timestamp (null = never expires)
+                  example: "2026-12-31 23:59:59"
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "API key created successfully"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 4
+                      api_key:
+                        type: string
+                        description: "⚠️ SAVE THIS! Full key only shown once"
+                        example: "pdns_d0dbc9fd6f0cb69319c84e755dbf8d78e72f46720dfa9a2e..."
+                      account_id:
+                        type: integer
+                        example: 5
+                      account_username:
+                        type: string
+                        example: "customer_account"
+                      description:
+                        type: string
+                        example: "Customer portal API access"
+                      permissions:
+                        type: object
+                      allowed_ips:
+                        type: array
+                        items:
+                          type: string
+                      enabled:
+                        type: boolean
+                      expires_at:
+                        type: string
+                        nullable: true
+                      warning:
+                        type: string
+                        example: "Save this API key securely. It will not be displayed again."
+        '400':
+          description: Bad request - Missing required fields or invalid data
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can create API keys
+        '404':
+          description: Not found - Account does not exist
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/api-keys/{id}:
+    get:
+      summary: Get API key details
+      description: |
+        Retrieve details for a specific API key.
+        
+        **🔑 Requires Admin API Key**
+        
+        **Note:** Full API key is never returned, only preview (first 12 chars)
+      tags:
+        - API Keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: API key ID
+      responses:
+        '200':
+          description: API key details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApiKey'
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can view API keys
+        '404':
+          description: Not found - API key not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    put:
+      summary: Update API key
+      description: |
+        Update an existing API key's permissions, description, or IP restrictions.
+        
+        **🔑 Requires Admin API Key**
+        
+        **UPDATABLE FIELDS:**
+        - Description
+        - Permissions (domains, create_domains, delete_domains)
+        - IP restrictions (allowed_ips)
+        - Enabled status
+        - Expiration date
+        
+        **Note:** The API key itself cannot be changed
+      tags:
+        - API Keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: API key ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                  example: "Updated description"
+                permissions:
+                  type: object
+                  properties:
+                    domains:
+                      type: string
+                      enum: ["r", "w", "rw"]
+                    create_domains:
+                      type: boolean
+                    delete_domains:
+                      type: boolean
+                allowed_ips:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                  description: Set to [] or null to remove IP restrictions
+                  example: ["192.168.1.0/24"]
+                enabled:
+                  type: boolean
+                  description: Enable or disable the key
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '200':
+          description: API key updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "API key updated successfully"
+        '400':
+          description: Bad request - Invalid data or no fields to update
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can update API keys
+        '404':
+          description: Not found - API key not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    delete:
+      summary: Delete API key
+      description: |
+        Permanently delete an API key.
+        
+        **🔑 Requires Admin API Key**
+        
+        **⚠️ WARNING:**
+        - Permanently removes the API key
+        - Cannot be undone
+        - Active sessions using this key will be invalidated
+        - Consider disabling instead for temporary deactivation
+      tags:
+        - API Keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: API key ID
+      responses:
+        '200':
+          description: API key deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "API key deleted successfully"
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can delete API keys
+        '404':
+          description: Not found - API key not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+
 components:
   securitySchemes:
     AdminApiKey:
@@ -2339,6 +2712,89 @@ components:
           type: integer
           description: Record priority (for MX records)
 
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: API key ID
+          example: 3
+        key_preview:
+          type: string
+          description: First 12 characters of API key (full key never returned)
+          example: "pdns_d0dbc9f..."
+        account_id:
+          type: integer
+          nullable: true
+          description: Account ID this key is restricted to (null = admin key)
+          example: 5
+        description:
+          type: string
+          description: Human-readable description
+          example: "Production API key for customer portal"
+        permissions:
+          type: object
+          nullable: true
+          description: Permission configuration (JSON)
+          properties:
+            domains:
+              type: string
+              enum: ["r", "w", "rw"]
+              description: Domain access permissions
+            create_domains:
+              type: boolean
+              description: Can create new domains
+            delete_domains:
+              type: boolean
+              description: Can delete domains
+            scope:
+              type: string
+              enum: ["account", "admin"]
+              description: Access scope
+          example:
+            domains: "rw"
+            create_domains: true
+            delete_domains: false
+            scope: "account"
+        allowed_ips:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: Allowed IP addresses/CIDR ranges (null = no restriction)
+          example: ["192.168.1.0/24", "10.0.0.50"]
+        enabled:
+          type: boolean
+          description: Whether the key is enabled
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2025-12-07 10:30:00"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2025-12-07 10:30:00"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration timestamp (null = never expires)
+          example: null
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last usage timestamp
+          example: "2025-12-07 15:45:00"
+        created_by:
+          type: integer
+          nullable: true
+          description: Admin user who created this key
+          example: null
+
     Error:
       type: object
       properties:
@@ -2390,6 +2846,8 @@ tags:
     description: API documentation and information
   - name: Accounts
     description: Account management operations with IP address support
+  - name: API Keys
+    description: Account-scoped API key management with granular permissions and IP restrictions
   - name: Domains
     description: Smart domain management with ID/name detection, DNS records, and PowerDNS Server API integration
   - name: Domain Search

@@ -97,6 +97,25 @@ if (preg_match('/^(api\/)?templates\/(\d+)\/create-domain$/', $path, $matches)) 
             readfile('openapi.yaml');
             break;
             
+        case 'openapi-user':
+        case 'openapi-user.json':
+            // Serve User OpenAPI JSON specification
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization');
+            header('Content-Type: application/json');
+            readfile('openapi-user.json');
+            break;
+            
+        case 'openapi-user.yaml':
+            // Serve User OpenAPI YAML specification
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization');
+            header('Content-Type: application/yaml');
+            readfile('openapi-user.yaml');
+            break;
+            
         case 'docs':
         case 'swagger':
         case 'swagger-ui':
