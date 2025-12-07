@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS api_keys (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    api_key VARCHAR(64) NOT NULL UNIQUE,
+    api_key VARCHAR(128) NOT NULL UNIQUE,
     key_hash VARCHAR(255) NOT NULL,
     account_id INT NULL,
     description VARCHAR(500) DEFAULT '',
