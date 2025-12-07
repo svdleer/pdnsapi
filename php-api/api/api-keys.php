@@ -79,7 +79,7 @@ function listApiKeys($db) {
         $account_id_filter = isset($_GET['account_id']) ? $_GET['account_id'] : null;
         
         $query = "SELECT id, LEFT(api_key, 12) as key_prefix, account_id, description, 
-                         permissions, enabled, created_at, updated_at, expires_at, 
+                         permissions, allowed_ips, enabled, created_at, updated_at, expires_at, 
                          last_used_at, created_by
                   FROM api_keys";
         
@@ -102,6 +102,7 @@ function listApiKeys($db) {
         // Parse JSON permissions for each key
         foreach ($keys as &$key) {
             $key['permissions'] = $key['permissions'] ? json_decode($key['permissions'], true) : null;
+            $key['allowed_ips'] = $key['allowed_ips'] ? json_decode($key['allowed_ips'], true) : null;
             $key['key_preview'] = $key['key_prefix'] . '...';
             unset($key['key_prefix']);
         }
@@ -121,7 +122,7 @@ function getApiKey($db, $key_id) {
     try {
         $stmt = $db->prepare("
             SELECT id, LEFT(api_key, 12) as key_prefix, account_id, description, 
-                   permissions, enabled, created_at, updated_at, expires_at, 
+                   permissions, allowed_ips, enabled, created_at, updated_at, expires_at, 
                    last_used_at, created_by
             FROM api_keys 
             WHERE id = ?
@@ -136,6 +137,7 @@ function getApiKey($db, $key_id) {
         
         // Parse JSON permissions
         $key['permissions'] = $key['permissions'] ? json_decode($key['permissions'], true) : null;
+        $key['allowed_ips'] = $key['allowed_ips'] ? json_decode($key['allowed_ips'], true) : null;
         $key['key_preview'] = $key['key_prefix'] . '...';
         unset($key['key_prefix']);
         
@@ -191,10 +193,37 @@ function createApiKey($db, $data) {
     $expires_at = isset($data['expires_at']) ? $data['expires_at'] : null;
     $enabled = isset($data['enabled']) ? (bool)$data['enabled'] : true;
     
+    // Validate and parse allowed IPs
+    $allowed_ips = null;
+    if (isset($data['allowed_ips']) && is_array($data['allowed_ips'])) {
+        $validated_ips = [];
+        foreach ($data['allowed_ips'] as $ip) {
+            // Validate IP or CIDR format
+            if (strpos($ip, '/') !== false) {
+                // CIDR notation
+                list($subnet, $mask) = explode('/', $ip);
+                if (!filter_var($subnet, FILTER_VALIDATE_IP) || !is_numeric($mask)) {
+                    sendError(400, "Invalid IP/CIDR format: " . $ip);
+                    return;
+                }
+            } else {
+                // Single IP
+                if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                    sendError(400, "Invalid IP address: " . $ip);
+                    return;
+                }
+            }
+            $validated_ips[] = $ip;
+        }
+        if (!empty($validated_ips)) {
+            $allowed_ips = json_encode($validated_ips);
+        }
+    }
+    
     try {
         $stmt = $db->prepare("
-            INSERT INTO api_keys (api_key, key_hash, account_id, description, permissions, enabled, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO api_keys (api_key, key_hash, account_id, description, permissions, allowed_ips, enabled, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->execute([
@@ -203,6 +232,7 @@ function createApiKey($db, $data) {
             $data['account_id'],
             $description,
             json_encode($permissions),
+            $allowed_ips,
             $enabled,
             $expires_at
         ]);
@@ -217,6 +247,7 @@ function createApiKey($db, $data) {
             'account_username' => $account['username'],
             'description' => $description,
             'permissions' => $permissions,
+            'allowed_ips' => $allowed_ips ? json_decode($allowed_ips, true) : null,
             'enabled' => $enabled,
             'expires_at' => $expires_at,
             'warning' => 'Save this API key securely. It will not be displayed again.'
@@ -260,6 +291,31 @@ function updateApiKey($db, $key_id, $data) {
         if (isset($data['enabled'])) {
             $updates[] = "enabled = ?";
             $params[] = (bool)$data['enabled'];
+        }
+        
+        if (isset($data['allowed_ips'])) {
+            if (is_array($data['allowed_ips']) && !empty($data['allowed_ips'])) {
+                // Validate IPs
+                foreach ($data['allowed_ips'] as $ip) {
+                    if (strpos($ip, '/') !== false) {
+                        list($subnet, $mask) = explode('/', $ip);
+                        if (!filter_var($subnet, FILTER_VALIDATE_IP) || !is_numeric($mask)) {
+                            sendError(400, "Invalid IP/CIDR format: " . $ip);
+                            return;
+                        }
+                    } else {
+                        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                            sendError(400, "Invalid IP address: " . $ip);
+                            return;
+                        }
+                    }
+                }
+                $updates[] = "allowed_ips = ?";
+                $params[] = json_encode($data['allowed_ips']);
+            } else {
+                // Empty array or null means no IP restriction
+                $updates[] = "allowed_ips = NULL";
+            }
         }
         
         if (isset($data['expires_at'])) {

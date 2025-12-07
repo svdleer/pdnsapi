@@ -497,7 +497,7 @@ function isValidApiKey($provided_key) {
     // Check database for account-scoped keys
     try {
         $stmt = $pdo->prepare("
-            SELECT id, account_id, permissions, enabled, expires_at, description
+            SELECT id, account_id, permissions, allowed_ips, enabled, expires_at, description
             FROM api_keys 
             WHERE api_key = ? 
             AND enabled = 1
@@ -512,6 +512,28 @@ function isValidApiKey($provided_key) {
         // Check if key has expired
         if ($key_data['expires_at'] && strtotime($key_data['expires_at']) < time()) {
             return false;
+        }
+        
+        // Check IP restrictions for this key
+        if ($key_data['allowed_ips']) {
+            $allowed_ips = json_decode($key_data['allowed_ips'], true);
+            if (is_array($allowed_ips) && !empty($allowed_ips)) {
+                $client_ip = getClientIpAddress();
+                $ip_allowed = false;
+                
+                foreach ($allowed_ips as $allowed_ip) {
+                    if (ipInRange($client_ip, $allowed_ip)) {
+                        $ip_allowed = true;
+                        break;
+                    }
+                }
+                
+                if (!$ip_allowed) {
+                    logSecurityEvent("API_KEY_IP_BLOCKED", $client_ip, $_SERVER['REQUEST_URI'] ?? '/', 
+                        "API key {$key_data['id']} blocked - IP not in key's allowlist");
+                    return false;
+                }
+            }
         }
         
         // Update last_used_at timestamp

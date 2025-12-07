@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     account_id INT NULL,
     description VARCHAR(500) DEFAULT '',
     permissions JSON DEFAULT NULL COMMENT 'JSON object defining permissions: {"domains": "rw", "create_domains": true, "delete_domains": false}',
+    allowed_ips JSON DEFAULT NULL COMMENT 'Array of allowed IP addresses/CIDR ranges for this key. NULL = no restriction',
     enabled BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
