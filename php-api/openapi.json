@@ -906,19 +906,77 @@
               },
               "examples": {
                 "change_account": {
-                  "summary": "Change domain account",
+                  "summary": "Transfer domain to another account",
+                  "description": "Move a domain to a different account (requires admin privileges)",
                   "value": {
                     "account_id": 2
                   }
                 },
-                "update_settings": {
-                  "summary": "Update domain settings",
+                "enable_dnssec": {
+                  "summary": "Enable DNSSEC for domain",
+                  "description": "Activate DNSSEC signing for the zone",
+                  "value": {
+                    "dnssec": true
+                  }
+                },
+                "disable_dnssec": {
+                  "summary": "Disable DNSSEC",
+                  "description": "Turn off DNSSEC signing",
+                  "value": {
+                    "dnssec": false
+                  }
+                },
+                "convert_to_slave": {
+                  "summary": "Convert domain to slave zone",
+                  "description": "Change zone type to slave and configure master servers",
                   "value": {
                     "kind": "Slave",
                     "masters": [
-                      "192.168.1.100"
-                    ],
+                      "192.168.1.100",
+                      "192.168.1.101"
+                    ]
+                  }
+                },
+                "convert_to_master": {
+                  "summary": "Convert domain to master zone",
+                  "description": "Change zone type to master (native)",
+                  "value": {
+                    "kind": "Master",
+                    "masters": []
+                  }
+                },
+                "convert_to_native": {
+                  "summary": "Convert to native zone",
+                  "description": "Standard PowerDNS native zone (most common)",
+                  "value": {
+                    "kind": "Native"
+                  }
+                },
+                "update_slave_masters": {
+                  "summary": "Update master servers for slave zone",
+                  "description": "Change which servers to replicate from",
+                  "value": {
+                    "masters": [
+                      "10.0.0.5",
+                      "10.0.0.6",
+                      "10.0.0.7"
+                    ]
+                  }
+                },
+                "full_update": {
+                  "summary": "Complete domain configuration update",
+                  "description": "Update multiple settings at once",
+                  "value": {
+                    "account_id": 3,
+                    "kind": "Native",
                     "dnssec": true
+                  }
+                },
+                "remove_account": {
+                  "summary": "Remove account assignment",
+                  "description": "Unassign domain from account",
+                  "value": {
+                    "account_id": null
                   }
                 }
               }
@@ -2737,11 +2795,13 @@
       },
       "DomainUpdate": {
         "type": "object",
+        "description": "Domain update configuration. All fields are optional - only include fields you want to update.\n\n**Common Use Cases:**\n- Transfer domain to another account\n- Enable/disable DNSSEC\n- Convert between zone types (Native/Master/Slave)\n- Update master servers for slave zones\n",
         "properties": {
           "account_id": {
             "type": "integer",
             "nullable": true,
-            "description": "Account ID to assign domain to (null to remove)"
+            "description": "Account ID to assign domain to.\n- Set to account ID to transfer domain\n- Set to `null` to remove account assignment\n- Requires admin privileges\n",
+            "example": 5
           },
           "kind": {
             "type": "string",
@@ -2750,19 +2810,31 @@
               "Master",
               "Slave"
             ],
-            "description": "Zone kind"
+            "description": "Zone type/kind:\n- **Native**: Standard PowerDNS zone (most common)\n- **Master**: Authoritative zone that can be transferred\n- **Slave**: Zone replicated from master servers\n",
+            "example": "Native"
           },
           "masters": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "ipv4"
             },
-            "description": "List of master servers"
+            "description": "Master server IP addresses for slave zones.\n- Required when `kind: \"Slave\"`\n- Must be valid IPv4/IPv6 addresses\n- Can specify multiple masters for redundancy\n- Ignored for Native/Master zones\n",
+            "example": [
+              "192.168.1.100",
+              "192.168.1.101"
+            ]
           },
           "dnssec": {
             "type": "boolean",
-            "description": "Enable DNSSEC"
+            "description": "Enable or disable DNSSEC signing.\n- `true`: Enable DNSSEC (generates keys and signs zone)\n- `false`: Disable DNSSEC (removes signatures)\n- Requires PowerDNS DNSSEC support enabled\n",
+            "example": true
           }
+        },
+        "example": {
+          "kind": "Native",
+          "dnssec": true,
+          "account_id": 5
         }
       },
       "DomainSearchResult": {

@@ -763,15 +763,54 @@ paths:
               $ref: '#/components/schemas/DomainUpdate'
             examples:
               change_account:
-                summary: Change domain account
+                summary: Transfer domain to another account
+                description: Move a domain to a different account (requires admin privileges)
                 value:
                   account_id: 2
-              update_settings:
-                summary: Update domain settings
+              enable_dnssec:
+                summary: Enable DNSSEC for domain
+                description: Activate DNSSEC signing for the zone
+                value:
+                  dnssec: true
+              disable_dnssec:
+                summary: Disable DNSSEC
+                description: Turn off DNSSEC signing
+                value:
+                  dnssec: false
+              convert_to_slave:
+                summary: Convert domain to slave zone
+                description: Change zone type to slave and configure master servers
                 value:
                   kind: "Slave"
-                  masters: ["192.168.1.100"]
+                  masters: ["192.168.1.100", "192.168.1.101"]
+              convert_to_master:
+                summary: Convert domain to master zone
+                description: Change zone type to master (native)
+                value:
+                  kind: "Master"
+                  masters: []
+              convert_to_native:
+                summary: Convert to native zone
+                description: Standard PowerDNS native zone (most common)
+                value:
+                  kind: "Native"
+              update_slave_masters:
+                summary: Update master servers for slave zone
+                description: Change which servers to replicate from
+                value:
+                  masters: ["10.0.0.5", "10.0.0.6", "10.0.0.7"]
+              full_update:
+                summary: Complete domain configuration update
+                description: Update multiple settings at once
+                value:
+                  account_id: 3
+                  kind: "Native"
                   dnssec: true
+              remove_account:
+                summary: Remove account assignment
+                description: Unassign domain from account
+                value:
+                  account_id: null
       responses:
         '200':
           description: Domain updated successfully
@@ -2310,23 +2349,57 @@ components:
 
     DomainUpdate:
       type: object
+      description: |
+        Domain update configuration. All fields are optional - only include fields you want to update.
+        
+        **Common Use Cases:**
+        - Transfer domain to another account
+        - Enable/disable DNSSEC
+        - Convert between zone types (Native/Master/Slave)
+        - Update master servers for slave zones
       properties:
         account_id:
           type: integer
           nullable: true
-          description: Account ID to assign domain to (null to remove)
+          description: |
+            Account ID to assign domain to.
+            - Set to account ID to transfer domain
+            - Set to `null` to remove account assignment
+            - Requires admin privileges
+          example: 5
         kind:
           type: string
           enum: [Native, Master, Slave]
-          description: Zone kind
+          description: |
+            Zone type/kind:
+            - **Native**: Standard PowerDNS zone (most common)
+            - **Master**: Authoritative zone that can be transferred
+            - **Slave**: Zone replicated from master servers
+          example: "Native"
         masters:
           type: array
           items:
             type: string
-          description: List of master servers
+            format: ipv4
+          description: |
+            Master server IP addresses for slave zones.
+            - Required when `kind: "Slave"`
+            - Must be valid IPv4/IPv6 addresses
+            - Can specify multiple masters for redundancy
+            - Ignored for Native/Master zones
+          example: ["192.168.1.100", "192.168.1.101"]
         dnssec:
           type: boolean
-          description: Enable DNSSEC
+          description: |
+            Enable or disable DNSSEC signing.
+            - `true`: Enable DNSSEC (generates keys and signs zone)
+            - `false`: Disable DNSSEC (removes signatures)
+            - Requires PowerDNS DNSSEC support enabled
+          example: true
+      example:
+        kind: "Native"
+        dnssec: true
+        account_id: 5
 
     DomainSearchResult:
       type: object

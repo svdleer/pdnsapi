@@ -204,19 +204,61 @@ paths:
           application/json:
             schema:
               type: object
+              description: |
+                Update domain settings. All fields are optional - only include what you want to change.
               properties:
                 kind:
                   type: string
                   enum: [Native, Master, Slave]
-                  description: Domain type
+                  description: |
+                    Zone type:
+                    - **Native**: Standard zone (most common)
+                    - **Master**: Can be transferred to slaves
+                    - **Slave**: Replicates from master servers
+                  example: "Native"
                 masters:
                   type: array
                   items:
                     type: string
-                  description: Master servers (for slave zones)
+                  description: Master server IP addresses (required for Slave zones)
+                  example: ["192.168.1.100", "192.168.1.101"]
                 dnssec:
                   type: boolean
-                  description: Enable DNSSEC
+                  description: Enable/disable DNSSEC signing
+                  example: true
+            examples:
+              enable_dnssec:
+                summary: Enable DNSSEC
+                description: Turn on DNSSEC signing for your domain
+                value:
+                  dnssec: true
+              disable_dnssec:
+                summary: Disable DNSSEC
+                description: Turn off DNSSEC signing
+                value:
+                  dnssec: false
+              convert_to_slave:
+                summary: Convert to slave zone
+                description: Make this domain replicate from master servers
+                value:
+                  kind: "Slave"
+                  masters: ["192.168.1.100", "192.168.1.101"]
+              convert_to_native:
+                summary: Convert to native zone
+                description: Standard zone type (most common)
+                value:
+                  kind: "Native"
+              update_masters:
+                summary: Update master servers
+                description: Change which servers to replicate from (for slave zones)
+                value:
+                  masters: ["10.0.0.5", "10.0.0.6"]
+              full_config:
+                summary: Complete configuration
+                description: Update multiple settings at once
+                value:
+                  kind: "Native"
+                  dnssec: true
       responses:
         '200':
           description: Domain updated successfully
