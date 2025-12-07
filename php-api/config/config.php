@@ -39,9 +39,21 @@ $api_settings = [
         // Allow access to documentation without API key for easier development
         '',           // Root endpoint 
         'index',      // Documentation endpoint
-        'docs',       // Swagger UI
+        'docs',       // Swagger UI (Admin)
+        'docs.html',  // Swagger UI (Admin) explicit
+        'docs-user',  // Swagger UI (User)
+        'docs-user.html', // Swagger UI (User) explicit
+        'user-docs',  // Swagger UI (User) alternate
         'swagger',    // Swagger UI alternate
-        'openapi',    // OpenAPI spec
+        'swagger-ui', // Swagger UI alternate
+        'openapi',    // OpenAPI spec (Admin)
+        'openapi.json', // OpenAPI JSON (Admin)
+        'openapi.yaml', // OpenAPI YAML (Admin)
+        'swagger.json', // Swagger JSON (Admin)
+        'swagger.yaml', // Swagger YAML (Admin)
+        'openapi-user', // OpenAPI spec (User)
+        'openapi-user.json', // OpenAPI JSON (User)
+        'openapi-user.yaml', // OpenAPI YAML (User)
         'health',     // Basic health check endpoint
         'debug-auth.php', // Temporary debug endpoint
         'env-check.php',  // Temporary env check endpoint
