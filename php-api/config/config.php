@@ -54,6 +54,10 @@ $api_settings = [
         'openapi-user', // OpenAPI spec (User)
         'openapi-user.json', // OpenAPI JSON (User)
         'openapi-user.yaml', // OpenAPI YAML (User)
+        'openapi-user-nl', // OpenAPI spec (User Dutch)
+        'openapi-user-nl.json', // OpenAPI JSON (User Dutch)
+        'openapi-user-nl.yaml', // OpenAPI YAML (User Dutch)
+        'avantlogo.png', // Avant logo
         'health',     // Basic health check endpoint
         'debug-auth.php', // Temporary debug endpoint
         'env-check.php',  // Temporary env check endpoint
