@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: PowerDNS API - User Guide
+  title: Avant DNS Admin API - User Guide
   description: |
-    User-focused API documentation for managing your domains with account-scoped API keys.
+    User-focused API documentation for managing your domains with account-scoped API keys via Avant DNS Admin.
     
     ## 🔐 Authentication
     

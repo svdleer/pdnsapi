@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: PowerDNS API - Handleiding
+  title: Avant DNS Admin API - Handleiding
   description: |
-    API documentatie voor het beheren van je domeinen.
+    API documentatie voor het beheren van je domeinen via Avant DNS Admin.
     
     ## 🔐 Authenticatie
     

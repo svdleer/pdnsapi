@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: PowerDNS Admin API - Administrator Documentation
+  title: Avant DNS Admin API - Administrator Documentation
   description: |
-    **Administrator API** - Full system access for PowerDNS management and configuration.
+    **Administrator API** - Full system access for DNS management and configuration via Avant DNS Admin.
     
     For user-focused documentation, see `/openapi-user.yaml`
     
