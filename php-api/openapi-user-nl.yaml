@@ -1,0 +1,557 @@
+openapi: 3.0.3
+info:
+  title: PowerDNS API - Handleiding
+  description: |
+    API documentatie voor het beheren van je domeinen.
+    
+    ## 🔐 Authenticatie
+    
+    Gebruik je API key in requests:
+    
+    ```bash
+    # X-API-Key header (aanbevolen)
+    curl -H "X-API-Key: jouw_api_key" https://pdnsapi.avant.nl/api/domains
+    
+    # Authorization header  
+    curl -H "Authorization: Bearer jouw_api_key" https://pdnsapi.avant.nl/api/domains
+    ```
+    
+    ## 🎯 Toegang
+    
+    Je API key geeft alleen toegang tot **jouw eigen domeinen**. Je kunt:
+    - ✅ Jouw domeinen bekijken
+    - ✅ Nieuwe domeinen aanmaken (indien toegestaan)
+    - ✅ Jouw domeinen wijzigen (indien toegestaan)
+    - ❌ Geen toegang tot domeinen van andere accounts
+    
+    ## 🔒 IP Beperkingen
+    
+    Je API key kan beperkt zijn tot specifieke IP adressen:
+    - **Globale lijst** - Je IP moet op de toegestane lijst staan
+    - **Key-specifieke IPs** - Je key kan extra IP beperkingen hebben
+    - Geblokkeerd? Neem contact op met de beheerder
+    
+    ## 📝 Rechten
+    
+    Je API key heeft specifieke rechten:
+    - **domains: "r"** - Alleen lezen
+    - **domains: "rw"** - Lezen en schrijven
+    - **create_domains** - Domeinen aanmaken
+    - **delete_domains** - Domeinen verwijderen (zeldzaam)
+    
+    Neem contact op met de beheerder om rechten te wijzigen.
+    
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@avant.nl
+
+servers:
+  - url: https://pdnsapi.avant.nl/
+    description: Productie API Server
+
+security:
+  - AccountApiKey: []
+
+paths:
+  /api/domains:
+    get:
+      summary: Toon jouw domeinen
+      description: |
+        Bekijk alle domeinen van jouw account.
+        
+        **🔐 Toegang:** Toont alleen jouw eigen domeinen.
+      tags:
+        - Domeinen
+      responses:
+        '200':
+          description: Lijst van jouw domeinen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Domain'
+        '401':
+          description: Niet geautoriseerd - Ongeldige of ontbrekende API key
+        '403':
+          description: Geen toegang - IP adres niet toegestaan
+        '500':
+          description: Server fout
+    
+    post:
+      summary: Nieuw domein aanmaken
+      description: |
+        Maak een nieuw domein aan onder jouw account.
+        
+        **🔐 Rechten vereist:** `create_domains: true`
+        
+        **📋 Het domein wordt automatisch aan jouw account gekoppeld.**
+      tags:
+        - Domeinen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Domeinnaam
+                  example: "nieuwdomein.nl"
+                kind:
+                  type: string
+                  enum: [Native, Master, Slave]
+                  default: Native
+                  description: Domein type
+                nameservers:
+                  type: array
+                  items:
+                    type: string
+                  description: Nameserver lijst
+                  example: ["ns1.voorbeeld.nl", "ns2.voorbeeld.nl"]
+      responses:
+        '201':
+          description: Domein succesvol aangemaakt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Domain'
+        '400':
+          description: Foutieve aanvraag - Ongeldige domeinnaam of data
+        '401':
+          description: Niet geautoriseerd - Ongeldige of ontbrekende API key
+        '403':
+          description: Geen toegang - Toestemming geweigerd of IP niet toegestaan
+        '500':
+          description: Server fout
+
+  /api/domains/{id}:
+    get:
+      summary: Domein details ophalen
+      description: |
+        Bekijk details van een specifiek domein.
+        
+        **🔐 Toegang:** Alleen toegankelijk als het domein bij jouw account hoort.
+      tags:
+        - Domeinen
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Domein ID
+      responses:
+        '200':
+          description: Domein details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Domain'
+        '401':
+          description: Niet geautoriseerd - Ongeldige of ontbrekende API key
+        '403':
+          description: Geen toegang - Domein hoort niet bij jouw account
+        '404':
+          description: Niet gevonden - Domein bestaat niet
+        '500':
+          description: Server fout
+    
+    put:
+      summary: Domein bijwerken
+      description: |
+        Wijzig een bestaand domein.
+        
+        **🔐 Toegang:** Alleen toegankelijk als het domein bij jouw account hoort.
+        **🔐 Rechten vereist:** `domains: "w"` of `domains: "rw"`
+      tags:
+        - Domeinen
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Domein ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: |
+                Wijzig domein instellingen. Alle velden zijn optioneel - neem alleen mee wat je wilt wijzigen.
+              properties:
+                kind:
+                  type: string
+                  enum: [Native, Master, Slave]
+                  description: |
+                    Zone type:
+                    - **Native**: Standaard zone (meest gebruikt)
+                    - **Master**: Kan overgedragen worden naar slaves
+                    - **Slave**: Repliceert van master servers
+                  example: "Native"
+                masters:
+                  type: array
+                  items:
+                    type: string
+                  description: Master server IP adressen (vereist voor Slave zones)
+                  example: ["192.168.1.100", "192.168.1.101"]
+                dnssec:
+                  type: boolean
+                  description: DNSSEC in-/uitschakelen
+                  example: true
+                rrsets:
+                  type: array
+                  description: |
+                    DNS record wijzigingen. Voeg toe, wijzig of verwijder DNS records.
+                    
+                    **Record Types:**
+                    - **A**: IPv4 adres (192.168.1.100)
+                    - **AAAA**: IPv6 adres (2001:db8::1)
+                    - **CNAME**: Alias naar ander domein
+                    - **MX**: Mail server (prioriteit + domein)
+                    - **TXT**: Tekst data (SPF, DKIM, verificatie)
+                    - **SRV**: Service discovery
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - type
+                      - changetype
+                    properties:
+                      name:
+                        type: string
+                        description: Record naam (moet eindigen op .)
+                        example: "www.voorbeeld.nl."
+                      type:
+                        type: string
+                        enum: [A, AAAA, CNAME, MX, TXT, SRV, PTR, NS]
+                        description: DNS record type
+                        example: "A"
+                      changetype:
+                        type: string
+                        enum: [REPLACE, DELETE]
+                        description: "Operation: REPLACE om toe te voegen/wijzigen, DELETE om te verwijderen"
+                        example: "REPLACE"
+                      ttl:
+                        type: integer
+                        description: "Time to live in seconden (standaard 3600)"
+                        example: 3600
+                      records:
+                        type: array
+                        description: Record data (vereist voor REPLACE)
+                        items:
+                          type: object
+                          properties:
+                            content:
+                              type: string
+                              description: Record waarde
+                              example: "192.168.1.100"
+                            disabled:
+                              type: boolean
+                              default: false
+                        example:
+                          - content: "192.168.1.100"
+                            disabled: false
+            examples:
+              enable_dnssec:
+                summary: DNSSEC inschakelen
+                description: Zet DNSSEC signing aan voor je domein
+                value:
+                  dnssec: true
+              disable_dnssec:
+                summary: DNSSEC uitschakelen
+                description: Zet DNSSEC signing uit
+                value:
+                  dnssec: false
+              convert_to_slave:
+                summary: Wijzigen naar slave zone
+                description: Laat dit domein repliceren van master servers
+                value:
+                  kind: "Slave"
+                  masters: ["192.168.1.100", "192.168.1.101"]
+              convert_to_native:
+                summary: Wijzigen naar native zone
+                description: Standaard zone type (meest gebruikt)
+                value:
+                  kind: "Native"
+              update_masters:
+                summary: Master servers bijwerken
+                description: Wijzig van welke servers gerepliceerd wordt (voor slave zones)
+                value:
+                  masters: ["10.0.0.5", "10.0.0.6"]
+              add_a_record:
+                summary: A record toevoegen (IPv4 adres)
+                description: Wijs www subdomain naar een IP adres
+                value:
+                  rrsets:
+                    - name: "www.jouwdomein.nl."
+                      type: "A"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "192.168.1.100"
+              add_mx_records:
+                summary: Mail servers configureren
+                description: Stel MX records in voor email
+                value:
+                  rrsets:
+                    - name: "jouwdomein.nl."
+                      type: "MX"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "10 mail.jouwdomein.nl."
+                        - content: "20 mail2.jouwdomein.nl."
+              add_txt_spf:
+                summary: SPF record toevoegen
+                description: Configureer email sender policy
+                value:
+                  rrsets:
+                    - name: "jouwdomein.nl."
+                      type: "TXT"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: '"v=spf1 mx a -all"'
+              add_cname:
+                summary: Subdomain alias aanmaken
+                description: Wijs blog subdomain naar andere server
+                value:
+                  rrsets:
+                    - name: "blog.jouwdomein.nl."
+                      type: "CNAME"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "hosting.voorbeeld.nl."
+              delete_record:
+                summary: DNS record verwijderen
+                description: Verwijder een specifiek record volledig
+                value:
+                  rrsets:
+                    - name: "oud.jouwdomein.nl."
+                      type: "A"
+                      changetype: "DELETE"
+              full_dns_config:
+                summary: Complete DNS configuratie
+                description: Stel web, mail en verificatie records tegelijk in
+                value:
+                  rrsets:
+                    - name: "www.jouwdomein.nl."
+                      type: "A"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "192.168.1.100"
+                    - name: "jouwdomein.nl."
+                      type: "MX"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "10 mail.jouwdomein.nl."
+                    - name: "jouwdomein.nl."
+                      type: "TXT"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: '"v=spf1 mx -all"'
+              full_config:
+                summary: Complete configuratie
+                description: Wijzig meerdere instellingen tegelijk
+                value:
+                  kind: "Native"
+                  dnssec: true
+      responses:
+        '200':
+          description: Domein succesvol bijgewerkt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Domain'
+        '400':
+          description: Foutieve aanvraag - Ongeldige data
+        '401':
+          description: Niet geautoriseerd - Ongeldige of ontbrekende API key
+        '403':
+          description: Geen toegang - Onvoldoende rechten of verkeerd account
+        '404':
+          description: Niet gevonden - Domein bestaat niet
+        '500':
+          description: Server fout
+    
+    delete:
+      summary: Domein verwijderen
+      description: |
+        Verwijder een domein van jouw account.
+        
+        **🔐 Toegang:** Alleen toegankelijk als het domein bij jouw account hoort.
+        **🔐 Rechten vereist:** `delete_domains: true`
+        
+        **⚠️ WAARSCHUWING:** Dit verwijdert het domein en alle records permanent.
+      tags:
+        - Domeinen
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Domein ID
+      responses:
+        '200':
+          description: Domein succesvol verwijderd
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Niet geautoriseerd - Ongeldige of ontbrekende API key
+        '403':
+          description: Geen toegang - Onvoldoende rechten of verkeerd account
+        '404':
+          description: Niet gevonden - Domein bestaat niet
+        '500':
+          description: Server fout
+
+  /api/status:
+    get:
+      summary: API Status
+      description: Controleer of de API operationeel is
+      tags:
+        - Status
+      security: []
+      responses:
+        '200':
+          description: API is operationeel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      api_version:
+                        type: string
+                      timestamp:
+                        type: string
+
+components:
+  securitySchemes:
+    AccountApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        **API Key Authenticatie**
+        
+        Je API key geeft veilige toegang tot jouw account's domeinen.
+        
+        **Gebruik:**
+        ```bash
+        curl -H "X-API-Key: jouw_key" https://pdnsapi.avant.nl/api/domains
+        ```
+        
+        **Beveiliging:**
+        - Je key is beperkt tot jouw account
+        - Kan IP adres beperkingen hebben
+        - Heeft specifieke rechten (lezen, schrijven, aanmaken, verwijderen)
+        - Deel je API key nooit
+        - Neem contact op bij gecompromitteerde key
+
+  schemas:
+    Domain:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Domein ID
+          example: 821
+        name:
+          type: string
+          description: Domeinnaam
+          example: "voorbeeld.nl"
+        type:
+          type: string
+          description: Domein type
+          example: "Native"
+        account_id:
+          type: integer
+          description: Jouw account ID
+          example: 5
+        account_name:
+          type: string
+          description: Jouw account naam
+          example: "klant_account"
+        pdns_zone_id:
+          type: string
+          description: PowerDNS zone ID
+          example: "voorbeeld.nl."
+        kind:
+          type: string
+          enum: [Native, Master, Slave]
+          description: Zone type
+          example: "Native"
+        masters:
+          type: string
+          description: Master servers (voor slave zones)
+          example: ""
+        dnssec:
+          type: boolean
+          description: DNSSEC ingeschakeld
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: Aanmaak datum
+          example: "2025-08-05 01:55:34"
+        updated_at:
+          type: string
+          format: date-time
+          description: Laatste wijziging
+          example: "2025-08-10 12:45:15"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Foutmelding
+        errors:
+          type: array
+          items:
+            type: string
+          description: Gedetailleerde fouten
+
+tags:
+  - name: Domeinen
+    description: Beheer je domeinen
+  - name: Status
+    description: API status en gezondheid
