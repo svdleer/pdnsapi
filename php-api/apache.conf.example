@@ -72,6 +72,7 @@ SSLStaplingCache "shmcb:${APACHE_RUN_DIR}/ssl_stapling(32768)"
     
     # Redirect API calls to appropriate endpoints
     RewriteRule ^/?accounts/?(.*)$ /api/accounts.php?$1 [L,QSA]
+    RewriteRule ^/?domains/([0-9]+)/?$ /api/domains.php?id=$1 [L,QSA]
     RewriteRule ^/?domains/?(.*)$ /api/domains.php?$1 [L,QSA]
     RewriteRule ^/?status/?(.*)$ /api/status.php?$1 [L,QSA]
     RewriteRule ^/?domain-account/?(.*)$ /api/domain-account.php?$1 [L,QSA]
