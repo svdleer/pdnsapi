@@ -50,7 +50,7 @@ if (!$conn) {
 // Get request method and path
 $method = $_SERVER['REQUEST_METHOD'];
 $path = $_SERVER['PATH_INFO'] ?? '';
-$pathParts = array_filter(explode('/', $path));
+$pathParts = array_values(array_filter(explode('/', $path)));
 
 try {
     switch ($method) {
