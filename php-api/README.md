@@ -180,6 +180,17 @@ DELETE /accounts?id={account_id}
 GET /domains
 ```
 
+#### Search Domains
+Searches across domain name, type, and account name using a partial (LIKE) match.
+```
+GET /domains?q={search_term}
+```
+Can be combined with `account_id` to restrict results to a specific account:
+```
+GET /domains?q={search_term}&account_id={account_id}
+```
+Account-scoped API keys automatically restrict results to their own account regardless of `account_id`.
+
 #### Get Domain by ID
 ```
 GET /domains?id={domain_id}

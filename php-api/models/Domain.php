@@ -261,6 +261,26 @@ class Domain {
         return $stmt;
     }
 
+    public function searchByAccountId($keywords, $account_id) {
+        $query = "SELECT d.*, a.username as account_name 
+                FROM " . $this->table_name . " d
+                LEFT JOIN accounts a ON d.account_id = a.id
+                WHERE d.account_id = ?
+                AND (d.name LIKE ? OR d.type LIKE ? OR a.username LIKE ?)
+                ORDER BY d.created_at DESC";
+
+        $stmt = $this->conn->prepare($query);
+
+        $like = "%{$keywords}%";
+        $stmt->bindParam(1, $account_id);
+        $stmt->bindParam(2, $like);
+        $stmt->bindParam(3, $like);
+        $stmt->bindParam(4, $like);
+
+        $stmt->execute();
+        return $stmt;
+    }
+
     public function addToAccount($domain_name, $account_id) {
         $query = "UPDATE " . $this->table_name . " 
                 SET account_id = :account_id, updated_at = NOW() 

@@ -50,6 +50,7 @@ $request_method = $_SERVER["REQUEST_METHOD"];
 $domain_id = isset($_GET['id']) ? $_GET['id'] : null;
 $account_id = isset($_GET['account_id']) ? $_GET['account_id'] : null;
 $sync = isset($_GET['sync']) ? $_GET['sync'] : null;
+$q = isset($_GET['q']) ? trim($_GET['q']) : null;
 
 // For GET, POST, PUT, DELETE - check for JSON payload
 $json_data = null;
@@ -75,6 +76,8 @@ switch($request_method) {
             getDomain($domain, $domain_id);
         } elseif ($account_id) {
             getDomainsByAccount($domain, $account_id);
+        } elseif ($q !== null && $q !== '') {
+            searchDomains($domain, $q, $account_id);
         } else {
             getAllDomains($domain);
         }
@@ -126,6 +129,49 @@ switch($request_method) {
     default:
         sendError(405, "Method not allowed");
         break;
+}
+
+function searchDomains($domain, $q, $explicit_account_id = null) {
+    // For account-scoped API keys, restrict to that account
+    $api_account_id = getApiKeyAccountId();
+    $effective_account_id = $api_account_id ?? $explicit_account_id;
+
+    if ($effective_account_id !== null) {
+        $stmt = $domain->searchByAccountId($q, $effective_account_id);
+    } else {
+        $stmt = $domain->search($q);
+    }
+
+    $num = $stmt->rowCount();
+
+    if ($num > 0) {
+        $domains_arr = array();
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            extract($row);
+
+            $domain_item = array(
+                "id" => $id,
+                "name" => $name,
+                "type" => $type,
+                "account_id" => $account_id,
+                "account_name" => $account_name,
+                "pdns_zone_id" => $pdns_zone_id,
+                "kind" => $kind,
+                "masters" => $masters,
+                "dnssec" => (bool)$dnssec,
+                "account" => $account,
+                "created_at" => $created_at,
+                "updated_at" => $updated_at
+            );
+
+            array_push($domains_arr, $domain_item);
+        }
+
+        sendResponse(200, $domains_arr);
+    } else {
+        sendResponse(200, array(), "No domains found matching '" . $q . "'");
+    }
 }
 
 function getAllDomains($domain) {

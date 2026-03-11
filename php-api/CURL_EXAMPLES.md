@@ -145,6 +145,21 @@ curl -X GET "${BASE_URL}/domains" \
   -H "X-API-Key: ${API_KEY}"
 ```
 
+### Search Domains (q parameter)
+Searches across domain name, type, and account name using a LIKE match.
+```bash
+curl -X GET "${BASE_URL}/domains?q=example.com" \
+  -H "Accept: application/json" \
+  -H "X-API-Key: ${API_KEY}"
+```
+
+### Search Domains within a Specific Account
+```bash
+curl -X GET "${BASE_URL}/domains?q=example&account_id=5" \
+  -H "Accept: application/json" \
+  -H "X-API-Key: ${API_KEY}"
+```
+
 ### List Domains with Sync from PowerDNS Admin
 ```bash
 curl -X GET "${BASE_URL}/domains?sync=true" \
