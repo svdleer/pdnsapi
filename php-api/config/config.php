@@ -39,9 +39,26 @@ $api_settings = [
         // Allow access to documentation without API key for easier development
         '',           // Root endpoint 
         'index',      // Documentation endpoint
-        'docs',       // Swagger UI
+        'docs',       // Swagger UI (Admin)
+        'docs.html',  // Swagger UI (Admin) explicit
+        'docs-user',  // Swagger UI (User)
+        'docs-user.html', // Swagger UI (User) explicit
+        'user-docs',  // Swagger UI (User) alternate
         'swagger',    // Swagger UI alternate
-        'openapi',    // OpenAPI spec
+        'swagger-ui', // Swagger UI alternate
+        'openapi',    // OpenAPI spec (Admin)
+        'openapi.json', // OpenAPI JSON (Admin)
+        'openapi.yaml', // OpenAPI YAML (Admin)
+        'swagger.json', // Swagger JSON (Admin)
+        'swagger.yaml', // Swagger YAML (Admin)
+        'openapi-user', // OpenAPI spec (User)
+        'openapi-user.json', // OpenAPI JSON (User)
+        'openapi-user.yaml', // OpenAPI YAML (User)
+        'openapi-user-nl', // OpenAPI spec (User Dutch)
+        'openapi-user-nl.json', // OpenAPI JSON (User Dutch)
+        'openapi-user-nl.yaml', // OpenAPI YAML (User Dutch)
+        'avantlogo.png', // Avant logo
+        'avant_header.png', // Avant header logo
         'health',     // Basic health check endpoint
         'debug-auth.php', // Temporary debug endpoint
         'env-check.php',  // Temporary env check endpoint
@@ -176,10 +193,16 @@ function requireApiKey() {
     
     // Validate API key
     $api_key = getApiKeyFromRequest();
-    if (!$api_key || !isValidApiKey($api_key)) {
+    $key_info = $api_key ? isValidApiKey($api_key) : false;
+    
+    if (!$key_info) {
         logSecurityEvent("INVALID_API_KEY", getClientIpAddress(), $path);
-        sendError(401, "Valid Admin API Key required");
+        sendError(401, "Valid API Key required");
     }
+    
+    // Store key info in global variable for use in endpoints
+    global $current_api_key_info;
+    $current_api_key_info = $key_info;
     
     return true;
 }
@@ -217,6 +240,12 @@ function getClientIpAddress() {
  */
 function getIpAllowlist() {
     global $pdo;
+    
+    // Initialize PDO if not set
+    if (!isset($pdo)) {
+        $database = new Database();
+        $pdo = $database->getConnection();
+    }
     
     static $cached_ips = null;
     
@@ -458,12 +487,203 @@ function getAllRequestHeaders() {
 }
 
 /**
- * Validate API key against configured keys
+ * Validate API key against configured keys and database
+ * Returns array with key info if valid, false otherwise
+ * @param string $provided_key The API key to validate
+ * @return array|false Array with key info (is_admin, account_id, permissions) or false
  */
 function isValidApiKey($provided_key) {
-    global $api_settings;
+    global $api_settings, $pdo;
     
-    return array_key_exists($provided_key, $api_settings['api_keys']);
+    // Initialize PDO if not set
+    if (!isset($pdo)) {
+        $database = new Database();
+        $pdo = $database->getConnection();
+    }
+    
+    // Check if it's an admin key from config
+    if (array_key_exists($provided_key, $api_settings['api_keys'])) {
+        return [
+            'is_admin' => true,
+            'account_id' => null,
+            'permissions' => ['all' => true],
+            'description' => $api_settings['api_keys'][$provided_key]
+        ];
+    }
+    
+    // Check database for account-scoped keys
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id, account_id, permissions, allowed_ips, enabled, expires_at, description
+            FROM api_keys 
+            WHERE api_key = ? 
+            AND enabled = 1
+        ");
+        $stmt->execute([$provided_key]);
+        $key_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$key_data) {
+            return false;
+        }
+        
+        // Check if key has expired
+        if ($key_data['expires_at'] && strtotime($key_data['expires_at']) < time()) {
+            return false;
+        }
+        
+        // Check IP restrictions for this key
+        if ($key_data['allowed_ips']) {
+            $allowed_ips = json_decode($key_data['allowed_ips'], true);
+            if (is_array($allowed_ips) && !empty($allowed_ips)) {
+                $client_ip = getClientIpAddress();
+                $ip_allowed = false;
+                
+                foreach ($allowed_ips as $allowed_ip) {
+                    if (ipInRange($client_ip, $allowed_ip)) {
+                        $ip_allowed = true;
+                        break;
+                    }
+                }
+                
+                if (!$ip_allowed) {
+                    logSecurityEvent("API_KEY_IP_BLOCKED", $client_ip, $_SERVER['REQUEST_URI'] ?? '/', 
+                        "API key {$key_data['id']} blocked - IP not in key's allowlist");
+                    return false;
+                }
+            }
+        }
+        
+        // Update last_used_at timestamp
+        $update_stmt = $pdo->prepare("UPDATE api_keys SET last_used_at = NOW() WHERE id = ?");
+        $update_stmt->execute([$key_data['id']]);
+        
+        // Parse permissions JSON
+        $permissions = $key_data['permissions'] ? json_decode($key_data['permissions'], true) : [];
+        
+        return [
+            'is_admin' => false,
+            'account_id' => $key_data['account_id'],
+            'permissions' => $permissions,
+            'description' => $key_data['description'],
+            'key_id' => $key_data['id']
+        ];
+        
+    } catch (Exception $e) {
+        error_log("Error validating API key: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Check if current API key has specific permission
+ * @param string $permission Permission to check (e.g., 'domains', 'create_domains', 'delete_domains')
+ * @param string $access Optional access level to check ('r', 'w', 'rw')
+ * @return bool True if permission granted
+ */
+function hasPermission($permission, $access = null) {
+    global $current_api_key_info;
+    
+    if (!isset($current_api_key_info)) {
+        return false;
+    }
+    
+    // Admin keys have all permissions
+    if ($current_api_key_info['is_admin']) {
+        return true;
+    }
+    
+    $permissions = $current_api_key_info['permissions'] ?? [];
+    
+    // Check specific permission
+    if (!isset($permissions[$permission])) {
+        return false;
+    }
+    
+    $perm_value = $permissions[$permission];
+    
+    // Boolean permission (true/false)
+    if (is_bool($perm_value)) {
+        return $perm_value;
+    }
+    
+    // Access level permission ('r', 'w', 'rw')
+    if ($access && is_string($perm_value)) {
+        if ($access === 'r') {
+            return strpos($perm_value, 'r') !== false;
+        } elseif ($access === 'w') {
+            return strpos($perm_value, 'w') !== false;
+        } elseif ($access === 'rw') {
+            return strpos($perm_value, 'r') !== false && strpos($perm_value, 'w') !== false;
+        }
+    }
+    
+    return (bool)$perm_value;
+}
+
+/**
+ * Get the account ID associated with the current API key
+ * Returns null for admin keys
+ * @return int|null Account ID or null
+ */
+function getApiKeyAccountId() {
+    global $current_api_key_info;
+    
+    if (!isset($current_api_key_info)) {
+        return null;
+    }
+    
+    return $current_api_key_info['is_admin'] ? null : $current_api_key_info['account_id'];
+}
+
+/**
+ * Check if current API key is an admin key (full access)
+ * @return bool True if admin key
+ */
+function isAdminApiKey() {
+    global $current_api_key_info;
+    
+    return isset($current_api_key_info) && $current_api_key_info['is_admin'];
+}
+
+/**
+ * Check if a domain belongs to the account associated with the current API key
+ * Admin keys have access to all domains
+ * @param int $domain_id Domain ID to check
+ * @return bool True if access granted
+ */
+function canAccessDomain($domain_id) {
+    global $current_api_key_info, $pdo;
+    
+    // Initialize PDO if not set
+    if (!isset($pdo)) {
+        $database = new Database();
+        $pdo = $database->getConnection();
+    }
+    
+    if (!isset($current_api_key_info)) {
+        return false;
+    }
+    
+    // Admin keys can access all domains
+    if ($current_api_key_info['is_admin']) {
+        return true;
+    }
+    
+    $account_id = $current_api_key_info['account_id'];
+    
+    if (!$account_id) {
+        return false;
+    }
+    
+    // Check if domain belongs to this account
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM domains WHERE id = ? AND account_id = ?");
+        $stmt->execute([$domain_id, $account_id]);
+        return $stmt->fetch() !== false;
+    } catch (Exception $e) {
+        error_log("Error checking domain access: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**

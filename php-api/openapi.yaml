@@ -1,15 +1,28 @@
 openapi: 3.0.3
 info:
-  title: PDNSAdmin PHP API
+  title: Avant DNS Admin API - Administrator Documentation
   description: |
-    PHP API wrapper for PowerDNS Admin with local database storage.
+    **Administrator API** - Full system access for DNS management and configuration via Avant DNS Admin.
+    
+    For user-focused documentation, see `/openapi-user.yaml`
     
     ## Authentication
-    Uses Basic Authentication with base64 encoded credentials.
-    Include `Authorization: Basic <base64-credentials>` header in requests.
     
     **Admin API Key Required** - Single API key provides full administrative access.
-    All API keys and configuration are loaded from environment variables (.env).
+    Include `X-API-Key` or `Authorization: Bearer` header in requests.
+    
+    **Dual Authentication:**
+    1. **Valid Admin API Key** - From AVANT_API_KEY environment variable
+    2. **Global IP Allowlist** - Client IP must be in allowlist
+    
+    ## Account-Scoped API Keys (New)
+    
+    Create and manage account-scoped API keys for customers/users:
+    - Restrict access to specific account's domains
+    - Granular permissions (read, write, create, delete)
+    - Optional per-key IP restrictions
+    - Expiration dates and usage tracking
+    - See `/api/api-keys` endpoints below
     
     ## Environment Configuration
     All sensitive configuration (API keys, database credentials, hosts) is stored in `.env`:
@@ -483,16 +496,142 @@ paths:
                 value:
                   name: "example.com"
                   account_id: 2
-              update_dns_records:
-                summary: Update DNS records by name
+              add_a_record:
+                summary: Add/Update A record
+                description: Set an A record for www subdomain
                 value:
                   name: "example.com"
                   rrsets:
                     - name: "www.example.com."
                       type: "A"
                       changetype: "REPLACE"
+                      ttl: 3600
                       records:
                         - content: "192.168.1.100"
+                          disabled: false
+              add_multiple_a_records:
+                summary: Add multiple A records (round-robin)
+                description: Multiple IPs for load balancing
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "web.example.com."
+                      type: "A"
+                      changetype: "REPLACE"
+                      ttl: 300
+                      records:
+                        - content: "192.168.1.10"
+                          disabled: false
+                        - content: "192.168.1.11"
+                          disabled: false
+                        - content: "192.168.1.12"
+                          disabled: false
+              add_aaaa_record:
+                summary: Add IPv6 (AAAA) record
+                description: Set IPv6 address for domain
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "ipv6.example.com."
+                      type: "AAAA"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "2001:db8::1"
+                          disabled: false
+              add_cname_record:
+                summary: Add CNAME record
+                description: Create alias to another domain
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "blog.example.com."
+                      type: "CNAME"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "wordpress.example.com."
+                          disabled: false
+              add_mx_records:
+                summary: Add MX (mail) records
+                description: Configure mail servers with priority
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "example.com."
+                      type: "MX"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "10 mail1.example.com."
+                          disabled: false
+                        - content: "20 mail2.example.com."
+                          disabled: false
+              add_txt_record:
+                summary: Add TXT record
+                description: Add SPF, DKIM, or verification record
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "example.com."
+                      type: "TXT"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: '"v=spf1 mx a ip4:192.168.1.0/24 -all"'
+                          disabled: false
+              add_srv_record:
+                summary: Add SRV (service) record
+                description: Configure service discovery
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "_sip._tcp.example.com."
+                      type: "SRV"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "10 60 5060 sipserver.example.com."
+                          disabled: false
+              delete_record:
+                summary: Delete DNS record
+                description: Remove a record completely
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "old.example.com."
+                      type: "A"
+                      changetype: "DELETE"
+              update_multiple_records:
+                summary: Update multiple record types at once
+                description: Batch update different record types
+                value:
+                  name: "example.com"
+                  rrsets:
+                    - name: "www.example.com."
+                      type: "A"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "192.168.1.100"
+                    - name: "mail.example.com."
+                      type: "A"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "192.168.1.50"
+                    - name: "example.com."
+                      type: "MX"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: "10 mail.example.com."
+                    - name: "example.com."
+                      type: "TXT"
+                      changetype: "REPLACE"
+                      ttl: 3600
+                      records:
+                        - content: '"v=spf1 mx -all"'
       responses:
         '200':
           description: Domain updated successfully
@@ -750,15 +889,54 @@ paths:
               $ref: '#/components/schemas/DomainUpdate'
             examples:
               change_account:
-                summary: Change domain account
+                summary: Transfer domain to another account
+                description: Move a domain to a different account (requires admin privileges)
                 value:
                   account_id: 2
-              update_settings:
-                summary: Update domain settings
+              enable_dnssec:
+                summary: Enable DNSSEC for domain
+                description: Activate DNSSEC signing for the zone
+                value:
+                  dnssec: true
+              disable_dnssec:
+                summary: Disable DNSSEC
+                description: Turn off DNSSEC signing
+                value:
+                  dnssec: false
+              convert_to_slave:
+                summary: Convert domain to slave zone
+                description: Change zone type to slave and configure master servers
                 value:
                   kind: "Slave"
-                  masters: ["192.168.1.100"]
+                  masters: ["192.168.1.100", "192.168.1.101"]
+              convert_to_master:
+                summary: Convert domain to master zone
+                description: Change zone type to master (native)
+                value:
+                  kind: "Master"
+                  masters: []
+              convert_to_native:
+                summary: Convert to native zone
+                description: Standard PowerDNS native zone (most common)
+                value:
+                  kind: "Native"
+              update_slave_masters:
+                summary: Update master servers for slave zone
+                description: Change which servers to replicate from
+                value:
+                  masters: ["10.0.0.5", "10.0.0.6", "10.0.0.7"]
+              full_update:
+                summary: Complete domain configuration update
+                description: Update multiple settings at once
+                value:
+                  account_id: 3
+                  kind: "Native"
                   dnssec: true
+              remove_account:
+                summary: Remove account assignment
+                description: Unassign domain from account
+                value:
+                  account_id: null
       responses:
         '200':
           description: Domain updated successfully
@@ -1529,6 +1707,366 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /api/api-keys:
+    get:
+      summary: List all API keys
+      description: |
+        Retrieve all account-scoped API keys.
+        
+        **🔑 Requires Admin API Key**
+        
+        **🔐 API KEY MANAGEMENT:**
+        - View all account-scoped API keys
+        - See key previews (first 12 characters)
+        - Check account associations
+        - Review permissions and IP restrictions
+        - Monitor last usage timestamps
+        - Note: Full API key is NEVER returned (only on creation)
+        
+        **SECURITY LAYERS:**
+        1. **Global IP Allowlist** - All requests must pass this first
+        2. **Per-Key IP Restrictions** - Optional additional IP filtering per key
+        3. **Account Scope** - Keys restricted to specific account's domains
+        4. **Permissions** - Granular read/write/create/delete control
+      tags:
+        - API Keys
+        - Security
+      parameters:
+        - name: account_id
+          in: query
+          schema:
+            type: integer
+          description: Filter API keys by account ID
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiKey'
+              examples:
+                all_keys:
+                  summary: All API keys
+                  value:
+                    data:
+                      - id: 3
+                        key_preview: "pdns_d0dbc9f..."
+                        account_id: 5
+                        description: "Production key for customer"
+                        permissions:
+                          domains: "rw"
+                          create_domains: true
+                          delete_domains: false
+                          scope: "account"
+                        allowed_ips: ["192.168.1.0/24", "10.0.0.50"]
+                        enabled: true
+                        created_at: "2025-12-07 10:30:00"
+                        last_used_at: "2025-12-07 15:45:00"
+                        expires_at: null
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can manage API keys
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Create account-scoped API key
+      description: |
+        Create a new API key for a specific account with granular permissions.
+        
+        **🔑 Requires Admin API Key**
+        
+        **⚠️ IMPORTANT: Full API key is ONLY shown once on creation!**
+        
+        **PERMISSION STRUCTURE:**
+        ```json
+        {
+          "domains": "rw",           // "r" (read), "w" (write), "rw" (both)
+          "create_domains": true,    // Can create new domains
+          "delete_domains": false,   // Can delete domains
+          "scope": "account"         // Always "account" for scoped keys
+        }
+        ```
+        
+        **IP RESTRICTIONS:**
+        - `allowed_ips: null` - Uses global allowlist only
+        - `allowed_ips: [...]` - Client IP must be in BOTH global AND key-specific lists
+        - Supports single IPs: `"192.168.1.100"`
+        - Supports CIDR ranges: `"10.0.0.0/8"`, `"192.168.1.0/24"`
+      tags:
+        - API Keys
+        - Security
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - account_id
+              properties:
+                account_id:
+                  type: integer
+                  description: Account ID this key will be restricted to
+                  example: 5
+                description:
+                  type: string
+                  description: Human-readable description of the key's purpose
+                  example: "Customer portal API access"
+                permissions:
+                  type: object
+                  description: Granular permissions for this key
+                  properties:
+                    domains:
+                      type: string
+                      enum: ["r", "w", "rw"]
+                      description: Domain read/write permissions
+                      example: "rw"
+                    create_domains:
+                      type: boolean
+                      description: Allow creating new domains
+                      example: true
+                    delete_domains:
+                      type: boolean
+                      description: Allow deleting domains
+                      example: false
+                allowed_ips:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                  description: Array of allowed IP addresses/CIDR ranges (null = no restriction)
+                  example: ["192.168.1.0/24", "10.0.0.50"]
+                enabled:
+                  type: boolean
+                  description: Enable the key immediately
+                  default: true
+                  example: true
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Expiration timestamp (null = never expires)
+                  example: "2026-12-31 23:59:59"
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "API key created successfully"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 4
+                      api_key:
+                        type: string
+                        description: "⚠️ SAVE THIS! Full key only shown once"
+                        example: "pdns_d0dbc9fd6f0cb69319c84e755dbf8d78e72f46720dfa9a2e..."
+                      account_id:
+                        type: integer
+                        example: 5
+                      account_username:
+                        type: string
+                        example: "customer_account"
+                      description:
+                        type: string
+                        example: "Customer portal API access"
+                      permissions:
+                        type: object
+                      allowed_ips:
+                        type: array
+                        items:
+                          type: string
+                      enabled:
+                        type: boolean
+                      expires_at:
+                        type: string
+                        nullable: true
+                      warning:
+                        type: string
+                        example: "Save this API key securely. It will not be displayed again."
+        '400':
+          description: Bad request - Missing required fields or invalid data
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can create API keys
+        '404':
+          description: Not found - Account does not exist
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/api-keys/{id}:
+    get:
+      summary: Get API key details
+      description: |
+        Retrieve details for a specific API key.
+        
+        **🔑 Requires Admin API Key**
+        
+        **Note:** Full API key is never returned, only preview (first 12 chars)
+      tags:
+        - API Keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: API key ID
+      responses:
+        '200':
+          description: API key details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApiKey'
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can view API keys
+        '404':
+          description: Not found - API key not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    put:
+      summary: Update API key
+      description: |
+        Update an existing API key's permissions, description, or IP restrictions.
+        
+        **🔑 Requires Admin API Key**
+        
+        **UPDATABLE FIELDS:**
+        - Description
+        - Permissions (domains, create_domains, delete_domains)
+        - IP restrictions (allowed_ips)
+        - Enabled status
+        - Expiration date
+        
+        **Note:** The API key itself cannot be changed
+      tags:
+        - API Keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: API key ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                  example: "Updated description"
+                permissions:
+                  type: object
+                  properties:
+                    domains:
+                      type: string
+                      enum: ["r", "w", "rw"]
+                    create_domains:
+                      type: boolean
+                    delete_domains:
+                      type: boolean
+                allowed_ips:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                  description: Set to [] or null to remove IP restrictions
+                  example: ["192.168.1.0/24"]
+                enabled:
+                  type: boolean
+                  description: Enable or disable the key
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '200':
+          description: API key updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "API key updated successfully"
+        '400':
+          description: Bad request - Invalid data or no fields to update
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can update API keys
+        '404':
+          description: Not found - API key not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    delete:
+      summary: Delete API key
+      description: |
+        Permanently delete an API key.
+        
+        **🔑 Requires Admin API Key**
+        
+        **⚠️ WARNING:**
+        - Permanently removes the API key
+        - Cannot be undone
+        - Active sessions using this key will be invalidated
+        - Consider disabling instead for temporary deactivation
+      tags:
+        - API Keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: API key ID
+      responses:
+        '200':
+          description: API key deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "API key deleted successfully"
+        '401':
+          description: Unauthorized - Valid Admin API Key required
+        '403':
+          description: Forbidden - Only admin API keys can delete API keys
+        '404':
+          description: Not found - API key not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+
 components:
   securitySchemes:
     AdminApiKey:
@@ -1937,23 +2475,57 @@ components:
 
     DomainUpdate:
       type: object
+      description: |
+        Domain update configuration. All fields are optional - only include fields you want to update.
+        
+        **Common Use Cases:**
+        - Transfer domain to another account
+        - Enable/disable DNSSEC
+        - Convert between zone types (Native/Master/Slave)
+        - Update master servers for slave zones
       properties:
         account_id:
           type: integer
           nullable: true
-          description: Account ID to assign domain to (null to remove)
+          description: |
+            Account ID to assign domain to.
+            - Set to account ID to transfer domain
+            - Set to `null` to remove account assignment
+            - Requires admin privileges
+          example: 5
         kind:
           type: string
           enum: [Native, Master, Slave]
-          description: Zone kind
+          description: |
+            Zone type/kind:
+            - **Native**: Standard PowerDNS zone (most common)
+            - **Master**: Authoritative zone that can be transferred
+            - **Slave**: Zone replicated from master servers
+          example: "Native"
         masters:
           type: array
           items:
             type: string
-          description: List of master servers
+            format: ipv4
+          description: |
+            Master server IP addresses for slave zones.
+            - Required when `kind: "Slave"`
+            - Must be valid IPv4/IPv6 addresses
+            - Can specify multiple masters for redundancy
+            - Ignored for Native/Master zones
+          example: ["192.168.1.100", "192.168.1.101"]
         dnssec:
           type: boolean
-          description: Enable DNSSEC
+          description: |
+            Enable or disable DNSSEC signing.
+            - `true`: Enable DNSSEC (generates keys and signs zone)
+            - `false`: Disable DNSSEC (removes signatures)
+            - Requires PowerDNS DNSSEC support enabled
+          example: true
+      example:
+        kind: "Native"
+        dnssec: true
+        account_id: 5
 
     DomainSearchResult:
       type: object
@@ -2003,33 +2575,80 @@ components:
 
     RRSet:
       type: object
-      description: DNS Resource Record Set
+      description: |
+        DNS Resource Record Set - A collection of DNS records of the same type and name.
+        
+        **Common Record Types:**
+        - **A**: IPv4 address (e.g., 192.168.1.100)
+        - **AAAA**: IPv6 address (e.g., 2001:db8::1)
+        - **CNAME**: Alias to another domain (e.g., target.example.com.)
+        - **MX**: Mail server (e.g., 10 mail.example.com.)
+        - **TXT**: Text data (e.g., SPF, DKIM, verification)
+        - **SRV**: Service discovery (e.g., 10 60 5060 server.example.com.)
       properties:
         name:
           type: string
-          description: Record name (FQDN with trailing dot)
+          description: |
+            Record name (FQDN with trailing dot).
+            - Must end with a dot (.)
+            - Must be within or match the zone name
+            - Examples: "www.example.com.", "example.com.", "mail.example.com."
+          example: "www.example.com."
         type:
           type: string
+          enum: ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS", "CAA"]
           description: DNS record type
+          example: "A"
         ttl:
           type: integer
-          description: Time to live in seconds
+          description: |
+            Time to live in seconds (how long to cache).
+            - Common values: 300 (5 min), 3600 (1 hour), 86400 (1 day)
+            - Lower TTL = faster updates, higher DNS traffic
+            - Higher TTL = better performance, slower updates
+          example: 3600
         records:
           type: array
-          description: DNS records in this set
+          description: |
+            DNS records in this set.
+            - Multiple records create round-robin / load balancing
+            - All records must be same type
           items:
             $ref: '#/components/schemas/DNSRecord'
+          example:
+            - content: "192.168.1.100"
+              disabled: false
 
     DNSRecord:
       type: object
-      description: Individual DNS record
+      description: |
+        Individual DNS record within a record set.
+        
+        **Content Format by Type:**
+        - **A**: IPv4 address → "192.168.1.100"
+        - **AAAA**: IPv6 address → "2001:db8::1"
+        - **CNAME**: Target domain → "target.example.com."
+        - **MX**: Priority + domain → "10 mail.example.com."
+        - **TXT**: Quoted text → '"v=spf1 mx -all"'
+        - **SRV**: Priority weight port target → "10 60 5060 server.example.com."
       properties:
         content:
           type: string
-          description: Record content/value
+          description: |
+            Record content/value (format depends on record type).
+            - Must be valid for the record type
+            - MX/SRV: Include priority/weight
+            - TXT: Must be quoted
+            - Domains: Must end with dot (.)
+          example: "192.168.1.100"
         disabled:
           type: boolean
-          description: Whether record is disabled
+          description: |
+            Whether this record is disabled.
+            - false: Record is active (default)
+            - true: Record exists but not served in DNS responses
+          default: false
+          example: false
 
     RRSetUpdate:
       type: object
@@ -2041,6 +2660,59 @@ components:
         - DNS record content validated for proper format
         - Dangerous record types (NS, SOA) require additional verification
         - Maximum 100 records per update to prevent abuse
+        
+        **Common Operations:**
+        - **REPLACE**: Add or update records (creates if doesn't exist)
+        - **DELETE**: Remove all records of this type and name
+        
+        **Examples by Record Type:**
+        
+        **A Record (IPv4):**
+        ```json
+        {
+          "name": "www.example.com.",
+          "type": "A",
+          "changetype": "REPLACE",
+          "ttl": 3600,
+          "records": [{"content": "192.168.1.100"}]
+        }
+        ```
+        
+        **AAAA Record (IPv6):**
+        ```json
+        {
+          "name": "ipv6.example.com.",
+          "type": "AAAA",
+          "changetype": "REPLACE",
+          "ttl": 3600,
+          "records": [{"content": "2001:db8::1"}]
+        }
+        ```
+        
+        **MX Record (Mail):**
+        ```json
+        {
+          "name": "example.com.",
+          "type": "MX",
+          "changetype": "REPLACE",
+          "ttl": 3600,
+          "records": [
+            {"content": "10 mail1.example.com."},
+            {"content": "20 mail2.example.com."}
+          ]
+        }
+        ```
+        
+        **TXT Record (SPF/DKIM):**
+        ```json
+        {
+          "name": "example.com.",
+          "type": "TXT",
+          "changetype": "REPLACE",
+          "ttl": 3600,
+          "records": [{"content": "\"v=spf1 mx -all\""}]
+        }
+        ```
       required:
         - name
         - type
@@ -2048,22 +2720,65 @@ components:
       properties:
         name:
           type: string
-          description: Record name (FQDN with trailing dot) - must be subdomain of zone
+          description: |
+            Record name (FQDN with trailing dot).
+            - Must be subdomain of zone or zone itself
+            - Must end with dot (.)
+            - Example: "www.example.com." or "example.com."
           pattern: "^[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*\\.$"
+          example: "www.example.com."
         type:
           type: string
-          description: DNS record type (A, AAAA, CNAME, MX, TXT, SRV)
-          enum: ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS"]
+          description: |
+            DNS record type.
+            - A: IPv4 address
+            - AAAA: IPv6 address
+            - CNAME: Alias
+            - MX: Mail server
+            - TXT: Text data
+            - SRV: Service discovery
+          enum: ["A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS", "CAA"]
+          example: "A"
+        ttl:
+          type: integer
+          description: |
+            Time to live in seconds (optional, defaults to zone default).
+            - 300: 5 minutes (frequent changes)
+            - 3600: 1 hour (standard)
+            - 86400: 1 day (stable records)
+          minimum: 0
+          maximum: 2147483647
+          default: 3600
+          example: 3600
         changetype:
           type: string
           enum: ["REPLACE", "DELETE"]
-          description: Operation type
+          description: |
+            Operation type:
+            - REPLACE: Add/update records (overwrites existing)
+            - DELETE: Remove all records of this name/type
+          example: "REPLACE"
         records:
           type: array
-          description: Records for REPLACE operations (omit for DELETE)
+          description: |
+            Records for REPLACE operations.
+            - Required for REPLACE
+            - Omit for DELETE
+            - Multiple records = round-robin/load balancing
           maxItems: 100
           items:
             $ref: '#/components/schemas/DNSRecord'
+          example:
+            - content: "192.168.1.100"
+              disabled: false
+      example:
+        name: "www.example.com."
+        type: "A"
+        changetype: "REPLACE"
+        ttl: 3600
+        records:
+          - content: "192.168.1.100"
+            disabled: false
 
     DomainAccountAdd:
       type: object
@@ -2339,6 +3054,89 @@ components:
           type: integer
           description: Record priority (for MX records)
 
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: API key ID
+          example: 3
+        key_preview:
+          type: string
+          description: First 12 characters of API key (full key never returned)
+          example: "pdns_d0dbc9f..."
+        account_id:
+          type: integer
+          nullable: true
+          description: Account ID this key is restricted to (null = admin key)
+          example: 5
+        description:
+          type: string
+          description: Human-readable description
+          example: "Production API key for customer portal"
+        permissions:
+          type: object
+          nullable: true
+          description: Permission configuration (JSON)
+          properties:
+            domains:
+              type: string
+              enum: ["r", "w", "rw"]
+              description: Domain access permissions
+            create_domains:
+              type: boolean
+              description: Can create new domains
+            delete_domains:
+              type: boolean
+              description: Can delete domains
+            scope:
+              type: string
+              enum: ["account", "admin"]
+              description: Access scope
+          example:
+            domains: "rw"
+            create_domains: true
+            delete_domains: false
+            scope: "account"
+        allowed_ips:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: Allowed IP addresses/CIDR ranges (null = no restriction)
+          example: ["192.168.1.0/24", "10.0.0.50"]
+        enabled:
+          type: boolean
+          description: Whether the key is enabled
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2025-12-07 10:30:00"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2025-12-07 10:30:00"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration timestamp (null = never expires)
+          example: null
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last usage timestamp
+          example: "2025-12-07 15:45:00"
+        created_by:
+          type: integer
+          nullable: true
+          description: Admin user who created this key
+          example: null
+
     Error:
       type: object
       properties:
@@ -2390,6 +3188,8 @@ tags:
     description: API documentation and information
   - name: Accounts
     description: Account management operations with IP address support
+  - name: API Keys
+    description: Account-scoped API key management with granular permissions and IP restrictions
   - name: Domains
     description: Smart domain management with ID/name detection, DNS records, and PowerDNS Server API integration
   - name: Domain Search
